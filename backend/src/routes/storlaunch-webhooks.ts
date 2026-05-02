@@ -28,10 +28,18 @@ const router = Router();
 interface StorlaunchEvent {
   id: string;
   type: string;
+  /** Sent as `createdAt` by storlaunch's deliverWebhookEvent envelope. */
+  createdAt?: string;
   occurredAt?: string;
-  accountId: string | null;
-  data: Record<string, unknown>;
+  /** Storlaunch's envelope doesn't include accountId at the top — every
+   *  payload carries it inside `data.accountId`. We accept either shape. */
+  accountId?: string | null;
+  data: Record<string, unknown> & { accountId?: string };
   metadata?: Record<string, unknown>;
+}
+
+function eventAccountId(event: StorlaunchEvent): string | null {
+  return event.accountId ?? event.data.accountId ?? null;
 }
 
 function verifySignature(rawBody: Buffer, header: string | undefined, secret: string): boolean {
@@ -54,6 +62,27 @@ function verifySignature(rawBody: Buffer, header: string | undefined, secret: st
   return crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(sig));
 }
 
+/**
+ * Storlaunch generates the webhook secret per-merchant on its side
+ * (in the WebhookEndpoint row) and signs each delivery with it. Fulkruma
+ * needs that same secret to verify. Two ways we can find it:
+ *
+ *   1. Per-merchant: a row in fulkruma's `WebhookEndpoint` table with
+ *      `description='storlaunch.inbound'` whose `secret` matches the one
+ *      storlaunch is using. This is populated by an admin
+ *      register-webhook-secret call (Phase F.3 — not shipped yet).
+ *
+ *   2. Channel-wide: `STORLAUNCH_WEBHOOK_SECRET` env var on the fulkruma
+ *      backend. Storlaunch must use the SAME value when creating
+ *      WebhookEndpoint rows for fulkruma. Useful for dev where there's
+ *      one fulkruma serving one storlaunch.
+ *
+ * For Phase F.2, the env-var path is the only one that works
+ * automatically — storlaunch's `ensureFulkrumaWebhookEndpoint` generates
+ * a fresh secret per merchant, so the channel-wide env path needs
+ * storlaunch to be configured to use a fixed secret. Document this in
+ * the deploy guide.
+ */
 async function loadInboundSecret(accountId: string | null): Promise<string | null> {
   if (accountId) {
     const ep = await prisma.webhookEndpoint.findFirst({
@@ -62,7 +91,7 @@ async function loadInboundSecret(accountId: string | null): Promise<string | nul
     });
     if (ep) return ep.secret;
   }
-  return process.env.STORLAUNCH_WEBHOOK_SECRET ?? process.env.SEED_STORLAUNCH_WEBHOOK_SECRET ?? null;
+  return process.env.STORLAUNCH_WEBHOOK_SECRET ?? null;
 }
 
 router.post(
@@ -78,9 +107,13 @@ router.post(
       return res.status(400).json(err('MALFORMED', 'body is not JSON', reqId));
     }
 
-    const secret = await loadInboundSecret(event.accountId);
+    const accountId = eventAccountId(event);
+    const secret = await loadInboundSecret(accountId);
     if (!secret) return res.status(401).json(err('NO_SECRET', 'no webhook secret configured', reqId));
-    const sigHeader = req.headers['storlaunch-signature'] as string | undefined;
+    // Storlaunch sends `X-Storlaunch-Signature`; Express lowercases.
+    const sigHeader =
+      (req.headers['x-storlaunch-signature'] as string | undefined) ??
+      (req.headers['storlaunch-signature'] as string | undefined);
     if (!verifySignature(raw, sigHeader, secret)) {
       return res.status(401).json(err('BAD_SIGNATURE', 'storlaunch signature invalid', reqId));
     }
