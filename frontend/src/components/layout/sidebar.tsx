@@ -7,10 +7,7 @@ import {
   LayoutDashboard,
   Warehouse,
   Boxes,
-  ArrowLeftRight,
-  ClipboardList,
   Truck,
-  MapPin,
   PackageCheck,
   KeyRound,
   Plug,
@@ -23,6 +20,10 @@ import {
   FileText,
   Shield,
   Home,
+  Send,
+  Wallet,
+  Webhook,
+  ScrollText,
 } from 'lucide-react';
 import { LogoMark } from '@/components/brand/logo';
 
@@ -46,26 +47,34 @@ const navSections: NavSection[] = [
     ],
   },
   {
-    label: 'Inventory',
+    label: 'Digital',
     items: [
-      { href: '/dashboard/warehouses', label: 'Warehouses', icon: Warehouse },
-      { href: '/dashboard/stock', label: 'Stock levels', icon: Boxes },
-      { href: '/dashboard/movements', label: 'Movements', icon: ArrowLeftRight },
-      { href: '/dashboard/reservations', label: 'Reservations', icon: ClipboardList },
+      { href: '/dashboard/deliveries', label: 'Digital Deliveries', icon: PackageCheck },
+      { href: '/dashboard/licenses', label: 'Licenses', icon: KeyRound },
     ],
   },
   {
-    label: 'Fulfilment',
+    label: 'Physical',
     items: [
       { href: '/dashboard/shipments', label: 'Shipments', icon: Truck },
-      { href: '/dashboard/addresses', label: 'Addresses', icon: MapPin },
-      { href: '/dashboard/deliveries', label: 'Deliveries', icon: PackageCheck },
-      { href: '/dashboard/licenses', label: 'Licenses', icon: KeyRound },
+      { href: '/dashboard/stock', label: 'Inventory', icon: Boxes },
+      { href: '/dashboard/warehouses', label: 'Warehouse', icon: Warehouse },
+      { href: '/dashboard/shipping', label: 'Shipping', icon: Send },
+    ],
+  },
+  {
+    label: 'Developer',
+    items: [
+      { href: '/dashboard/api-keys', label: 'API Keys', icon: KeyRound },
+      { href: '/dashboard/webhooks', label: 'Webhooks', icon: Webhook },
+      { href: '/dashboard/audit-log', label: 'Audit Log', icon: ScrollText },
     ],
   },
   {
     label: 'Account',
     items: [
+      { href: '/dashboard/workspaces', label: 'Workspaces', icon: Building2 },
+      { href: '/dashboard/billing', label: 'Billing', icon: Wallet },
       { href: '/dashboard/integrations', label: 'Integrations', icon: Plug },
       { href: '/dashboard/settings', label: 'Settings', icon: Settings },
     ],
