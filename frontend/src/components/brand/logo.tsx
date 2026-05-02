@@ -23,8 +23,6 @@ export function LogoMark({ size = 28, ...props }: { size?: number } & SVGProps<S
       <rect x="8" y="13.75" width="11" height="4.5" rx="1.25" fill="#FFFFFF" />
       {/* base bar (stem) */}
       <rect x="8" y="20.5" width="4.5" height="4.5" rx="1.25" fill="#FFFFFF" />
-      {/* shadow line under base — quiet, not active */}
-      <rect x="8" y="26" width="16" height="0.75" rx="0.375" fill="#FFFFFF" opacity="0.35" />
     </svg>
   );
 }
