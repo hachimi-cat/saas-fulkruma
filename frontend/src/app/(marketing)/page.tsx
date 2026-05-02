@@ -1,63 +1,55 @@
-const brand = process.env.NEXT_PUBLIC_BRAND_NAME ?? 'Fulkruma';
+import Link from 'next/link';
+import { Truck, Boxes, Warehouse, ArrowRight } from 'lucide-react';
 
-export default function MarketingLandingPage() {
+const features = [
+  { icon: Warehouse, title: 'Multi-warehouse', body: 'Track stock across many physical or virtual locations.' },
+  { icon: Boxes, title: 'Reservations', body: 'Soft-hold inventory at checkout to prevent oversell.' },
+  { icon: Truck, title: 'Biteship shipping', body: 'Indonesian courier integration out of the box.' },
+];
+
+export default function MarketingLanding() {
   return (
-    <main style={{ maxWidth: 960, margin: '0 auto', padding: '64px 24px' }}>
-      <header style={{ marginBottom: 48 }}>
-        <h1 style={{ fontSize: 48, fontWeight: 800, margin: 0 }}>{brand}</h1>
-        <p style={{ fontSize: 18, color: 'var(--muted)', marginTop: 8 }}>
-          Part of the Forjio commerce suite.
-        </p>
-        <div style={{ marginTop: 24 }}>
-          <a
-            href="/dashboard"
-            style={{
-              display: 'inline-block',
-              padding: '10px 20px',
-              background: 'var(--primary)',
-              color: 'var(--primary-fg)',
-              borderRadius: 8,
-              fontWeight: 600,
-            }}
-          >
-            Sign in
-          </a>
-        </div>
-      </header>
+    <main className="mx-auto max-w-3xl px-6 py-20 text-center">
+      <span className="font-mono text-[11px] uppercase tracking-[0.2em] text-brand-700">
+        Forjio family · M5
+      </span>
+      <h1 className="mt-4 text-4xl font-semibold tracking-tight sm:text-5xl">
+        Stock and shipping that <span className="text-brand-500">just works</span>{' '}
+        for Indonesian storefronts.
+      </h1>
+      <p className="mx-auto mt-5 max-w-xl text-base text-muted-foreground">
+        Multi-warehouse inventory, reservations, and Biteship-powered shipping —
+        billed in IDR, plugged into your Storlaunch storefront in one click.
+      </p>
 
-      <section
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
-          gap: 16,
-        }}
-      >
-        {[1, 2, 3].map((i) => (
-          <article
-            key={i}
-            style={{
-              border: '1px solid var(--border)',
-              borderRadius: 12,
-              padding: 24,
-            }}
-          >
-            <h3 style={{ marginTop: 0 }}>Feature {i}</h3>
-            <p style={{ color: 'var(--muted)', margin: 0 }}>
-              Replace this placeholder with something actual users will read.
-            </p>
-          </article>
+      <div className="mt-8 flex justify-center gap-3">
+        <Link
+          href="/dashboard"
+          className="inline-flex items-center gap-1.5 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-sm hover:bg-brand-600 transition"
+        >
+          Open dashboard <ArrowRight size={14} />
+        </Link>
+        <a
+          href="#features"
+          className="inline-flex items-center rounded-md border border-border bg-card px-4 py-2 text-sm font-medium text-foreground hover:bg-secondary transition"
+        >
+          See features
+        </a>
+      </div>
+
+      <section id="features" className="mt-20 grid grid-cols-1 gap-3 sm:grid-cols-3">
+        {features.map(({ icon: Icon, title, body }) => (
+          <div key={title} className="rounded-xl border border-border bg-card p-5 text-left">
+            <Icon size={18} className="text-brand-500" strokeWidth={2} />
+            <p className="mt-3 text-sm font-semibold">{title}</p>
+            <p className="mt-1 text-sm text-muted-foreground">{body}</p>
+          </div>
         ))}
       </section>
 
-      <footer style={{ marginTop: 96, color: 'var(--muted)', fontSize: 14 }}>
-        <p>
-          Powered by{' '}
-          <a href="https://forjio.com" style={{ fontWeight: 600 }}>
-            Forjio
-          </a>
-          .
-        </p>
-      </footer>
+      <p className="mt-20 text-xs text-muted-foreground">
+        Phase B scaffold — full landing arrives in Phase D.
+      </p>
     </main>
   );
 }
