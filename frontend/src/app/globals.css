@@ -51,3 +51,19 @@ button, input, textarea, select {
   font: inherit;
   color: inherit;
 }
+
+/* Shared form input — used across dashboard CRUD modals + inline forms. */
+.input {
+  display: block;
+  width: 100%;
+  border-radius: 6px;
+  border: 1px solid hsl(var(--border));
+  background: hsl(var(--background));
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+}
+.input:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px hsl(var(--ring));
+}
+.input[type="checkbox"], .input[type="radio"] { width: auto; padding: 0; }

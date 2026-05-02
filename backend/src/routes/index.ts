@@ -5,6 +5,12 @@ import addresses from './addresses.js';
 import stock from './stock.js';
 import shipments from './shipments.js';
 import licenses from './licenses.js';
+import deliveries from './deliveries.js';
+import apiKeys from './api-keys.js';
+import webhooksRouter from './webhooks.js';
+import auditLog from './audit-log.js';
+import shipping from './shipping.js';
+import stats from './stats.js';
 
 const router = Router();
 
@@ -26,5 +32,11 @@ router.use('/addresses', addresses);
 router.use('/stock', stock);
 router.use('/shipments', shipments);
 router.use('/licenses', licenses);
+router.use('/deliveries', deliveries);
+router.use('/api-keys', apiKeys);
+router.use('/webhooks', webhooksRouter);
+router.use('/audit-log', auditLog);
+router.use('/shipping', shipping);
+router.use('/stats', stats);
 
 export default router;

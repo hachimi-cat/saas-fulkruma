@@ -41,6 +41,17 @@ router.get('/levels', async (req, res) => {
   res.json(ok({ stock: rows }, req.requestId ?? 'req_unknown'));
 });
 
+router.get('/reservations', async (req, res) => {
+  const accountId = req.auth?.accountId;
+  if (!accountId) return res.status(403).json(err('NO_ACCOUNT', 'token missing accountId', req.requestId ?? 'req_unknown'));
+  const rows = await prisma.stockReservation.findMany({
+    where: { warehouse: { accountId } },
+    orderBy: { createdAt: 'desc' },
+    take: 200,
+  });
+  res.json(ok({ reservations: rows }, req.requestId ?? 'req_unknown'));
+});
+
 router.get('/movements', async (req, res) => {
   const accountId = req.auth?.accountId;
   if (!accountId) return res.status(403).json(err('NO_ACCOUNT', 'token missing accountId', req.requestId ?? 'req_unknown'));
