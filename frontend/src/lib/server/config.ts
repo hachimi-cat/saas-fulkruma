@@ -32,6 +32,15 @@ export const config = {
     cookieName: 'fulkruma_session',
     accessTtlMs: 15 * 60 * 1000,
     refreshTtlMs: 7 * 24 * 60 * 60 * 1000,
+    // SESSION_COOKIE_SECURE=false lets us run over plain HTTP on Tailnet
+    // / dev-machine without browsers dropping the cookie. Defaults to
+    // the standard "secure in production" rule otherwise.
+    secure: () => {
+      const v = process.env.SESSION_COOKIE_SECURE;
+      if (v === 'true') return true;
+      if (v === 'false') return false;
+      return process.env.NODE_ENV === 'production';
+    },
   },
   api: {
     url: () => optional_env('FULKRUMA_API_URL', 'http://localhost:4140'),
