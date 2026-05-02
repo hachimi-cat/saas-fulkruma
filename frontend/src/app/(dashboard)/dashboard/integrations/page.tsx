@@ -3,9 +3,29 @@
 import { useEffect, useState } from 'react';
 import { Plug, Check, X as XIcon, ExternalLink } from 'lucide-react';
 import Link from 'next/link';
-import { api, type BiteshipConfig } from '@/lib/api';
+import { api } from '@/lib/api';
 import { PageHeader } from '@/components/dashboard/page-header';
 import { ErrorBox, Loading } from '@/components/dashboard/ui';
+
+interface Status {
+  huudis: { connected: boolean };
+  biteship: {
+    apiKeyConfigured: boolean;
+    active: boolean;
+    enabledCouriers: string[];
+  } | null;
+  plugipay: {
+    webhookSecretSet: boolean;
+    partnerKey: { configured: boolean };
+    lastEventAt: string | null;
+  };
+  storlaunch: {
+    webhookSecretSet: boolean;
+    partnerKey: { configured: boolean };
+    mirroredProductCount: number;
+    lastSyncAt: string | null;
+  };
+}
 
 interface Integration {
   slug: string;
@@ -17,18 +37,67 @@ interface Integration {
   external?: boolean;
 }
 
-export default function IntegrationsPage() {
-  const [biteship, setBiteship] = useState<BiteshipConfig | null>(null);
-  const [loaded, setLoaded] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+function deriveIntegrations(s: Status): Integration[] {
+  // ─ Plugipay ────────────────────────────────────────────────────
+  // Connected: webhook secret set + platform-admin key in env (so we
+  // can call plugipay.admin.* on behalf of merchants).
+  // Partial: webhook receiver wired but partner key not minted yet.
+  let plugipayStatus: Integration['status'];
+  let plugipayDetail: string;
+  if (s.plugipay.webhookSecretSet && s.plugipay.partnerKey.configured) {
+    plugipayStatus = 'connected';
+    plugipayDetail = s.plugipay.lastEventAt
+      ? `Last event ${new Date(s.plugipay.lastEventAt).toLocaleString()}.`
+      : 'Webhook + partner key wired. No events yet.';
+  } else if (s.plugipay.webhookSecretSet) {
+    plugipayStatus = 'partial';
+    plugipayDetail = 'Webhook receiver wired. Mint a Plugipay platform-admin key to enable Pattern-2 partner billing.';
+  } else {
+    plugipayStatus = 'disconnected';
+    plugipayDetail = 'PLUGIPAY_WEBHOOK_SECRET not set. Webhook receiver returns 401.';
+  }
 
-  useEffect(() => {
-    api<{ config: BiteshipConfig | null }>('/shipping/config')
-      .then((d) => { setBiteship(d.config); setLoaded(true); })
-      .catch((e) => setError((e as Error).message));
-  }, []);
+  // ─ Biteship ────────────────────────────────────────────────────
+  let biteshipStatus: Integration['status'];
+  let biteshipDetail: string;
+  if (s.biteship?.active && s.biteship.apiKeyConfigured) {
+    biteshipStatus = 'connected';
+    const n = s.biteship.enabledCouriers.length;
+    biteshipDetail = `${n} courier${n === 1 ? '' : 's'} enabled.`;
+  } else if (s.biteship?.apiKeyConfigured) {
+    biteshipStatus = 'partial';
+    biteshipDetail = 'API key configured but inactive. Toggle on in Shipping.';
+  } else {
+    biteshipStatus = 'disconnected';
+    biteshipDetail = 'API key not set.';
+  }
 
-  const integrations: Integration[] = [
+  // ─ Storlaunch ──────────────────────────────────────────────────
+  // Connected: shared signing secret configured + platform-admin key
+  // for storlaunch exists in ApiKey table.
+  // Partial: one of those is missing.
+  let storlaunchStatus: Integration['status'];
+  let storlaunchDetail: string;
+  if (s.storlaunch.webhookSecretSet && s.storlaunch.partnerKey.configured) {
+    storlaunchStatus = 'connected';
+    if (s.storlaunch.mirroredProductCount > 0) {
+      storlaunchDetail = `${s.storlaunch.mirroredProductCount} product${s.storlaunch.mirroredProductCount === 1 ? '' : 's'} mirrored from Storlaunch${s.storlaunch.lastSyncAt ? ` · last sync ${new Date(s.storlaunch.lastSyncAt).toLocaleString()}` : ''}.`;
+    } else {
+      storlaunchDetail = 'Wired and ready. No products mirrored yet — they sync on next Storlaunch product CRUD.';
+    }
+  } else if (s.storlaunch.webhookSecretSet || s.storlaunch.partnerKey.configured) {
+    storlaunchStatus = 'partial';
+    if (!s.storlaunch.partnerKey.configured) {
+      storlaunchDetail = 'Webhook signing secret set. Mint a platform-admin key for storlaunch (`backend/scripts/mint-platform-key.ts --partner storlaunch`).';
+    } else {
+      storlaunchDetail = 'Partner-admin key minted. Set STORLAUNCH_WEBHOOK_SECRET on this backend to verify inbound deliveries.';
+    }
+  } else {
+    storlaunchStatus = 'disconnected';
+    storlaunchDetail = 'Neither shared signing secret nor partner-admin key configured.';
+  }
+
+  return [
     {
       slug: 'huudis',
       name: 'Huudis',
@@ -43,10 +112,8 @@ export default function IntegrationsPage() {
       name: 'Plugipay',
       description: 'Payments. Drives the inbound webhook that commits stock reservations on payment success.',
       configHref: 'https://plugipay.com/dashboard',
-      status: process.env.NEXT_PUBLIC_PLUGIPAY_CONFIGURED === 'true' ? 'connected' : 'partial',
-      detail: process.env.NEXT_PUBLIC_PLUGIPAY_CONFIGURED === 'true'
-        ? 'Webhook endpoint registered, events flowing.'
-        : 'Webhook endpoint registered. Plugipay platform-admin key not yet minted.',
+      status: plugipayStatus,
+      detail: plugipayDetail,
       external: true,
     },
     {
@@ -54,36 +121,45 @@ export default function IntegrationsPage() {
       name: 'Biteship',
       description: 'Indonesian courier coverage (JNE, SiCepat, J&T, …). Drives shipment creation + tracking.',
       configHref: '/dashboard/shipping',
-      status: biteship?.active && biteship.apiKeyConfigured ? 'connected' : biteship?.apiKeyConfigured ? 'partial' : 'disconnected',
-      detail: biteship?.active && biteship.apiKeyConfigured
-        ? `${biteship.enabledCouriers.length} courier${biteship.enabledCouriers.length === 1 ? '' : 's'} enabled.`
-        : biteship?.apiKeyConfigured ? 'API key configured but inactive.' : 'API key not set.',
+      status: biteshipStatus,
+      detail: biteshipDetail,
     },
     {
       slug: 'storlaunch',
       name: 'Storlaunch',
-      description: 'Storefront. Consumes Fulkruma as a fulfilment module.',
+      description: 'Storefront. Consumes Fulkruma as a fulfilment module — products sync inbound via webhook.',
       configHref: 'https://storlaunch.com/dashboard/settings/modules',
-      status: 'partial',
-      detail: 'Module wiring lands in Phase F.',
+      status: storlaunchStatus,
+      detail: storlaunchDetail,
       external: true,
     },
   ];
+}
+
+export default function IntegrationsPage() {
+  const [status, setStatus] = useState<Status | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    api<Status>('/integrations/status')
+      .then(setStatus)
+      .catch((e) => setError((e as Error).message));
+  }, []);
 
   return (
     <div className="">
       <PageHeader
         icon={Plug}
         title="Integrations"
-        description="External services Fulkruma talks to. Each card surfaces connection status + a configure link."
+        description="External services Fulkruma talks to. Each card surfaces real connection status + a configure link."
       />
 
       {error && <ErrorBox>{error}</ErrorBox>}
-      {!loaded && !error && <Loading />}
+      {!status && !error && <Loading />}
 
-      {loaded && (
+      {status && (
         <ul className="space-y-3">
-          {integrations.map((i) => (
+          {deriveIntegrations(status).map((i) => (
             <li key={i.slug} className="flex flex-wrap items-center gap-4 rounded-xl border border-border bg-card p-5">
               <StatusDot status={i.status} />
               <div className="min-w-0 flex-1">

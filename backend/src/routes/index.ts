@@ -13,6 +13,7 @@ import auditLog from './audit-log.js';
 import shipping from './shipping.js';
 import stats from './stats.js';
 import admin from './admin.js';
+import integrations from './integrations.js';
 
 const router = Router();
 
@@ -42,5 +43,6 @@ router.use('/audit-log', auditLog);
 router.use('/shipping', shipping);
 router.use('/stats', stats);
 router.use('/admin', admin);
+router.use('/integrations', integrations);
 
 export default router;
