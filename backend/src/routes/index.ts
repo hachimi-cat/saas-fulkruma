@@ -1,10 +1,13 @@
 import { Router } from 'express';
 import { ok } from '@forjio/sdk/http';
+import warehouses from './warehouses.js';
+import addresses from './addresses.js';
+import stock from './stock.js';
+import shipments from './shipments.js';
+import licenses from './licenses.js';
 
 const router = Router();
 
-/** GET /api/v1/health — no auth, returns service name + status. Every
- *  Forjio service exposes the same shape so uptime monitors are uniform. */
 router.get('/health', (req, res) => {
   res.json(
     ok(
@@ -17,5 +20,11 @@ router.get('/health', (req, res) => {
     ),
   );
 });
+
+router.use('/warehouses', warehouses);
+router.use('/addresses', addresses);
+router.use('/stock', stock);
+router.use('/shipments', shipments);
+router.use('/licenses', licenses);
 
 export default router;

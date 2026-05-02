@@ -1,8 +1,8 @@
-// Forjio service template — minimal Prisma schema.
-//
-// Ships with only the outbox plumbing required by ADR-0006. Each product
-// adds its own domain models on top. Cross-service models (User, Account,
-// etc.) live in Huudis and are referenced by ID only — never replicated.
+// Fulkruma — stock + warehouses + shipping + addresses + delivery + licenses.
+// Extracted from saas-storlaunch (M5). Per ADR-0001 (one DB per service),
+// references to Storlaunch / Plugipay / Huudis entities are kept as bare
+// string IDs — no FK relations across service boundaries. Cross-service
+// state arrives via the outbox event bus (ADR-0006).
 
 generator client {
   provider = "prisma-client-js"
@@ -13,34 +13,293 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-/// Transactional outbox — ADR-0006.
-/// Every state change that other services may care about writes a row
-/// here inside the same transaction as the change itself. A polling
-/// worker reads unpublished rows and fans out to HTTP subscribers.
+// =============================================================================
+// OUTBOX (ADR-0006)
+// =============================================================================
+
 model OutboxEvent {
-  id           String   @id // ULID, globally unique (evt_*)
-  type         String   // e.g. "fulkruma.entity.verb.v1"
-  accountId    String?  // event scope; null for global events
-  occurredAt   DateTime
-  data         Json
-  metadata     Json     @default("{}")
-  createdAt    DateTime @default(now())
-  publishedAt  DateTime?
-  attempts     Int      @default(0)
-  lastError    String?
+  id          String    @id // ULID, globally unique (evt_*)
+  type        String    // e.g. "fulkruma.shipment.created.v1"
+  accountId   String?
+  occurredAt  DateTime
+  data        Json
+  metadata    Json      @default("{}")
+  createdAt   DateTime  @default(now())
+  publishedAt DateTime?
+  attempts    Int       @default(0)
+  lastError   String?
 
   @@index([publishedAt, createdAt], name: "ix_outbox_unpublished")
   @@index([accountId, type])
   @@map("outbox_events")
 }
 
-/// Consumer-side idempotency record — ADR-0006.
-/// When this service consumes an event, the handler inserts a row here
-/// inside its own transaction. Replay attempts hit the PK unique and
-/// exit cleanly.
 model ProcessedEvent {
   eventId     String   @id
   processedAt DateTime @default(now())
 
   @@map("processed_events")
+}
+
+// =============================================================================
+// ENUMS
+// =============================================================================
+
+enum ShipmentStatus {
+  pending
+  confirmed
+  allocated
+  picking_up
+  picked_up
+  dropping_off
+  in_transit
+  delivered
+  cancelled
+  returned
+  failed
+}
+
+enum LicenseStatus {
+  active
+  revoked
+}
+
+enum StockMovementReason {
+  manual_adjust
+  checkout_reserve
+  checkout_commit
+  checkout_release
+  refund_restock
+  transfer_in
+  transfer_out
+  damaged
+  returned_to_supplier
+  initial_stock
+  import
+}
+
+// =============================================================================
+// ADDRESS BOOK
+// =============================================================================
+
+/// Buyer address book per merchant. customerId is a Storlaunch buyer ID
+/// (or, post-Storlaunch, a Huudis end-user ID). accountId scopes per merchant.
+model CustomerAddress {
+  id                 String   @id @default(cuid())
+  customerId         String
+  accountId          String
+  label              String
+  contactName        String
+  contactPhone       String
+  email              String?
+  address            String   @db.Text
+  note               String?
+  postalCode         String?
+  areaId             String?
+  lat                Float?
+  lng                Float?
+  biteshipLocationId String?
+  isDefault          Boolean  @default(false)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@index([customerId])
+  @@index([accountId, customerId])
+  @@index([customerId, isDefault])
+}
+
+// =============================================================================
+// INVENTORY
+// =============================================================================
+
+model Warehouse {
+  id        String   @id @default(cuid())
+  accountId String
+  name      String
+  address   String?  @db.Text
+  city      String?
+  postal    String?
+  lat       Float?
+  lng       Float?
+  phone     String?
+  isDefault Boolean  @default(false)
+  archived  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  stock        VariantStock[]
+  movements    StockMovement[]
+  reservations StockReservation[]
+
+  @@index([accountId])
+  @@index([accountId, isDefault])
+}
+
+/// Per-variant stock per warehouse. variantId is a Storlaunch ProductVariant ID
+/// (cross-service reference — no FK).
+model VariantStock {
+  id          String   @id @default(cuid())
+  variantId   String
+  warehouseId String
+  quantity    Int      @default(0)
+  updatedAt   DateTime @updatedAt
+
+  warehouse Warehouse @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+
+  @@unique([variantId, warehouseId])
+  @@index([variantId])
+  @@index([warehouseId])
+}
+
+model StockMovement {
+  id          String              @id @default(cuid())
+  variantId   String
+  warehouseId String
+  delta       Int
+  reason      StockMovementReason
+  referenceId String?
+  note        String?
+  createdAt   DateTime            @default(now())
+  createdBy   String?
+
+  warehouse Warehouse @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+
+  @@index([variantId])
+  @@index([warehouseId])
+  @@index([variantId, createdAt])
+  @@index([referenceId])
+}
+
+/// Soft holds during an open checkout. Released on expiry/cancel,
+/// committed when payment.success arrives over the outbox.
+model StockReservation {
+  id                String    @id @default(cuid())
+  variantId         String
+  warehouseId       String
+  quantity          Int
+  checkoutSessionId String
+  expiresAt         DateTime
+  consumedAt        DateTime?
+  releasedAt        DateTime?
+  createdAt         DateTime  @default(now())
+
+  warehouse Warehouse @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+
+  @@index([checkoutSessionId])
+  @@index([variantId, warehouseId])
+  @@index([expiresAt])
+}
+
+// =============================================================================
+// DIGITAL FULFILMENT — licenses + delivery
+// =============================================================================
+
+model License {
+  id             String        @id @default(cuid())
+  accountId      String
+  productId      String
+  customerId     String
+  key            String        @unique
+  status         LicenseStatus @default(active)
+  activations    Int           @default(0)
+  maxActivations Int           @default(1)
+  expiresAt      DateTime?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  licenseActivations LicenseActivation[]
+
+  @@index([accountId])
+  @@index([productId])
+  @@index([customerId])
+  @@index([key])
+  @@index([status])
+}
+
+model LicenseActivation {
+  id            String    @id @default(cuid())
+  licenseId     String
+  instanceId    String
+  activatedAt   DateTime  @default(now())
+  deactivatedAt DateTime?
+
+  license License @relation(fields: [licenseId], references: [id], onDelete: Cascade)
+
+  @@unique([licenseId, instanceId])
+  @@index([licenseId])
+  @@index([instanceId])
+}
+
+/// Per-checkout digital download tracking.
+model Delivery {
+  id                String   @id @default(cuid())
+  accountId         String
+  productId         String
+  customerId        String
+  checkoutSessionId String   @unique
+  downloadCount     Int      @default(0)
+  maxDownloads      Int      @default(5)
+  expiresAt         DateTime
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([accountId])
+  @@index([productId])
+  @@index([customerId])
+  @@index([expiresAt])
+}
+
+// =============================================================================
+// SHIPPING — Biteship-backed
+// =============================================================================
+
+model Shipment {
+  id                  String         @id @default(cuid())
+  accountId           String
+  productId           String?
+  checkoutSessionId   String?
+  customerId          String?
+  customerEmail       String?
+  biteshipOrderId     String         @unique
+  biteshipTrackingId  String?
+  waybillId           String?
+  courierCode         String
+  courierServiceCode  String
+  courierType         String
+  status              ShipmentStatus @default(pending)
+  trackingUrl         String?
+  labelUrl            String?
+  price               Int
+  insurance           Int            @default(0)
+  insured             Boolean        @default(false)
+  originSnapshot      Json
+  destinationSnapshot Json
+  items               Json
+  cancelReason        String?
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+
+  events ShipmentEvent[]
+
+  @@index([accountId])
+  @@index([customerId])
+  @@index([status])
+  @@index([waybillId])
+  @@index([checkoutSessionId])
+  @@index([accountId, status])
+}
+
+model ShipmentEvent {
+  id         String         @id @default(cuid())
+  shipmentId String
+  status     ShipmentStatus
+  note       String?
+  occurredAt DateTime
+  raw        Json           @default("{}")
+  createdAt  DateTime       @default(now())
+
+  shipment Shipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+
+  @@index([shipmentId])
+  @@index([shipmentId, occurredAt])
 }

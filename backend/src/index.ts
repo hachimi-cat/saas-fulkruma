@@ -1,17 +1,21 @@
 import express from 'express';
 import { err } from '@forjio/sdk/http';
 import routes from './routes/index.js';
+import plugipayWebhooks from './routes/plugipay-webhooks.js';
 import { requestId } from './middleware/auth.js';
 import { startOutboxWorker } from './services/outbox-worker.js';
 
 const app = express();
 app.disable('x-powered-by');
-app.use(express.json({ limit: '1mb' }));
 app.use(requestId);
 
+// Plugipay inbound webhooks need the raw body for HMAC verification.
+// Mount BEFORE express.json so the JSON parser doesn't consume the stream.
+app.use('/api/v1/webhooks/plugipay', plugipayWebhooks);
+
+app.use(express.json({ limit: '1mb' }));
 app.use('/api/v1', routes);
 
-// Centralised error handler returns a Forjio-envelope 500.
 app.use((e: unknown, req: express.Request, res: express.Response, _next: express.NextFunction) => {
   console.error('[api] unhandled', e);
   res.status(500).json(err('INTERNAL', 'unexpected server error', req.requestId ?? 'req_unknown'));
