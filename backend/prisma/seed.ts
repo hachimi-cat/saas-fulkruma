@@ -485,18 +485,22 @@ async function main() {
   // The shipping page reads from BiteshipConfig (origin* + contact* +
   // enabledCouriers) — give it sane defaults so the form renders pre-
   // filled in dev.
+  // Pull the live Biteship test key from the env so a re-seed keeps it
+  // wired. SEED_BITESHIP_KEY=… overrides for ad-hoc testing.
+  const biteshipKey = process.env.SEED_BITESHIP_KEY ?? process.env.BITESHIP_TEST_API_KEY ?? process.env.BITESHIP_API_KEY ?? null;
   await prisma.biteshipConfig.upsert({
     where: { accountId: ACCOUNT_ID },
-    update: {},
+    update: biteshipKey ? { apiKey: biteshipKey, active: true } : {},
     create: {
       accountId: ACCOUNT_ID,
+      apiKey: biteshipKey,
       enabledCouriers: [
         'jne', 'jnt', 'pos', 'sicepat', 'wahana', 'sap', 'ninja', 'tiki',
         'lion', 'anteraja', 'idexpress',
       ],
       defaultCourier: 'jne',
       defaultOriginId: 'addr_seed_001',
-      active: false, // off until merchant pastes their Biteship API key
+      active: Boolean(biteshipKey),
       // Shipping origin — same as the Jakarta DC warehouse above so the
       // form lights up with a real address on first load.
       originAddress: 'Jl. Cilandak Tengah No. 12',

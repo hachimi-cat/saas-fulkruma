@@ -61,9 +61,46 @@ button, input, textarea, select {
   background: hsl(var(--background));
   padding: 0.5rem 0.75rem;
   font-size: 0.875rem;
+  /* Equalise height across input types — iOS Safari renders date/time
+     inputs ~6px taller than text inputs by default because of the built-in
+     spinner. Pin a consistent line-height + box-sizing so the rendered
+     height matches plain inputs. */
+  line-height: 1.5;
+  height: 38px;
+  -webkit-appearance: none;
+  appearance: none;
 }
 .input:focus {
   outline: none;
   box-shadow: 0 0 0 2px hsl(var(--ring));
 }
-.input[type="checkbox"], .input[type="radio"] { width: auto; padding: 0; }
+/* Multi-line + non-text controls escape the fixed-height rule. */
+textarea.input { height: auto; min-height: 38px; }
+select.input {
+  /* native select arrow on iOS is built-in; keep appearance:none and add a chevron */
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6' fill='none'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%2364748b' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.65rem center;
+  background-size: 10px 6px;
+  padding-right: 1.75rem;
+}
+.input[type="checkbox"], .input[type="radio"] {
+  width: auto;
+  height: auto;
+  padding: 0;
+  -webkit-appearance: auto;
+  appearance: auto;
+}
+/* iOS Safari leaves whitespace/padding inside date+time controls; trim it. */
+input.input[type="date"]::-webkit-date-and-time-value,
+input.input[type="datetime-local"]::-webkit-date-and-time-value,
+input.input[type="time"]::-webkit-date-and-time-value {
+  text-align: left;
+  min-height: 1.25rem;
+}
+input.input[type="date"]::-webkit-calendar-picker-indicator,
+input.input[type="datetime-local"]::-webkit-calendar-picker-indicator,
+input.input[type="time"]::-webkit-calendar-picker-indicator {
+  padding: 0;
+  margin-left: 4px;
+}

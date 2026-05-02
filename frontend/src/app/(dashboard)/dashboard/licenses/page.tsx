@@ -6,16 +6,25 @@ import { api, type License } from '@/lib/api';
 import { PageHeader } from '@/components/dashboard/page-header';
 import { Modal, Field, ErrorBox, Loading, EmptyState, Button, StatusPill } from '@/components/dashboard/ui';
 
+interface ProductLite { id: string; name: string; type: string; licenseEnabled: boolean; maxActivations: number; }
+
 export default function LicensesPage() {
   const [rows, setRows] = useState<License[] | null>(null);
+  const [products, setProducts] = useState<ProductLite[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [issued, setIssued] = useState<License | null>(null);
   const [copied, setCopied] = useState(false);
 
   async function reload() {
-    try { setRows((await api<{ licenses: License[] }>('/licenses')).licenses); }
-    catch (e) { setError((e as Error).message); }
+    try {
+      const [l, p] = await Promise.all([
+        api<{ licenses: License[] }>('/licenses'),
+        api<{ products: ProductLite[] }>('/products'),
+      ]);
+      setRows(l.licenses);
+      setProducts(p.products.filter((x) => x.type === 'license'));
+    } catch (e) { setError((e as Error).message); }
   }
   useEffect(() => { reload(); }, []);
 
@@ -77,6 +86,7 @@ export default function LicensesPage() {
 
       {showForm && (
         <IssueForm
+          products={products}
           onClose={() => setShowForm(false)}
           onSaved={(l) => { setShowForm(false); setIssued(l); reload(); }}
         />
@@ -111,16 +121,23 @@ export default function LicensesPage() {
   );
 }
 
-function IssueForm({ onClose, onSaved }: { onClose: () => void; onSaved: (l: License) => void }) {
-  const [productId, setProductId] = useState('');
+function IssueForm({ products, onClose, onSaved }: { products: ProductLite[]; onClose: () => void; onSaved: (l: License) => void }) {
+  const [productId, setProductId] = useState(products[0]?.id ?? '');
   const [customerId, setCustomerId] = useState('');
-  const [maxActivations, setMaxActivations] = useState<number>(1);
+  const [maxActivations, setMaxActivations] = useState<number>(products[0]?.maxActivations ?? 1);
   const [expiresAt, setExpiresAt] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
+  // When the picked product changes, default maxActivations to that product's preset.
+  useEffect(() => {
+    const p = products.find((x) => x.id === productId);
+    if (p) setMaxActivations(p.maxActivations);
+  }, [productId, products]);
+
   async function submit(e: React.FormEvent) {
     e.preventDefault();
+    if (!productId) { setErr('Pick a license-enabled product first.'); return; }
     setSubmitting(true); setErr(null);
     try {
       const body: Record<string, unknown> = { productId, customerId, maxActivations };
@@ -134,8 +151,21 @@ function IssueForm({ onClose, onSaved }: { onClose: () => void; onSaved: (l: Lic
     <Modal title="Issue license" onClose={onClose}>
       <form onSubmit={submit} className="space-y-3">
         {err && <ErrorBox>{err}</ErrorBox>}
-        <Field label="Product ID *" hint="Storlaunch Product id."><input required value={productId} onChange={(e) => setProductId(e.target.value)} className="input font-mono" placeholder="prod_..." /></Field>
-        <Field label="Customer ID *" hint="Storlaunch Customer id."><input required value={customerId} onChange={(e) => setCustomerId(e.target.value)} className="input font-mono" placeholder="cust_..." /></Field>
+        {products.length === 0 && (
+          <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
+            No license-type products in your catalogue. Create one in <a href="/dashboard/products" className="font-medium underline">Products</a> first (set type = license).
+          </div>
+        )}
+        <Field label="Product *">
+          <select required value={productId} onChange={(e) => setProductId(e.target.value)} className="input" disabled={products.length === 0}>
+            {products.length === 0
+              ? <option>— no license products —</option>
+              : products.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+          </select>
+        </Field>
+        <Field label="Customer ID *" hint="Buyer id (Storlaunch Customer or Huudis user).">
+          <input required value={customerId} onChange={(e) => setCustomerId(e.target.value)} className="input font-mono" placeholder="cust_..." />
+        </Field>
         <div className="grid grid-cols-2 gap-3">
           <Field label="Max activations *">
             <input required type="number" min={1} value={maxActivations} onChange={(e) => setMaxActivations(Number(e.target.value))} className="input" />
@@ -146,7 +176,7 @@ function IssueForm({ onClose, onSaved }: { onClose: () => void; onSaved: (l: Lic
         </div>
         <div className="flex justify-end gap-2 pt-2">
           <Button type="button" variant="secondary" onClick={onClose}>Cancel</Button>
-          <Button type="submit" loading={submitting}>Issue</Button>
+          <Button type="submit" loading={submitting} disabled={products.length === 0}>Issue</Button>
         </div>
       </form>
     </Modal>
