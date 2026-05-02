@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import Link from 'next/link';
+import { LogoMark } from '@/components/brand/logo';
 
 export default function MarketingLayout({ children }: { children: ReactNode }) {
   return (
@@ -7,12 +8,7 @@ export default function MarketingLayout({ children }: { children: ReactNode }) {
       <nav className="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur-sm">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
           <Link href="/" className="inline-flex items-center gap-2">
-            <span
-              aria-hidden
-              className="inline-flex h-7 w-7 items-center justify-center rounded-md bg-primary text-primary-foreground font-bold"
-            >
-              F
-            </span>
+            <LogoMark size={26} />
             <span className="text-base font-semibold tracking-tight">Fulkruma</span>
           </Link>
           <div className="hidden items-center gap-6 text-sm md:flex">
@@ -57,12 +53,7 @@ function Footer() {
       <div className="mx-auto grid max-w-6xl grid-cols-1 gap-8 px-6 py-12 md:grid-cols-4">
         <div>
           <div className="inline-flex items-center gap-2">
-            <span
-              aria-hidden
-              className="inline-flex h-7 w-7 items-center justify-center rounded-md bg-primary text-primary-foreground font-bold"
-            >
-              F
-            </span>
+            <LogoMark size={26} />
             <span className="text-base font-semibold tracking-tight">Fulkruma</span>
           </div>
           <p className="mt-3 text-sm text-muted-foreground">

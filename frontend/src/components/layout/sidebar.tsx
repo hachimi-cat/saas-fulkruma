@@ -3,21 +3,20 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { dashboardNav } from './nav-config';
+import { LogoMark } from '@/components/brand/logo';
 
 export function Sidebar() {
   const pathname = usePathname();
 
   return (
     <aside className="hidden lg:flex w-sidebar shrink-0 flex-col border-r border-sidebar-border bg-sidebar">
-      <div className="flex h-header items-center gap-2 border-b border-sidebar-border px-5">
-        <span
-          aria-hidden
-          className="inline-flex h-7 w-7 items-center justify-center rounded-md bg-primary text-primary-foreground font-bold"
-        >
-          F
-        </span>
+      <Link
+        href="/dashboard"
+        className="flex h-header items-center gap-2 border-b border-sidebar-border px-5 transition hover:bg-sidebar-accent/40"
+      >
+        <LogoMark size={26} />
         <span className="text-base font-semibold tracking-tight text-foreground">Fulkruma</span>
-      </div>
+      </Link>
 
       <nav className="flex-1 overflow-y-auto px-3 py-4 text-sm">
         {dashboardNav.map((group) => (
