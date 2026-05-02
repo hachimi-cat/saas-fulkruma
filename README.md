@@ -1,61 +1,50 @@
-# Forjio Service Template
+# Fulkruma
 
-Template repo for every Forjio product (huudis, plugipay, storlaunch,
-fulkruma, ripllo, malapos, suppuo). One `gh repo create --template`
-command and you have a running backend + frontend + CLI scaffold with
-`@forjio/sdk` wired in.
+Stock + warehouses + shipping for the Forjio commerce family.
+M5 in the [Forjio micro-SaaS roadmap](https://github.com/hachimi-cat/forjio-architecture/blob/master/ROADMAP.md).
 
-Not a product. Not cloneable as-is into production — each product adds
-its own domain model on top.
+- Domain: [fulkruma.com](https://fulkruma.com) + `fulkruma.forjio.com`
+- Auth: Huudis SSO (workspace `Fulkruma`)
+- Payment: Plugipay (Pattern 2 partner billing)
+- Storefront integration: consumed by Storlaunch as a module
 
-## What's in here
+## What it does
+
+- **Inventory** — multi-warehouse stock per variant, movements, reservations
+- **Shipping** — Biteship adapter (Indonesian couriers); Shipment + ShipmentEvent
+- **Addresses** — buyer address book per merchant
+- **Delivery & licenses** — digital + physical fulfilment
+
+Pricing (locked, see `forjio-architecture/PRICING.md`): 50 orders free /
+299k / 799k / 1.999k IDR per month.
+
+## Repo shape
 
 ```
-backend/     Express + Prisma + Vitest. Auth middleware via @forjio/sdk/auth.
-             Prisma schema has ONLY outbox_events + processed_events
-             (ADR-0006). The polling worker is wired but has no subscribers
-             until the hosting product adds them.
-frontend/    Next.js 15 App Router. Marketing route group (landing) +
-             dashboard route group (auth-gated shell) + OIDC callback
-             wired via @forjio/sdk.
-cli/         Commander-based CLI. `auth login` via device flow +
-             `auth whoami`. Publishes as @forjio/<brand>-cli after you
-             rename in package.json.
-e2e/         Playwright config + a health smoke test.
-.github/     CI workflow: lint → test → build. Deploy workflow is
-             per-product (varies by droplet/nginx/systemd) and must be
-             added in each repo.
+backend/     Express + Prisma + Vitest. Port 4140 in dev.
+frontend/    Next.js 15 App Router. Port 3140 in dev.
+cli/         Commander-based CLI. Publishes as @forjio/fulkruma-cli.
+e2e/         Playwright.
 ```
 
-## Create a new product from this template
+## Local dev
 
 ```bash
-gh repo create hachimi-cat/<brand> --template=hachimi-cat/forjio-service-template --public
-git clone git@github.com:hachimi-cat/<brand>.git
-cd <brand>
-./scripts/bootstrap.sh <brand>   # renames placeholders, updates package names
+# backend
+cd backend && cp .env.example .env && npm install
+npx prisma migrate dev --name init && npm run dev   # :4140
+
+# frontend
+cd ../frontend && cp .env.example .env.local && npm install
+npm run dev                                          # :3140
+
+# cli
+cd ../cli && npm install && npm run build
+node dist/index.js auth whoami
 ```
 
-Then read [SETUP.md](./SETUP.md) for the full checklist.
+## Architecture
 
-## Stay in sync with template updates
-
-Each downstream repo can pull template improvements later:
-
-```bash
-git remote add template git@github.com:hachimi-cat/forjio-service-template.git
-git fetch template
-git merge template/master --allow-unrelated-histories
-# Resolve conflicts manually — most churn should be in scaffolding/config.
-```
-
-## Philosophy
-
-- **No placeholder features.** The landing page says "<Brand>" and has
-  three empty cards. The dashboard is an auth gate + header. That's it.
-- **No placeholder data model.** Prisma has outbox tables only. You add
-  your product's tables on top.
-- **SDK-first.** Auth, envelope, ARN, events come from `@forjio/sdk` —
-  never reinvent them inside a product.
-- **Matches the Storlaunch/LinkSnap shape.** If you've worked in either,
-  this template is already familiar.
+See `CLAUDE.md` in this repo for the bounded context + non-negotiables.
+Cross-service decisions live in
+[forjio-architecture](https://github.com/hachimi-cat/forjio-architecture).

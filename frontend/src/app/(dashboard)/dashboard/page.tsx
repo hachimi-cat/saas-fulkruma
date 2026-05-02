@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
 
-const brand = process.env.NEXT_PUBLIC_BRAND_NAME ?? 'Forjio Brand';
+const brand = process.env.NEXT_PUBLIC_BRAND_NAME ?? 'Fulkruma';
 
 export default async function DashboardPage() {
   // Auth gate — the actual session cookie is set in /callback after OIDC
@@ -12,7 +12,7 @@ export default async function DashboardPage() {
 
   if (!signedIn) {
     const issuer = process.env.NEXT_PUBLIC_OIDC_ISSUER ?? 'https://huudis.com';
-    const client = process.env.NEXT_PUBLIC_OIDC_CLIENT_ID ?? 'forjio-brand';
+    const client = process.env.NEXT_PUBLIC_OIDC_CLIENT_ID ?? 'fulkruma';
     const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'}/callback`;
     const authorize = new URL(`${issuer}/authorize`);
     authorize.searchParams.set('response_type', 'code');

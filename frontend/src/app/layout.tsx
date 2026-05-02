@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import './globals.css';
 
-const brand = process.env.NEXT_PUBLIC_BRAND_NAME ?? 'Forjio Brand';
+const brand = process.env.NEXT_PUBLIC_BRAND_NAME ?? 'Fulkruma';
 
 export const metadata: Metadata = {
   title: { default: brand, template: `%s | ${brand}` },

@@ -1,4 +1,4 @@
-const brand = process.env.NEXT_PUBLIC_BRAND_NAME ?? 'Forjio Brand';
+const brand = process.env.NEXT_PUBLIC_BRAND_NAME ?? 'Fulkruma';
 
 export default function MarketingLandingPage() {
   return (

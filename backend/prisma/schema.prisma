@@ -19,7 +19,7 @@ datasource db {
 /// worker reads unpublished rows and fans out to HTTP subscribers.
 model OutboxEvent {
   id           String   @id // ULID, globally unique (evt_*)
-  type         String   // e.g. "forjio-brand.entity.verb.v1"
+  type         String   // e.g. "fulkruma.entity.verb.v1"
   accountId    String?  // event scope; null for global events
   occurredAt   DateTime
   data         Json
