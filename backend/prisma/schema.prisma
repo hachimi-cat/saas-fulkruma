@@ -303,3 +303,107 @@ model ShipmentEvent {
   @@index([shipmentId])
   @@index([shipmentId, occurredAt])
 }
+
+// =============================================================================
+// PLATFORM PRIMITIVES — api keys, webhooks, audit log, courier config
+// =============================================================================
+
+/// HMAC API key for server-to-server access. The raw secret is shown
+/// once on creation; we only persist a SHA-256 fingerprint.
+model ApiKey {
+  id            String    @id @default(cuid())
+  accountId     String
+  name          String
+  keyId         String    @unique // public id, e.g. AKIAFULK<random>
+  secretHash    String    // sha256 of the secret, hex
+  secretPreview String    // first 4 + last 4 chars of the secret, for UI display
+  scopes        Json      @default("[\"read\",\"write\"]")
+  lastUsedAt    DateTime?
+  createdBy     String?   // huudis user_id
+  createdAt     DateTime  @default(now())
+  revokedAt     DateTime?
+
+  @@index([accountId])
+  @@index([accountId, revokedAt])
+}
+
+enum WebhookEventStatus {
+  pending
+  sent
+  failed
+}
+
+model WebhookEndpoint {
+  id          String   @id @default(cuid())
+  accountId   String
+  url         String
+  secret      String   // shared HMAC secret used to sign outbound requests
+  events      Json     @default("[\"*\"]") // e.g. ["fulkruma.shipment.*", "fulkruma.license.issued.v1"]
+  description String?
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  webhookEvents WebhookEvent[]
+
+  @@index([accountId])
+  @@index([accountId, active])
+}
+
+model WebhookEvent {
+  id            String             @id @default(cuid())
+  accountId     String
+  endpointId    String
+  type          String
+  payload       Json
+  status        WebhookEventStatus @default(pending)
+  attempts      Int                @default(0)
+  lastAttemptAt DateTime?
+  nextRetryAt   DateTime?
+  responseCode  Int?
+  responseBody  String?            @db.Text
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+
+  endpoint WebhookEndpoint @relation(fields: [endpointId], references: [id], onDelete: Cascade)
+
+  @@index([endpointId, status])
+  @@index([accountId, createdAt])
+}
+
+/// Append-only audit log. Backs the /dashboard/audit-log page.
+model AuditLog {
+  id         String   @id @default(cuid())
+  accountId  String
+  actorType  String   // "user" | "system" | "api_key"
+  actorId    String?  // huudis user_id, or api key id
+  actorEmail String?
+  action     String   // "warehouse.created", "stock.adjusted", etc.
+  targetType String?
+  targetId   String?
+  ip         String?
+  userAgent  String?  @db.Text
+  before     Json?
+  after      Json?
+  metadata   Json     @default("{}")
+  createdAt  DateTime @default(now())
+
+  @@index([accountId, createdAt])
+  @@index([accountId, action])
+  @@index([targetType, targetId])
+}
+
+/// Per-merchant Biteship config (the only courier integration in v1).
+/// Stored encrypted at rest? Phase F decision — for v1 we store plaintext
+/// and rely on row-level access control via accountId. One row per
+/// merchant.
+model BiteshipConfig {
+  accountId    String   @id
+  apiKey       String?
+  defaultOriginId String? // CustomerAddress.id used as the default origin
+  enabledCouriers Json   @default("[]") // ["jne","sicepat","ide","jnt","anteraja","pos","lion","ninja"]
+  defaultCourier  String?
+  active       Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
