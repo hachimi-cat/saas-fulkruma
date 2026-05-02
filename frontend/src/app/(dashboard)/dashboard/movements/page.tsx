@@ -23,7 +23,7 @@ export default function MovementsPage() {
   const whName = (id: string) => warehouses.find((w) => w.id === id)?.name ?? id;
 
   return (
-    <div className="mx-auto max-w-6xl">
+    <div className="">
       <PageHeader
         icon={ArrowLeftRight}
         title="Stock movements"

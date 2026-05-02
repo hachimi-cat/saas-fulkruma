@@ -19,7 +19,7 @@ export default function AuditLogPage() {
   }, [filter]);
 
   return (
-    <div className="mx-auto max-w-6xl">
+    <div className="">
       <PageHeader
         icon={ScrollText}
         title="Audit Log"

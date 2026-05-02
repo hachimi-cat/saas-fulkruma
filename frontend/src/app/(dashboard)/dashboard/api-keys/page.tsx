@@ -25,7 +25,7 @@ export default function ApiKeysPage() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl">
+    <div className="">
       <PageHeader
         icon={KeyRound}
         title="API Keys"

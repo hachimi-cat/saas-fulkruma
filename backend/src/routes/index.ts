@@ -3,6 +3,7 @@ import { ok } from '@forjio/sdk/http';
 import warehouses from './warehouses.js';
 import addresses from './addresses.js';
 import stock from './stock.js';
+import products from './products.js';
 import shipments from './shipments.js';
 import licenses from './licenses.js';
 import deliveries from './deliveries.js';
@@ -29,6 +30,7 @@ router.get('/health', (req, res) => {
 
 router.use('/warehouses', warehouses);
 router.use('/addresses', addresses);
+router.use('/products', products);
 router.use('/stock', stock);
 router.use('/shipments', shipments);
 router.use('/licenses', licenses);

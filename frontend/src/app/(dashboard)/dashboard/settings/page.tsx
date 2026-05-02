@@ -35,7 +35,7 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl">
+    <div className="">
       <PageHeader
         icon={SettingsIcon}
         title="Settings"

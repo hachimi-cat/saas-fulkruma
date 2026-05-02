@@ -17,7 +17,7 @@ export default function BillingPage() {
   // Plugipay platform-admin key is minted. Surface the source-of-truth
   // pointer + the locked pricing tiers so the page is informative.
   return (
-    <div className="mx-auto max-w-5xl">
+    <div className="">
       <PageHeader
         icon={Wallet}
         title="Billing"

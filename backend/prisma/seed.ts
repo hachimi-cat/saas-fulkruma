@@ -62,6 +62,112 @@ async function main() {
     },
   });
 
+  // ─── Products + variants (fulkruma-owned catalogue) ─────────────
+  const tshirt = await prisma.product.upsert({
+    where: { id: 'prod_seed_tshirt' },
+    update: {},
+    create: {
+      id: 'prod_seed_tshirt',
+      accountId: ACCOUNT_ID,
+      name: 'Forjio Tee',
+      sku: 'FRJ-TEE',
+      description: 'Soft cotton tee. Indonesian-made.',
+      type: 'physical',
+      weight: 250, length: 30, width: 22, height: 2,
+    },
+  });
+  await prisma.productVariant.upsert({
+    where: { id: 'var_tshirt_blk_m' },
+    update: {},
+    create: { id: 'var_tshirt_blk_m', productId: tshirt.id, name: 'Black / M', sku: 'FRJ-TEE-BLK-M', priceCents: 19900 },
+  });
+  await prisma.productVariant.upsert({
+    where: { id: 'var_tshirt_blk_l' },
+    update: {},
+    create: { id: 'var_tshirt_blk_l', productId: tshirt.id, name: 'Black / L', sku: 'FRJ-TEE-BLK-L', priceCents: 19900 },
+  });
+  await prisma.productVariant.upsert({
+    where: { id: 'var_tshirt_wht_m' },
+    update: {},
+    create: { id: 'var_tshirt_wht_m', productId: tshirt.id, name: 'White / M', sku: 'FRJ-TEE-WHT-M', priceCents: 19900, lowStockThreshold: 20, isDefault: true },
+  });
+  await prisma.productVariant.upsert({
+    where: { id: 'var_tshirt_wht_l' },
+    update: {},
+    create: { id: 'var_tshirt_wht_l', productId: tshirt.id, name: 'White / L', sku: 'FRJ-TEE-WHT-L', priceCents: 19900 },
+  });
+
+  const hoodie = await prisma.product.upsert({
+    where: { id: 'prod_seed_hoodie' },
+    update: {},
+    create: {
+      id: 'prod_seed_hoodie',
+      accountId: ACCOUNT_ID,
+      name: 'Forjio Hoodie',
+      sku: 'FRJ-HOOD',
+      description: 'Heavyweight cotton hoodie.',
+      type: 'physical',
+      weight: 700, length: 35, width: 28, height: 5,
+    },
+  });
+  await prisma.productVariant.upsert({
+    where: { id: 'var_hoodie_nav_m' },
+    update: {},
+    create: { id: 'var_hoodie_nav_m', productId: hoodie.id, name: 'Navy / M', sku: 'FRJ-HOOD-NAV-M', priceCents: 49900, isDefault: true },
+  });
+
+  const cap = await prisma.product.upsert({
+    where: { id: 'prod_seed_cap' },
+    update: {},
+    create: {
+      id: 'prod_seed_cap',
+      accountId: ACCOUNT_ID,
+      name: 'Forjio Cap',
+      sku: 'FRJ-CAP',
+      type: 'physical',
+      weight: 120, length: 22, width: 22, height: 12,
+    },
+  });
+  await prisma.productVariant.upsert({
+    where: { id: 'var_cap_red_os' },
+    update: {},
+    create: { id: 'var_cap_red_os', productId: cap.id, name: 'Red / OneSize', sku: 'FRJ-CAP-RED', priceCents: 14900, isDefault: true },
+  });
+
+  // Digital + license-bearing products for the deliveries / licenses pages.
+  const ebook = await prisma.product.upsert({
+    where: { id: 'prod_seed_ebook' },
+    update: {},
+    create: { id: 'prod_seed_ebook', accountId: ACCOUNT_ID, name: 'Forjio Handbook (PDF)', type: 'digital', sku: 'FRJ-PDF-HBK' },
+  });
+  await prisma.productVariant.upsert({
+    where: { id: 'var_ebook_default' },
+    update: {},
+    create: { id: 'var_ebook_default', productId: ebook.id, name: 'Default', isDefault: true, priceCents: 99000 },
+  });
+
+  const proApp = await prisma.product.upsert({
+    where: { id: 'prod_seed_pro_app' },
+    update: {},
+    create: { id: 'prod_seed_pro_app', accountId: ACCOUNT_ID, name: 'Forjio Pro Desktop App', type: 'license', sku: 'FRJ-PROAPP', licenseEnabled: true, maxActivations: 3 },
+  });
+  await prisma.productVariant.upsert({
+    where: { id: 'var_proapp_default' },
+    update: {},
+    create: { id: 'var_proapp_default', productId: proApp.id, name: 'Default', isDefault: true, priceCents: 599000 },
+  });
+
+  const templatePack = await prisma.product.upsert({
+    where: { id: 'prod_seed_template_pack' },
+    update: {},
+    create: { id: 'prod_seed_template_pack', accountId: ACCOUNT_ID, name: 'Notion Template Pack', type: 'digital', sku: 'FRJ-NTNPACK' },
+  });
+  await prisma.productVariant.upsert({
+    where: { id: 'var_template_pack_default' },
+    update: {},
+    create: { id: 'var_template_pack_default', productId: templatePack.id, name: 'Default', isDefault: true, priceCents: 49000 },
+  });
+
   // ─── Stock per variant per warehouse ─────────────────────────────
   const variants = [
     { id: 'var_tshirt_blk_m', name: 'T-Shirt Black / M' },

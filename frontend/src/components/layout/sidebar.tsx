@@ -24,6 +24,7 @@ import {
   Wallet,
   Webhook,
   ScrollText,
+  Package,
 } from 'lucide-react';
 import { LogoMark } from '@/components/brand/logo';
 
@@ -44,6 +45,12 @@ const navSections: NavSection[] = [
     label: 'Overview',
     items: [
       { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    ],
+  },
+  {
+    label: 'Catalogue',
+    items: [
+      { href: '/dashboard/products', label: 'Products', icon: Package },
     ],
   },
   {

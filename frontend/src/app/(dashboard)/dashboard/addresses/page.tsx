@@ -29,7 +29,7 @@ export default function AddressesPage() {
   );
 
   return (
-    <div className="mx-auto max-w-6xl">
+    <div className="">
       <PageHeader
         icon={MapPin}
         title="Customer addresses"

@@ -42,7 +42,7 @@ export default function StockPage() {
   useEffect(() => { reload(); }, []);
 
   return (
-    <div className="mx-auto max-w-6xl">
+    <div className="">
       <PageHeader
         icon={Boxes}
         title="Inventory"

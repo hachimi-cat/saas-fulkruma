@@ -109,6 +109,74 @@ model CustomerAddress {
 }
 
 // =============================================================================
+// CATALOGUE
+// =============================================================================
+
+enum ProductType {
+  physical
+  digital
+  license
+}
+
+/// Fulkruma's own product catalogue. When fulkruma runs as a Storlaunch
+/// module, products sync via webhook and `externalRef` stores the
+/// originating Storlaunch productId. When fulkruma runs standalone,
+/// merchants create products directly through the portal.
+model Product {
+  id             String      @id @default(cuid())
+  accountId      String
+  name           String
+  sku            String?     // merchant-defined external SKU
+  description    String?     @db.Text
+  type           ProductType @default(physical)
+  // shipping attributes — only meaningful when type=physical
+  weight         Int?        // grams
+  length         Int?        // cm
+  width          Int?        // cm
+  height         Int?        // cm
+  // license attrs — only meaningful when type=license
+  licenseEnabled Boolean     @default(false)
+  maxActivations Int         @default(1)
+  // origin / external reference (Storlaunch productId, etc.)
+  externalRef    String?     // e.g. "prod_storlaunch_..."
+  externalSource String?     // e.g. "storlaunch"
+  archived       Boolean     @default(false)
+  metadata       Json        @default("{}")
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  variants ProductVariant[]
+
+  @@unique([accountId, externalSource, externalRef])
+  @@index([accountId])
+  @@index([accountId, archived])
+  @@index([sku])
+}
+
+model ProductVariant {
+  id                String   @id @default(cuid())
+  productId         String
+  sku               String?  // merchant-defined SKU code
+  name              String   // "Red / M", or "Default" for non-varianted
+  priceCents        Int      @default(0) // optional retail price (informational; payment is in plugipay)
+  costCents         Int?
+  lowStockThreshold Int?     // alerts trigger below this; null = disabled
+  weight            Int?     // overrides Product.weight when set
+  isDefault         Boolean  @default(false)
+  archived          Boolean  @default(false)
+  externalRef       String?  // e.g. "var_storlaunch_..."
+  externalSource    String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, externalSource, externalRef])
+  @@index([productId])
+  @@index([sku])
+}
+
+// =============================================================================
 // INVENTORY
 // =============================================================================
 
@@ -397,13 +465,38 @@ model AuditLog {
 /// Stored encrypted at rest? Phase F decision — for v1 we store plaintext
 /// and rely on row-level access control via accountId. One row per
 /// merchant.
+///
+/// This row also doubles as the merchant's *shipping origin* — fields
+/// `originAddress`, `contactName`, `contactPhone`, lat/lng, etc. were
+/// originally an `Account` model in Storlaunch but Fulkruma keeps the
+/// origin co-located with the courier config (one-row-per-merchant
+/// invariant + simpler PrismaLike contract for the shipping service).
 model BiteshipConfig {
   accountId    String   @id
   apiKey       String?
   defaultOriginId String? // CustomerAddress.id used as the default origin
-  enabledCouriers Json   @default("[]") // ["jne","sicepat","ide","jnt","anteraja","pos","lion","ninja"]
+  enabledCouriers Json   @default("[]") // ["jne","sicepat","ide","jnt","anteraja","pos","lion","ninja",...]
   defaultCourier  String?
   active       Boolean  @default(false)
+
+  // Shipping origin — single canonical pickup address per merchant.
+  // Populated via PATCH /shipping/origin (the dashboard form).
+  originAddress           String?  @db.Text
+  originProvince          String?
+  originCity              String?
+  originDistrict          String?
+  originVillage           String?
+  originPostal            String?
+  originAreaId            String?
+  originLat               Float?
+  originLng               Float?
+  originNote              String?  @db.Text
+  contactName             String?
+  contactPhone            String?
+  // Mirror of origin pushed to Biteship — gives instant couriers
+  // validated geocoding. Reset on origin update, recreated lazily.
+  biteshipOriginLocationId String?
+
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 }

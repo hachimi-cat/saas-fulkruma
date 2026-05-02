@@ -18,7 +18,7 @@ export default function ShipmentsPage() {
   useEffect(() => { reload(); }, []);
 
   return (
-    <div className="mx-auto max-w-6xl">
+    <div className="">
       <PageHeader
         icon={Truck}
         title="Shipments"

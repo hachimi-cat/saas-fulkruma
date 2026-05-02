@@ -38,7 +38,7 @@ export default function DashboardHome() {
   ];
 
   return (
-    <div className="mx-auto max-w-6xl">
+    <div className="">
       <header className="mb-8">
         <h1 className="text-2xl font-semibold tracking-tight">Overview</h1>
         <p className="mt-1 text-sm text-muted-foreground">

@@ -51,7 +51,7 @@ export default function WebhooksPage() {
   }
 
   return (
-    <div className="mx-auto max-w-6xl">
+    <div className="">
       <PageHeader
         icon={Webhook}
         title="Webhooks"

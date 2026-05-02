@@ -45,7 +45,7 @@ export default function ReservationsPage() {
   }, []);
 
   return (
-    <div className="mx-auto max-w-6xl">
+    <div className="">
       <PageHeader
         icon={ClipboardList}
         title="Stock reservations"

@@ -25,7 +25,7 @@ export default function WarehousesPage() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl">
+    <div className="">
       <PageHeader
         icon={Warehouse}
         title="Warehouses"
