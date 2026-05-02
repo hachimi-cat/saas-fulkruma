@@ -2,9 +2,10 @@
 
 import { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import { AlertCircle, Loader2 } from 'lucide-react';
 
-export function NativeAuthForm() {
+export function NativeAuthForm({ mode }: { mode: 'login' | 'signup' }) {
   const router = useRouter();
   const params = useSearchParams();
   const returnTo = params?.get('return_to') || '/dashboard';
@@ -13,6 +14,7 @@ export function NativeAuthForm() {
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [name, setName] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(
     ssoError ? `Sign-in failed: ${ssoDetail || ssoError}` : null,
@@ -23,11 +25,14 @@ export function NativeAuthForm() {
     setError(null);
     setSubmitting(true);
     try {
-      const res = await fetch('/api/v1/auth/login', {
+      const path = mode === 'signup' ? '/api/v1/auth/signup' : '/api/v1/auth/login';
+      const body: Record<string, unknown> = { email, password };
+      if (mode === 'signup' && name.trim()) body.name = name.trim();
+      const res = await fetch(path, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify(body),
       });
       if (!res.ok) {
         const payload = (await res.json().catch(() => null)) as
@@ -44,6 +49,8 @@ export function NativeAuthForm() {
     }
   }
 
+  const otherMode = mode === 'login' ? 'signup' : 'login';
+  const otherHref = `/${otherMode}?return_to=${encodeURIComponent(returnTo)}`;
   const socialUrl = (provider: 'google' | 'apple') =>
     `/api/v1/auth/huudis/start?provider=${provider}&return_to=${encodeURIComponent(returnTo)}`;
 
@@ -80,6 +87,20 @@ export function NativeAuthForm() {
       </div>
 
       <form onSubmit={submit} className="space-y-3">
+        {mode === 'signup' && (
+          <div>
+            <label className="mb-1 block text-xs font-medium text-muted-foreground">
+              Your name <span className="text-muted-foreground/60">(optional)</span>
+            </label>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              autoComplete="name"
+              className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+            />
+          </div>
+        )}
         <div>
           <label className="mb-1 block text-xs font-medium text-muted-foreground">Email</label>
           <input
@@ -92,15 +113,31 @@ export function NativeAuthForm() {
           />
         </div>
         <div>
-          <label className="mb-1 block text-xs font-medium text-muted-foreground">Password</label>
+          <div className="mb-1 flex items-center justify-between">
+            <label className="block text-xs font-medium text-muted-foreground">Password</label>
+            {mode === 'login' && (
+              <Link
+                href="/forgot-password"
+                className="text-xs font-medium text-foreground hover:underline"
+              >
+                Forgot password?
+              </Link>
+            )}
+          </div>
           <input
             type="password"
             required
+            minLength={mode === 'signup' ? 10 : undefined}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            autoComplete="current-password"
+            autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
             className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
           />
+          {mode === 'signup' && (
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              At least 10 characters.
+            </p>
+          )}
         </div>
         <button
           type="submit"
@@ -108,14 +145,15 @@ export function NativeAuthForm() {
           className="flex w-full items-center justify-center gap-2 rounded-md bg-primary py-2 text-sm font-medium text-primary-foreground shadow-sm hover:bg-brand-600 transition disabled:opacity-60"
         >
           {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
-          Sign in
+          {mode === 'signup' ? 'Create account' : 'Sign in'}
         </button>
       </form>
 
-      <p className="text-center text-[11px] text-muted-foreground">
-        By signing in you agree to our{' '}
-        <a href="/terms" className="underline hover:text-foreground">Terms</a> and{' '}
-        <a href="/privacy" className="underline hover:text-foreground">Privacy Policy</a>.
+      <p className="text-center text-xs text-muted-foreground">
+        {mode === 'login' ? "Don't have an account?" : 'Already have an account?'}{' '}
+        <Link href={otherHref} className="font-medium text-foreground hover:underline">
+          {mode === 'login' ? 'Sign up' : 'Sign in'}
+        </Link>
       </p>
     </div>
   );
