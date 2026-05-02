@@ -206,6 +206,26 @@ export interface BiteshipConfig {
   active: boolean;
 }
 
+/** A single Biteship courier service row, returned by GET /shipping/couriers.
+ *  One courier (e.g. JNE) typically has multiple rows — one per service tier.
+ */
+export interface BiteshipCourier {
+  courier_name: string;
+  courier_code: string;
+  courier_service_name: string;
+  courier_service_code: string;
+  tier?: string;
+  description?: string;
+  service_type: string; // same_day | next_day | regular | cargo | instant
+  shipping_type?: string;
+  shipment_duration_range?: string;
+  shipment_duration_unit?: string;
+  available_for_cash_on_delivery: boolean;
+  available_for_proof_of_delivery: boolean;
+  available_for_instant_waybill_id: boolean;
+  available_for_insurance?: boolean;
+}
+
 export interface OverviewStats {
   counters: {
     activeWarehouses: number;

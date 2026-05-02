@@ -481,16 +481,32 @@ async function main() {
     skipDuplicates: true,
   });
 
-  // ─── Biteship config ────────────────────────────────────────────
+  // ─── Biteship config + shipping origin ──────────────────────────
+  // The shipping page reads from BiteshipConfig (origin* + contact* +
+  // enabledCouriers) — give it sane defaults so the form renders pre-
+  // filled in dev.
   await prisma.biteshipConfig.upsert({
     where: { accountId: ACCOUNT_ID },
     update: {},
     create: {
       accountId: ACCOUNT_ID,
-      enabledCouriers: ['jne', 'sicepat', 'ide', 'jnt', 'anteraja', 'pos', 'lion', 'ninja'],
+      enabledCouriers: [
+        'jne', 'jnt', 'pos', 'sicepat', 'wahana', 'sap', 'ninja', 'tiki',
+        'lion', 'anteraja', 'idexpress',
+      ],
       defaultCourier: 'jne',
       defaultOriginId: 'addr_seed_001',
       active: false, // off until merchant pastes their Biteship API key
+      // Shipping origin — same as the Jakarta DC warehouse above so the
+      // form lights up with a real address on first load.
+      originAddress: 'Jl. Cilandak Tengah No. 12',
+      originProvince: 'DKI Jakarta',
+      originCity: 'Jakarta Selatan',
+      originPostal: '12430',
+      originLat: -6.2926,
+      originLng: 106.7969,
+      contactName: 'Fulkruma DC',
+      contactPhone: '+62 21 1234 5678',
     },
   });
 
