@@ -1,0 +1,30 @@
+{
+  "name": "@forjio/fulkruma-node",
+  "version": "0.1.0",
+  "description": "Official Node.js SDK for Fulkruma — stock, warehouses, shipping (Biteship), licenses, deliveries. Platform-partner mode for Storlaunch.",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": ["dist", "README.md"],
+  "scripts": {
+    "build": "tsup",
+    "lint": "tsc --noEmit",
+    "prepublishOnly": "npm run build"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsup": "^8.5.1",
+    "typescript": "^5.6.0"
+  },
+  "engines": { "node": ">=20.0.0" },
+  "keywords": ["fulfillment", "shipping", "biteship", "fulkruma", "forjio", "indonesia"],
+  "license": "MIT"
+}

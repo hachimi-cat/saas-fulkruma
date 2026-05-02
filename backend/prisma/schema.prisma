@@ -378,9 +378,19 @@ model ShipmentEvent {
 
 /// HMAC API key for server-to-server access. The raw secret is shown
 /// once on creation; we only persist a SHA-256 fingerprint.
+///
+/// Two key flavours:
+///  - merchant key: `accountId` is the merchant's id; `partner` is null;
+///    scopes typically `["read","write"]`.
+///  - platform-admin key (Pattern 2 partner billing, e.g. Storlaunch
+///    consuming Fulkruma): `partner` is the partner slug (e.g.
+///    'storlaunch'), `accountId` is the platform-internal owner;
+///    scopes include `fulkruma:platform:admin`. Honors the
+///    `X-Fulkruma-On-Behalf-Of` header on signed requests.
 model ApiKey {
   id            String    @id @default(cuid())
   accountId     String
+  partner       String?   // partner slug for platform-admin keys
   name          String
   keyId         String    @unique // public id, e.g. AKIAFULK<random>
   secretHash    String    // sha256 of the secret, hex
@@ -393,6 +403,7 @@ model ApiKey {
 
   @@index([accountId])
   @@index([accountId, revokedAt])
+  @@index([partner])
 }
 
 enum WebhookEventStatus {
@@ -437,6 +448,23 @@ model WebhookEvent {
 
   @@index([endpointId, status])
   @@index([accountId, createdAt])
+}
+
+/// Pattern-2 partner-billing record. When a merchant comes through a
+/// partner (Storlaunch / Ripllo), `provisionWorkspace` writes a row
+/// here; the discountRate is frozen at provision time so a partner's
+/// public rate change can't retroactively bill old merchants. Refuses
+/// to re-route a merchant already provisioned by a different partner.
+model PartnerWorkspace {
+  accountId     String   @id
+  partner       String   // 'storlaunch' | 'ripllo' | …
+  discountRate  Float    @default(0.0)
+  brandName     String?
+  businessEmail String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([partner])
 }
 
 /// Append-only audit log. Backs the /dashboard/audit-log page.

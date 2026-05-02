@@ -3,6 +3,7 @@ import { verifyAccessToken, AuthError, type ForjioClaims } from '@forjio/sdk/aut
 import { err } from '@forjio/sdk/http';
 import { ulid } from 'ulid';
 import crypto from 'node:crypto';
+import { hmacAuth } from './hmac-auth.js';
 
 declare module 'express-serve-static-core' {
   interface Request {
@@ -55,9 +56,15 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
     }
   }
 
-  // ─ Path 2: bearer JWT
-  const token = req.headers.authorization?.replace(/^Bearer /i, '');
-  if (!token) {
+  // ─ Path 2: HMAC Authorization header (SDK / Storlaunch / partner)
+  const authHeader = req.headers.authorization ?? '';
+  if (authHeader.startsWith('Fulkruma-HMAC-SHA256 ')) {
+    return hmacAuth(req, res, next);
+  }
+
+  // ─ Path 3: bearer JWT
+  const token = authHeader.replace(/^Bearer /i, '');
+  if (!token || token === authHeader) {
     return res.status(401).json(err('AUTH_REQUIRED', 'Missing Authorization header', req.requestId ?? ulid()));
   }
   try {

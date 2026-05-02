@@ -2,6 +2,7 @@ import express from 'express';
 import { err } from '@forjio/sdk/http';
 import routes from './routes/index.js';
 import plugipayWebhooks from './routes/plugipay-webhooks.js';
+import storlaunchWebhooks from './routes/storlaunch-webhooks.js';
 import { requestId } from './middleware/auth.js';
 import { startOutboxWorker } from './services/outbox-worker.js';
 
@@ -9,9 +10,10 @@ const app = express();
 app.disable('x-powered-by');
 app.use(requestId);
 
-// Plugipay inbound webhooks need the raw body for HMAC verification.
+// Inbound webhooks need the raw body for HMAC verification.
 // Mount BEFORE express.json so the JSON parser doesn't consume the stream.
 app.use('/api/v1/webhooks/plugipay', plugipayWebhooks);
+app.use('/api/v1/webhooks/storlaunch', storlaunchWebhooks);
 
 app.use(express.json({ limit: '1mb' }));
 app.use('/api/v1', routes);

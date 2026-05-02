@@ -12,6 +12,7 @@ import webhooksRouter from './webhooks.js';
 import auditLog from './audit-log.js';
 import shipping from './shipping.js';
 import stats from './stats.js';
+import admin from './admin.js';
 
 const router = Router();
 
@@ -40,5 +41,6 @@ router.use('/webhooks', webhooksRouter);
 router.use('/audit-log', auditLog);
 router.use('/shipping', shipping);
 router.use('/stats', stats);
+router.use('/admin', admin);
 
 export default router;
