@@ -175,10 +175,167 @@ async function dispatch(event: StorlaunchEvent): Promise<void> {
       return handleVariantUpsert(event);
     case 'storlaunch.variant.archived.v1':
       return handleVariantArchive(event);
+    case 'storlaunch.license.created.v1':
+      return handleLicenseUpsert(event);
+    case 'storlaunch.license.revoked.v1':
+      return handleLicenseRevoke(event);
+    case 'storlaunch.delivery.created.v1':
+      return handleDeliveryUpsert(event);
+    case 'storlaunch.shipment.created.v1':
+    case 'storlaunch.shipment.updated.v1':
+      return handleShipmentUpsert(event);
+    case 'storlaunch.shipment.cancelled.v1':
+      return handleShipmentCancel(event);
     default:
       // Unknown types — no-op but record as processed so storlaunch stops retrying.
       return;
   }
+}
+
+// Resolve storlaunch productId → fulkruma local product.id by externalRef.
+// If no mirror exists yet (rare race; product event should always precede),
+// fall through with the raw storlaunch id — fulkruma's License/Delivery/
+// Shipment.productId is a plain indexed string with no FK, so this is safe.
+async function resolveLocalProductId(accountId: string, storlaunchProductId: string): Promise<string> {
+  const product = await prisma.product.findUnique({
+    where: {
+      accountId_externalSource_externalRef: {
+        accountId, externalSource: 'storlaunch', externalRef: storlaunchProductId,
+      },
+    },
+    select: { id: true },
+  });
+  return product?.id ?? storlaunchProductId;
+}
+
+async function handleLicenseUpsert(event: StorlaunchEvent): Promise<void> {
+  const l = event.data as unknown as {
+    id: string; accountId: string; productId: string; customerId: string;
+    key: string; status: string; activations?: number; maxActivations: number;
+    expiresAt?: string | null;
+  };
+  if (!l?.id || !l.accountId || !l.key) throw new Error('license event missing id/accountId/key');
+  const productId = await resolveLocalProductId(l.accountId, l.productId);
+  await prisma.license.upsert({
+    where: { key: l.key },
+    update: {
+      status: l.status as never,
+      activations: l.activations ?? 0,
+      maxActivations: l.maxActivations,
+      expiresAt: l.expiresAt ? new Date(l.expiresAt) : null,
+    },
+    create: {
+      id: l.id,
+      accountId: l.accountId,
+      productId,
+      customerId: l.customerId,
+      key: l.key,
+      status: l.status as never,
+      activations: l.activations ?? 0,
+      maxActivations: l.maxActivations,
+      expiresAt: l.expiresAt ? new Date(l.expiresAt) : null,
+    },
+  });
+  await writeAuditLog(prisma, {
+    accountId: l.accountId, actorType: 'system',
+    action: 'storlaunch.license.synced',
+    targetType: 'License', targetId: l.id,
+    after: { key: l.key, status: l.status },
+  });
+}
+
+async function handleLicenseRevoke(event: StorlaunchEvent): Promise<void> {
+  const l = event.data as unknown as { id: string; key?: string };
+  if (!l?.id && !l?.key) return;
+  await prisma.license.updateMany({
+    where: l.key ? { key: l.key } : { id: l.id },
+    data: { status: 'revoked' as never },
+  });
+}
+
+async function handleDeliveryUpsert(event: StorlaunchEvent): Promise<void> {
+  const d = event.data as unknown as {
+    id: string; accountId: string; productId: string; customerId: string;
+    checkoutSessionId: string; downloadCount?: number; maxDownloads: number;
+    expiresAt: string;
+  };
+  if (!d?.id || !d.accountId || !d.checkoutSessionId) throw new Error('delivery event missing id/accountId/checkoutSessionId');
+  const productId = await resolveLocalProductId(d.accountId, d.productId);
+  await prisma.delivery.upsert({
+    where: { checkoutSessionId: d.checkoutSessionId },
+    update: {
+      downloadCount: d.downloadCount ?? 0,
+      maxDownloads: d.maxDownloads,
+      expiresAt: new Date(d.expiresAt),
+    },
+    create: {
+      id: d.id,
+      accountId: d.accountId,
+      productId,
+      customerId: d.customerId,
+      checkoutSessionId: d.checkoutSessionId,
+      downloadCount: d.downloadCount ?? 0,
+      maxDownloads: d.maxDownloads,
+      expiresAt: new Date(d.expiresAt),
+    },
+  });
+}
+
+async function handleShipmentUpsert(event: StorlaunchEvent): Promise<void> {
+  const s = event.data as unknown as {
+    id: string; accountId: string; productId?: string | null; checkoutSessionId?: string | null;
+    customerId?: string | null; customerEmail?: string | null;
+    biteshipOrderId: string; biteshipTrackingId?: string | null; waybillId?: string | null;
+    courierCode: string; courierServiceCode: string; courierType: string; status: string;
+    trackingUrl?: string | null; labelUrl?: string | null; price: number;
+    insurance?: number; insured?: boolean;
+    originSnapshot?: Record<string, unknown>; destinationSnapshot?: Record<string, unknown>;
+    items?: unknown;
+  };
+  if (!s?.id || !s.accountId || !s.biteshipOrderId) throw new Error('shipment event missing id/accountId/biteshipOrderId');
+  const productId = s.productId ? await resolveLocalProductId(s.accountId, s.productId) : null;
+  await prisma.shipment.upsert({
+    where: { biteshipOrderId: s.biteshipOrderId },
+    update: {
+      status: s.status as never,
+      waybillId: s.waybillId ?? null,
+      biteshipTrackingId: s.biteshipTrackingId ?? null,
+      trackingUrl: s.trackingUrl ?? null,
+      labelUrl: s.labelUrl ?? null,
+    },
+    create: {
+      id: s.id,
+      accountId: s.accountId,
+      productId: productId ?? null,
+      checkoutSessionId: s.checkoutSessionId ?? null,
+      customerId: s.customerId ?? null,
+      customerEmail: s.customerEmail ?? null,
+      biteshipOrderId: s.biteshipOrderId,
+      biteshipTrackingId: s.biteshipTrackingId ?? null,
+      waybillId: s.waybillId ?? null,
+      courierCode: s.courierCode,
+      courierServiceCode: s.courierServiceCode,
+      courierType: s.courierType,
+      status: s.status as never,
+      trackingUrl: s.trackingUrl ?? null,
+      labelUrl: s.labelUrl ?? null,
+      price: s.price,
+      insurance: s.insurance ?? 0,
+      insured: s.insured ?? false,
+      originSnapshot: (s.originSnapshot ?? {}) as never,
+      destinationSnapshot: (s.destinationSnapshot ?? {}) as never,
+      items: (s.items ?? []) as never,
+    },
+  });
+}
+
+async function handleShipmentCancel(event: StorlaunchEvent): Promise<void> {
+  const s = event.data as unknown as { id: string; reason?: string };
+  if (!s?.id) return;
+  await prisma.shipment.updateMany({
+    where: { id: s.id },
+    data: { status: 'cancelled' as never },
+  });
 }
 
 async function handleProductUpsert(event: StorlaunchEvent): Promise<void> {
