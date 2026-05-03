@@ -15,6 +15,8 @@ const createSchema = z.object({
   checkoutSessionId: z.string().min(1),
   maxDownloads: z.number().int().positive().max(100).optional(),
   expiresAt: z.string().datetime().optional(),
+  externalSource: z.string().min(1).max(50).optional(),
+  externalRef: z.string().min(1).max(255).optional(),
 });
 
 router.get('/', async (req, res) => {
@@ -59,6 +61,8 @@ router.post('/', async (req, res) => {
           checkoutSessionId: parsed.data.checkoutSessionId,
           maxDownloads: parsed.data.maxDownloads ?? 5,
           expiresAt: expires,
+          externalSource: parsed.data.externalSource ?? null,
+          externalRef: parsed.data.externalRef ?? null,
         },
       });
       await tx.outboxEvent.create({

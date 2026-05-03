@@ -272,6 +272,12 @@ model License {
   activations    Int           @default(0)
   maxActivations Int           @default(1)
   expiresAt      DateTime?
+  // Source-system back-reference for partner integrations. Storlaunch
+  // populates these with ('storlaunch', <checkoutSessionId>) so the
+  // round-trip from storlaunch UI → fulkruma data → back to storlaunch
+  // is inspectable. Direct fulkruma tenants leave them null.
+  externalSource String?
+  externalRef    String?
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
 
@@ -282,6 +288,7 @@ model License {
   @@index([customerId])
   @@index([key])
   @@index([status])
+  @@index([accountId, externalSource, externalRef])
 }
 
 model LicenseActivation {
@@ -308,6 +315,9 @@ model Delivery {
   downloadCount     Int      @default(0)
   maxDownloads      Int      @default(5)
   expiresAt         DateTime
+  // Source-system back-reference (see License).
+  externalSource   String?
+  externalRef      String?
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
@@ -315,6 +325,7 @@ model Delivery {
   @@index([productId])
   @@index([customerId])
   @@index([expiresAt])
+  @@index([accountId, externalSource, externalRef])
 }
 
 // =============================================================================
@@ -344,6 +355,9 @@ model Shipment {
   destinationSnapshot Json
   items               Json
   cancelReason        String?
+  // Source-system back-reference (see License).
+  externalSource      String?
+  externalRef         String?
   createdAt           DateTime       @default(now())
   updatedAt           DateTime       @updatedAt
 
@@ -355,6 +369,7 @@ model Shipment {
   @@index([waybillId])
   @@index([checkoutSessionId])
   @@index([accountId, status])
+  @@index([accountId, externalSource, externalRef])
 }
 
 model ShipmentEvent {

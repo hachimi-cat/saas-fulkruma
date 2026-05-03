@@ -28,6 +28,8 @@ const createSchema = z.object({
   origin: z.record(z.unknown()),
   destination: z.record(z.unknown()),
   items: z.array(z.record(z.unknown())).min(1),
+  externalSource: z.string().min(1).max(50).optional(),
+  externalRef: z.string().min(1).max(255).optional(),
 });
 
 router.get('/', async (req, res) => {
@@ -84,6 +86,8 @@ router.post('/', async (req, res) => {
         originSnapshot: d.origin as Prisma.InputJsonValue,
         destinationSnapshot: d.destination as Prisma.InputJsonValue,
         items: d.items as Prisma.InputJsonValue,
+        externalSource: d.externalSource ?? null,
+        externalRef: d.externalRef ?? null,
       },
     });
     await tx.outboxEvent.create({

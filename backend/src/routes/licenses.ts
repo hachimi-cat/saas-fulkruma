@@ -13,6 +13,8 @@ const issueSchema = z.object({
   customerId: z.string().min(1),
   maxActivations: z.number().int().positive().optional(),
   expiresAt: z.string().datetime().optional(),
+  externalSource: z.string().min(1).max(50).optional(),
+  externalRef: z.string().min(1).max(255).optional(),
 });
 
 const activateSchema = z.object({
@@ -179,6 +181,8 @@ router.post('/', async (req, res) => {
         key: newLicenseKey(),
         maxActivations: parsed.data.maxActivations ?? 1,
         expiresAt: parsed.data.expiresAt ? new Date(parsed.data.expiresAt) : null,
+        externalSource: parsed.data.externalSource ?? null,
+        externalRef: parsed.data.externalRef ?? null,
       },
     });
     await tx.outboxEvent.create({

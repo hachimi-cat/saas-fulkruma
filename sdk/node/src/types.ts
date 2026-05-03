@@ -169,6 +169,8 @@ export interface Shipment {
   destinationSnapshot: Record<string, unknown>;
   items: Array<Record<string, unknown>>;
   cancelReason: string | null;
+  externalSource: string | null;
+  externalRef: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -187,6 +189,8 @@ export interface License {
   activations: number;
   maxActivations: number;
   expiresAt: string | null;
+  externalSource: string | null;
+  externalRef: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -208,6 +212,8 @@ export interface Delivery {
   downloadCount: number;
   maxDownloads: number;
   expiresAt: string;
+  externalSource: string | null;
+  externalRef: string | null;
   createdAt: string;
   updatedAt: string;
 }

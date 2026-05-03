@@ -264,6 +264,7 @@ export class FulkrumaClient {
       origin: Record<string, unknown>;
       destination: Record<string, unknown>;
       items: Array<Record<string, unknown>>;
+      externalSource?: string; externalRef?: string;
     }) => this.request<{ shipment: Shipment }>({
       method: 'POST', path: '/api/v1/shipments', body: input, idempotencyKey: this.genIdem(),
     }),
@@ -280,7 +281,11 @@ export class FulkrumaClient {
 
   licenses = {
     list: () => this.request<{ licenses: License[] }>({ method: 'GET', path: '/api/v1/licenses' }),
-    issue: (input: { productId: string; customerId: string; maxActivations?: number; expiresAt?: string }) =>
+    issue: (input: {
+      productId: string; customerId: string;
+      maxActivations?: number; expiresAt?: string;
+      externalSource?: string; externalRef?: string;
+    }) =>
       this.request<{ license: License }>({
         method: 'POST', path: '/api/v1/licenses', body: input, idempotencyKey: this.genIdem(),
       }),
@@ -307,7 +312,11 @@ export class FulkrumaClient {
   deliveries = {
     list: () => this.request<{ deliveries: Delivery[] }>({ method: 'GET', path: '/api/v1/deliveries' }),
     get: (id: string) => this.request<{ delivery: Delivery }>({ method: 'GET', path: `/api/v1/deliveries/${id}` }),
-    create: (input: { productId: string; customerId: string; checkoutSessionId: string; maxDownloads?: number; expiresAt?: string }) =>
+    create: (input: {
+      productId: string; customerId: string; checkoutSessionId: string;
+      maxDownloads?: number; expiresAt?: string;
+      externalSource?: string; externalRef?: string;
+    }) =>
       this.request<{ delivery: Delivery }>({
         method: 'POST', path: '/api/v1/deliveries', body: input, idempotencyKey: this.genIdem(),
       }),
