@@ -20,6 +20,16 @@ const activateSchema = z.object({
   instanceId: z.string().min(1),
 });
 
+const deactivateSchema = z.object({
+  key: z.string().min(8),
+  instanceId: z.string().min(1),
+});
+
+const validateSchema = z.object({
+  key: z.string().min(1),
+  productId: z.string().optional(),
+});
+
 function newLicenseKey() {
   // 5 × 5 base32 groups: e.g. 7K3PH-9X2RM-...
   const raw = crypto.randomBytes(15).toString('base64')
@@ -28,6 +38,72 @@ function newLicenseKey() {
     .slice(0, 25);
   return raw.match(/.{1,5}/g)!.join('-');
 }
+
+// Public unauthenticated endpoints — buyers' software calls these with
+// just the license key. Mount BEFORE requireAuth.
+//
+// GET /licenses/validate?key=<key>&productId=<optional>
+//   Returns `{ valid, status, productId, productName, activations,
+//             maxActivations, expiresAt }`. Never errors on bad keys —
+//   just returns valid:false. Used by license-protected software to
+//   check whether a key is still good.
+router.get('/validate', async (req, res) => {
+  const parsed = validateSchema.safeParse(req.query);
+  if (!parsed.success) {
+    return res.status(400).json(err('VALIDATION', parsed.error.message, req.requestId ?? 'req_unknown'));
+  }
+  const where: Record<string, unknown> = { key: parsed.data.key };
+  if (parsed.data.productId) where.productId = parsed.data.productId;
+  const license = await prisma.license.findFirst({ where });
+  if (!license || license.status === 'revoked') {
+    return res.json(ok({
+      valid: false, key: parsed.data.key,
+      status: license?.status ?? null,
+      productId: null, activations: null, maxActivations: null, expiresAt: null,
+    }, req.requestId ?? 'req_unknown'));
+  }
+  const expired = license.expiresAt && license.expiresAt < new Date();
+  return res.json(ok({
+    valid: !expired,
+    key: license.key,
+    status: expired ? 'expired' : license.status,
+    productId: license.productId,
+    activations: license.activations,
+    maxActivations: license.maxActivations,
+    expiresAt: license.expiresAt,
+  }, req.requestId ?? 'req_unknown'));
+});
+
+// POST /licenses/deactivate — release a previously-activated instance.
+// Buyers' apps call this when uninstalling. Idempotent on repeat calls.
+router.post('/deactivate', async (req, res) => {
+  const parsed = deactivateSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json(err('VALIDATION', parsed.error.message, req.requestId ?? 'req_unknown'));
+  }
+  const license = await prisma.license.findUnique({ where: { key: parsed.data.key } });
+  if (!license) {
+    return res.status(404).json(err('NOT_FOUND', 'license not found', req.requestId ?? 'req_unknown'));
+  }
+  const result = await prisma.$transaction(async (tx) => {
+    const activation = await tx.licenseActivation.findUnique({
+      where: { licenseId_instanceId: { licenseId: license.id, instanceId: parsed.data.instanceId } },
+    });
+    if (!activation || activation.deactivatedAt) {
+      return { deactivated: true, alreadyDeactivated: true, activations: license.activations };
+    }
+    await tx.licenseActivation.update({
+      where: { licenseId_instanceId: { licenseId: license.id, instanceId: parsed.data.instanceId } },
+      data: { deactivatedAt: new Date() },
+    });
+    const updated = await tx.license.update({
+      where: { id: license.id },
+      data: { activations: { decrement: 1 } },
+    });
+    return { deactivated: true, alreadyDeactivated: false, activations: Math.max(0, updated.activations) };
+  });
+  res.json(ok(result, req.requestId ?? 'req_unknown'));
+});
 
 // /v1/licenses/activate is unauthenticated — buyers' apps call this
 // with the license key directly. Mount BEFORE requireAuth.

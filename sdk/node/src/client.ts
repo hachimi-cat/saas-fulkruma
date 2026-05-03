@@ -286,11 +286,22 @@ export class FulkrumaClient {
       }),
     revoke: (id: string) =>
       this.request<{ license: License }>({ method: 'POST', path: `/api/v1/licenses/${id}/revoke`, body: {} }),
-    /** Public (unauthenticated) endpoint — passed through here for completeness. */
+    /** Public unauthenticated — buyers' apps call this with just the key. */
     activate: (input: { key: string; instanceId: string }) =>
       this.request<{ license: License; activation: LicenseActivation; alreadyActive: boolean }>({
         method: 'POST', path: '/api/v1/licenses/activate', body: input,
       }),
+    /** Public unauthenticated — release a previously-activated instance. */
+    deactivate: (input: { key: string; instanceId: string }) =>
+      this.request<{ deactivated: boolean; alreadyDeactivated: boolean; activations: number }>({
+        method: 'POST', path: '/api/v1/licenses/deactivate', body: input,
+      }),
+    /** Public unauthenticated — license-protected software pings this on launch. */
+    validate: (params: { key: string; productId?: string }) =>
+      this.request<{
+        valid: boolean; key: string; status: string | null; productId: string | null;
+        activations: number | null; maxActivations: number | null; expiresAt: string | null;
+      }>({ method: 'GET', path: `/api/v1/licenses/validate${qs(params)}` }),
   };
 
   deliveries = {
