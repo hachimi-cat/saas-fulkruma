@@ -42,6 +42,81 @@ model ProcessedEvent {
 }
 
 // =============================================================================
+// DIRECT-TENANT BILLING (Plugipay-managed)
+// =============================================================================
+// Direct fulkruma tenants pay through plugipay.com. Pattern matches
+// linksnap/huudis: plugipay holds the canonical Customer + Subscription +
+// Invoice; we mirror just enough state locally (plan + period bounds + ids)
+// to gate features and render /dashboard/billing without a network call.
+// Webhook receiver at /webhooks/plugipay flips status on invoice.paid +
+// subscription.canceled.
+
+enum FulkrumaPlan {
+  FREE
+  STARTER
+  GROWTH
+  SCALE
+}
+
+enum FulkrumaSubscriptionStatus {
+  ACTIVE
+  CANCELING
+  CANCELED
+  PAST_DUE
+  INCOMPLETE
+}
+
+model Subscription {
+  accountId              String                     @id
+  plan                   FulkrumaPlan               @default(FREE)
+  status                 FulkrumaSubscriptionStatus @default(ACTIVE)
+  currentPeriodStart     DateTime?
+  currentPeriodEnd       DateTime?
+  cancelAt               DateTime?
+  plugipayCustomerId     String?
+  plugipaySubscriptionId String?
+  createdAt              DateTime                   @default(now())
+  updatedAt              DateTime                   @updatedAt
+
+  invoices Invoice[]
+
+  @@index([plugipayCustomerId])
+  @@index([plugipaySubscriptionId])
+}
+
+model Invoice {
+  id                String       @id @default(cuid())
+  accountId         String
+  plugipayInvoiceId String       @unique
+  plan              FulkrumaPlan
+  amount            Int
+  currency          String       @default("IDR")
+  status            String
+  paidAt            DateTime?
+  receiptUrl        String?
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  subscription Subscription @relation(fields: [accountId], references: [accountId], onDelete: Cascade)
+
+  @@index([accountId, createdAt])
+}
+
+model MonthlyUsage {
+  accountId       String
+  year            Int
+  month           Int
+  ordersFulfilled Int      @default(0)
+  shipmentsCreated Int     @default(0)
+  licensesIssued  Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@id([accountId, year, month])
+  @@index([accountId])
+}
+
+// =============================================================================
 // ENUMS
 // =============================================================================
 

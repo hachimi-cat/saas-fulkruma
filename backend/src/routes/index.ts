@@ -14,6 +14,8 @@ import shipping from './shipping.js';
 import stats from './stats.js';
 import admin from './admin.js';
 import integrations from './integrations.js';
+import billing from './billing.js';
+import plugipayWebhooks from './plugipay-webhooks.js';
 
 const router = Router();
 
@@ -44,5 +46,7 @@ router.use('/shipping', shipping);
 router.use('/stats', stats);
 router.use('/admin', admin);
 router.use('/integrations', integrations);
+router.use('/billing', billing);
+router.use('/webhooks/plugipay', plugipayWebhooks);
 
 export default router;
