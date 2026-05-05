@@ -69,22 +69,25 @@ export default function BillingPage() {
   const [sub, setSub] = useState<Subscription | null>(null);
   const [usage, setUsage] = useState<Usage | null>(null);
   const [invoices, setInvoices] = useState<Invoice[] | null>(null);
+  const [me, setMe] = useState<{ email: string; name: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [working, setWorking] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
   async function reload() {
     try {
-      const [p, s, u, i] = await Promise.all([
+      const [p, s, u, i, sess] = await Promise.all([
         api<Plan[]>('/billing/plans'),
         api<Subscription>('/billing/subscription'),
         api<Usage>('/billing/usage'),
         api<InvoicePage>('/billing/invoices?limit=20'),
+        fetch('/api/v1/session', { credentials: 'include' }).then((r) => r.ok ? r.json() : { user: null }),
       ]);
       setPlans(p);
       setSub(s);
       setUsage(u);
       setInvoices(i.data);
+      if (sess?.user?.email) setMe({ email: sess.user.email, name: sess.user.name ?? sess.user.email });
     } catch (e) {
       setError((e as Error).message);
     }
@@ -93,12 +96,16 @@ export default function BillingPage() {
   useEffect(() => { reload(); }, []);
 
   async function checkout(planId: string) {
+    if (!me?.email) {
+      setError('Could not resolve your email — refresh the page and try again.');
+      return;
+    }
     setWorking(planId);
     setNotice(null);
     try {
       const result = await api<{ checkoutUrl?: string; status?: string }>('/billing/checkout', {
         method: 'POST',
-        body: JSON.stringify({ plan: planId.toUpperCase() }),
+        body: JSON.stringify({ plan: planId.toUpperCase(), email: me.email, name: me.name }),
       });
       if (result.checkoutUrl) {
         window.location.href = result.checkoutUrl;
