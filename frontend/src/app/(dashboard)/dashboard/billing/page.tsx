@@ -211,7 +211,7 @@ export default function BillingPage() {
                   return (
                     <div
                       key={p.id}
-                      className={`relative rounded-xl border bg-card p-5 ${popular ? 'border-brand-500 shadow-md' : 'border-border'}`}
+                      className={`relative flex flex-col rounded-xl border bg-card p-5 ${popular ? 'border-brand-500 shadow-md' : 'border-border'}`}
                     >
                       {popular && (
                         <span className="absolute -top-2.5 left-5 rounded-full bg-brand-500 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-primary-foreground">
@@ -229,18 +229,17 @@ export default function BillingPage() {
                           </li>
                         ))}
                       </ul>
-                      <div className="mt-5">
-                        {isCurrent ? (
-                          <span className="inline-block rounded-md bg-secondary px-3 py-1.5 text-xs font-medium">Current</span>
-                        ) : canUpgrade ? (
-                          <Button onClick={() => checkout(p.id)} disabled={working === p.id}>
-                            {working === p.id && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-                            Upgrade
-                          </Button>
-                        ) : (
-                          <span className="text-xs text-muted-foreground">Cancel current plan to downgrade</span>
-                        )}
-                      </div>
+                      <div className="mt-5 flex-grow" />
+                      {isCurrent ? (
+                        <Button variant="secondary" disabled className="w-full">Current</Button>
+                      ) : canUpgrade ? (
+                        <Button onClick={() => checkout(p.id)} disabled={working === p.id} className="w-full">
+                          {working === p.id && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                          Upgrade
+                        </Button>
+                      ) : (
+                        <Button variant="secondary" disabled className="w-full">Downgrade requires cancel</Button>
+                      )}
                     </div>
                   );
                 })}
