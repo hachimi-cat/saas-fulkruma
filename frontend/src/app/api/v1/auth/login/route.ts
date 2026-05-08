@@ -98,7 +98,7 @@ export async function POST(req: Request) {
     );
   }
 
-  if (claims.sub !== config.huudis.allowedUserId()) {
+  if (!config.huudis.allowedUserIds().includes(claims.sub)) {
     return NextResponse.json(
       { error: { code: 'NOT_AUTHORIZED', message: 'Access is restricted.' } },
       { status: 403 },

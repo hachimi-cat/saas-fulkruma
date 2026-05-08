@@ -100,7 +100,7 @@ export async function POST(req: Request) {
 
   // Single-user gate also applies to signup — a signed-up user that
   // isn't bang gets a 403. Saas mode lifts this gate.
-  if (claims.sub !== config.huudis.allowedUserId()) {
+  if (!config.huudis.allowedUserIds().includes(claims.sub)) {
     return NextResponse.json(
       { error: { code: 'NOT_AUTHORIZED', message: 'Access is restricted.' } },
       { status: 403 },

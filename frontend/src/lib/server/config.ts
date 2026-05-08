@@ -20,7 +20,16 @@ export const config = {
     issuer: () => optional_env('HUUDIS_ISSUER', 'https://huudis.com'),
     clientId: () => optional_env('HUUDIS_CLIENT_ID', 'fulkruma'),
     clientSecret: () => require_env('HUUDIS_CLIENT_SECRET'),
-    allowedUserId: () => require_env('HUUDIS_ALLOWED_USER_ID'),
+    allowedUserIds: (): string[] => {
+      const list = process.env.HUUDIS_ALLOWED_USER_IDS;
+      if (list && list.trim()) {
+        return list
+          .split(',')
+          .map((s) => s.trim())
+          .filter((s) => s && s !== 'REPLACE_ME' && !s.startsWith('REPLACE_ME'));
+      }
+      return [require_env('HUUDIS_ALLOWED_USER_ID')];
+    },
   },
   portal: {
     url: () => optional_env('FULKRUMA_PORTAL_URL', 'http://localhost:3140'),
