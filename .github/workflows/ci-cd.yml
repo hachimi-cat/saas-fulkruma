@@ -1,0 +1,121 @@
+name: CI/CD
+
+# Lint + build + deploy to prod. Skips e2e-staging gate (no meaningful
+# E2E suite yet; lint covers the type-check). Staging deploy is included
+# but only fires when STAGING_HOST is set; PRODUCTION_HOST drives prod.
+#
+# .env on the droplet is excluded from rsync — it's the source of truth
+# for runtime config; CI never overwrites it. If a new env var is needed
+# add it manually on the box, then deploy.
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: Lint & Type Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            backend/package-lock.json
+            frontend/package-lock.json
+      - name: Backend type check
+        run: cd backend && npm ci && npm run lint
+      - name: Frontend type check
+        run: cd frontend && npm ci && npm run lint
+
+  build:
+    name: Build
+    needs: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            backend/package-lock.json
+            frontend/package-lock.json
+      - name: Build backend
+        run: cd backend && npm ci && npx prisma generate && npm run build
+      - name: Build frontend
+        run: cd frontend && npm ci && npm run build
+      - name: Upload backend dist
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-dist
+          path: |
+            backend/dist/
+            backend/package.json
+            backend/package-lock.json
+            backend/prisma/
+      - name: Upload frontend build
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-build
+          path: |
+            frontend/.next/
+            frontend/public/
+            frontend/package.json
+            frontend/package-lock.json
+            frontend/next.config.*
+
+  deploy-production:
+    name: Deploy to Production
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: backend-dist
+          path: backend/
+      - uses: actions/download-artifact@v4
+        with:
+          name: frontend-build
+          path: frontend/
+      - name: Deploy via rsync
+        uses: burnett01/rsync-deployments@7.0.1
+        with:
+          switches: -avz --exclude node_modules --exclude .git --exclude .env --exclude .npmrc --exclude frontend/.next/cache
+          path: ./
+          remote_path: /opt/fulkruma/
+          remote_host: ${{ secrets.PRODUCTION_HOST }}
+          remote_user: root
+          remote_key: ${{ secrets.SSH_PRIVATE_KEY }}
+      - name: Restart services
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.PRODUCTION_HOST }}
+          username: root
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          timeout: 600s
+          command_timeout: 30m
+          script: |
+            set -e
+            cd /opt/fulkruma/backend
+            npm ci --omit=dev
+            npx prisma generate
+            npx prisma migrate deploy
+            pm2 restart fulkruma-backend || pm2 start dist/index.js --name fulkruma-backend
+            cd /opt/fulkruma/frontend
+            npm ci --omit=dev
+            pm2 restart fulkruma-frontend || pm2 start npm --name fulkruma-frontend -- start
+            pm2 save
