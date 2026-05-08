@@ -1,4 +1,5 @@
 import { LogoMark } from '@/components/brand/logo';
+import { MapPin, Phone, Mail } from 'lucide-react';
 
 export function MarketingFooter() {
   return (
@@ -35,13 +36,44 @@ export function MarketingFooter() {
           links={[
             { href: '/privacy', label: 'Privacy' },
             { href: '/terms', label: 'Terms' },
+            { href: '/refund', label: 'Refund' },
+            { href: '/contact', label: 'Contact' },
           ]}
         />
       </div>
       <div className="border-t border-border">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4 text-xs text-muted-foreground">
-          <span>© {new Date().getFullYear()} Fulkruma. Part of the Forjio commerce family.</span>
-          <span className="font-mono">v0.1 · dev</span>
+        <div className="mx-auto grid max-w-6xl gap-4 px-6 py-6 text-xs text-muted-foreground sm:grid-cols-3">
+          <div className="space-y-1.5">
+            <p className="font-medium text-foreground">PT Forjio Teknologi Indonesia</p>
+            <p className="flex items-start gap-2">
+              <MapPin size={13} className="mt-0.5 shrink-0" />
+              <span>
+                Jl. Parkit, Blok I, No. 48, RT 004, RW 001,
+                <br />
+                Cempaka Permai, Gading Cempaka,
+                <br />
+                Bengkulu, Bengkulu 38221
+              </span>
+            </p>
+          </div>
+          <div className="space-y-1.5">
+            <p className="flex items-center gap-2">
+              <Phone size={13} className="shrink-0" />
+              <a href="tel:+6281529990219" className="hover:text-foreground">
+                +62 815-2999-0219
+              </a>
+            </p>
+            <p className="flex items-center gap-2">
+              <Mail size={13} className="shrink-0" />
+              <a href="mailto:support@forjio.com" className="hover:text-foreground">
+                support@forjio.com
+              </a>
+            </p>
+          </div>
+          <div className="text-left sm:text-right">
+            <p>© {new Date().getFullYear()} PT Forjio Teknologi Indonesia.</p>
+            <p className="mt-1 font-mono">Part of the Forjio commerce family.</p>
+          </div>
         </div>
       </div>
     </footer>

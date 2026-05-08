@@ -86,6 +86,10 @@ export interface PkcePayload {
   verifier: string;
   state: string;
   iat: number;
+  /** Redirect URI used for /authorize — the callback POST must echo it
+   *  to /token, otherwise Huudis rejects the exchange. Optional for
+   *  back-compat with cookies set before this field existed. */
+  redirectUri?: string;
 }
 
 export async function writePkce(payload: PkcePayload): Promise<void> {

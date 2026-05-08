@@ -43,11 +43,12 @@ export function buildAuthorizeUrl(opts: {
   state: string;
   codeChallenge: string;
   idpHint?: 'google' | 'apple';
+  redirectUri?: string;
 }): string {
   const params = new URLSearchParams({
     response_type: 'code',
     client_id: config.huudis.clientId(),
-    redirect_uri: config.portal.redirectUri(),
+    redirect_uri: opts.redirectUri ?? config.portal.redirectUri(),
     scope: 'openid profile email fulkruma:admin',
     state: opts.state,
     code_challenge: opts.codeChallenge,
@@ -60,11 +61,12 @@ export function buildAuthorizeUrl(opts: {
 export async function exchangeCode(opts: {
   code: string;
   codeVerifier: string;
+  redirectUri?: string;
 }): Promise<HuudisTokens> {
   const body = new URLSearchParams({
     grant_type: 'authorization_code',
     code: opts.code,
-    redirect_uri: config.portal.redirectUri(),
+    redirect_uri: opts.redirectUri ?? config.portal.redirectUri(),
     client_id: config.huudis.clientId(),
     client_secret: config.huudis.clientSecret(),
     code_verifier: opts.codeVerifier,

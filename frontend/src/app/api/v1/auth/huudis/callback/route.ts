@@ -21,7 +21,14 @@ export async function POST(req: Request) {
 
   let tokens;
   try {
-    tokens = await exchangeCode({ code: body.code, codeVerifier: pkce.verifier });
+    tokens = await exchangeCode({
+      code: body.code,
+      codeVerifier: pkce.verifier,
+      // Echo the redirect_uri the /authorize call used. Required for
+      // dual-host login (fulkruma.com + fulkruma.forjio.com) — Huudis
+      // requires identical redirect_uri in /token as in /authorize.
+      redirectUri: pkce.redirectUri,
+    });
   } catch (err) {
     return NextResponse.json(
       { error: 'token_exchange_failed', detail: String(err) },
@@ -45,7 +52,7 @@ export async function POST(req: Request) {
 
   // Single-user gate: reject anyone whose huudis sub doesn't match
   // bang's allowed user_id. SaaS multi-tenant lifts this gate later.
-  if (claims.sub !== config.huudis.allowedUserId()) {
+  if (!config.huudis.allowedUserIds().includes(claims.sub)) {
     return NextResponse.json({ error: 'not_authorized' }, { status: 403 });
   }
 
