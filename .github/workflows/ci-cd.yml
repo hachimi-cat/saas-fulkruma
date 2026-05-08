@@ -69,6 +69,10 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: frontend-build
+          # include-hidden-files: .next/ is a dot-prefixed dir; v4 excludes
+          # hidden files by default and the artifact would otherwise be
+          # ~17 KB (metadata only) instead of the actual build output.
+          include-hidden-files: true
           path: |
             frontend/.next/
             frontend/public/
