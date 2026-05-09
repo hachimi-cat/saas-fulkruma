@@ -1,12 +1,11 @@
 name: CI/CD
 
-# Lint + build + deploy to prod. Skips e2e-staging gate (no meaningful
-# E2E suite yet; lint covers the type-check). Staging deploy is included
-# but only fires when STAGING_HOST is set; PRODUCTION_HOST drives prod.
+# Pipeline shape mirrors huudis (the family reference):
+#   lint → test → build → deploy-staging → e2e-staging → deploy-production
 #
-# .env on the droplet is excluded from rsync — it's the source of truth
-# for runtime config; CI never overwrites it. If a new env var is needed
-# add it manually on the box, then deploy.
+# The .env on each droplet is the source of truth for runtime config.
+# CI never overwrites it (rsync excludes .env). New env vars: add to
+# the box manually first, then deploy.
 
 on:
   push:
@@ -39,9 +38,48 @@ jobs:
       - name: Frontend type check
         run: cd frontend && npm ci && npm run lint
 
+  test:
+    name: Unit & Integration Tests
+    runs-on: ubuntu-latest
+    needs: lint
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: test
+          POSTGRES_USER: postgres
+          POSTGRES_DB: fulkruma_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://postgres:test@localhost:5432/fulkruma_test
+      FORJIO_SERVICE: fulkruma
+      HUUDIS_ISSUER: http://localhost:4000
+      HUUDIS_AUDIENCE: fulkruma
+      FULKRUMA_INTERNAL_API_SECRET: 0000000000000000000000000000000000000000000000000000000000000000
+      NODE_ENV: test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - name: Backend install + migrate + test
+        run: |
+          cd backend
+          npm ci
+          npx prisma generate
+          npx prisma migrate deploy
+          npm test
+
   build:
     name: Build
-    needs: lint
+    needs: test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -80,8 +118,8 @@ jobs:
             frontend/package-lock.json
             frontend/next.config.*
 
-  deploy-production:
-    name: Deploy to Production
+  deploy-staging:
+    name: Deploy to Staging
     needs: build
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
@@ -98,7 +136,83 @@ jobs:
       - name: Deploy via rsync
         uses: burnett01/rsync-deployments@7.0.1
         with:
-          switches: -avz --exclude node_modules --exclude .git --exclude .env --exclude .npmrc --exclude frontend/.next/cache
+          switches: -avz --exclude node_modules --exclude .git --exclude .env --exclude .env.production.local --exclude .npmrc --exclude frontend/.next/cache
+          path: ./
+          remote_path: /opt/fulkruma/
+          remote_host: ${{ secrets.STAGING_HOST }}
+          remote_user: root
+          remote_key: ${{ secrets.SSH_PRIVATE_KEY }}
+      - name: Restart services
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.STAGING_HOST }}
+          username: root
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          timeout: 600s
+          command_timeout: 30m
+          script: |
+            set -e
+            cd /opt/fulkruma/backend
+            npm ci --omit=dev
+            npx prisma generate
+            npx prisma migrate deploy
+            pm2 restart fulkruma-backend || pm2 start dist/index.js --name fulkruma-backend
+            cd /opt/fulkruma/frontend
+            npm ci --omit=dev
+            pm2 restart fulkruma-frontend || pm2 start npm --name fulkruma-frontend -- start
+            pm2 save
+            # nginx site link is idempotent — covers first-deploy when bootstrap
+            # ran before deploy/nginx/ existed.
+            ln -sf /opt/fulkruma/deploy/nginx/staging-fulkruma.forjio.com.conf /etc/nginx/sites-enabled/staging-fulkruma.forjio.com 2>/dev/null || true
+            rm -f /etc/nginx/sites-enabled/default
+            nginx -t && systemctl reload nginx
+
+  e2e-staging:
+    name: E2E (Staging)
+    runs-on: ubuntu-latest
+    needs: deploy-staging
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+    steps:
+      - name: Smoke-check staging health (backend)
+        run: |
+          for i in 1 2 3 4 5 6; do
+            curl -fsS https://staging-fulkruma.forjio.com/api/v1/health && exit 0
+            sleep 8
+          done
+          echo "Staging backend health check failed after retries"
+          exit 1
+      - name: Smoke-check staging frontend
+        run: |
+          for i in 1 2 3 4 5; do
+            STATUS=$(curl -so /dev/null -w '%{http_code}' https://staging-fulkruma.forjio.com/ 2>/dev/null || echo "000")
+            if [ "$STATUS" = "200" ] || [ "$STATUS" = "307" ]; then
+              echo "Staging frontend serving ($STATUS)"
+              exit 0
+            fi
+            sleep 6
+          done
+          echo "Staging frontend not serving"
+          exit 1
+
+  deploy-production:
+    name: Deploy to Production
+    needs: e2e-staging
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: backend-dist
+          path: backend/
+      - uses: actions/download-artifact@v4
+        with:
+          name: frontend-build
+          path: frontend/
+      - name: Deploy via rsync
+        uses: burnett01/rsync-deployments@7.0.1
+        with:
+          switches: -avz --exclude node_modules --exclude .git --exclude .env --exclude .env.production.local --exclude .npmrc --exclude frontend/.next/cache
           path: ./
           remote_path: /opt/fulkruma/
           remote_host: ${{ secrets.PRODUCTION_HOST }}
