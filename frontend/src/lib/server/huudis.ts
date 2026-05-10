@@ -83,7 +83,7 @@ export async function exchangeCode(opts: {
   return (await res.json()) as HuudisTokens;
 }
 
-export async function refreshAccessToken(refreshToken: string): Promise<HuudisTokens> {
+async function rawRefreshAccessToken(refreshToken: string): Promise<HuudisTokens> {
   const body = new URLSearchParams({
     grant_type: 'refresh_token',
     refresh_token: refreshToken,
@@ -100,6 +100,38 @@ export async function refreshAccessToken(refreshToken: string): Promise<HuudisTo
     throw new Error(`huudis refresh ${res.status}: ${text}`);
   }
   return (await res.json()) as HuudisTokens;
+}
+
+// In-process single-flight cache. Huudis rotates refresh tokens AND
+// revokes the entire token family on reuse detection (saas-huudis/
+// backend/src/services/oidc.ts:refreshTokens). When two concurrent
+// requests in the same Next.js process try to refresh with the same
+// token, only the first succeeds — the second arrives at Huudis after
+// rotation, looks like a stolen token, and nukes every active session
+// for the user. Symptom: user gets logged out unexpectedly. Pawpado
+// hit this most often because its dashboard polls every 5s from two
+// components; plugipay never hit it because plugipay doesn't poll.
+//
+// Dedup keyed by refresh-token value. Cache the resolved promise (in
+// either success or failure) for ~2s so concurrent callers all wait
+// on the same Huudis call. After that the entry is dropped so the
+// next genuine refresh attempt isn't blocked.
+const _refreshInFlight = new Map<string, Promise<HuudisTokens>>();
+const REFRESH_CACHE_MS = 2_000;
+
+export async function refreshAccessToken(refreshToken: string): Promise<HuudisTokens> {
+  const cached = _refreshInFlight.get(refreshToken);
+  if (cached) return cached;
+  const promise = rawRefreshAccessToken(refreshToken);
+  _refreshInFlight.set(refreshToken, promise);
+  void promise.finally(() => {
+    setTimeout(() => {
+      if (_refreshInFlight.get(refreshToken) === promise) {
+        _refreshInFlight.delete(refreshToken);
+      }
+    }, REFRESH_CACHE_MS);
+  });
+  return promise;
 }
 
 export function decodeIdToken(idToken: string): IdTokenClaims {
