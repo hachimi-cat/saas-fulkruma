@@ -1,0 +1,38 @@
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[project]
+name = "fulkruma"
+version = "0.1.0"
+description = "Official Python SDK for Fulkruma — stock + warehouses + shipping + licenses + deliveries. HMAC-signed requests with full parity to the Node SDK."
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.9"
+keywords = ["fulkruma", "forjio", "stock", "warehouses", "shipping", "licenses", "biteship"]
+authors = [{ name = "Forjio", email = "hello@fulkruma.com" }]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Topic :: Internet :: WWW/HTTP",
+  "Typing :: Typed",
+]
+dependencies = [
+  "httpx>=0.27.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0",
+  "respx>=0.21",
+]
+
+[project.urls]
+Homepage = "https://fulkruma.com"
+Source = "https://github.com/hachimi-cat/saas-fulkruma/tree/master/sdk/python"
+Issues = "https://github.com/hachimi-cat/saas-fulkruma/issues"
+
+[tool.hatch.build.targets.wheel]
+packages = ["fulkruma"]
