@@ -322,6 +322,86 @@ export class FulkrumaClient {
       }),
   };
 
+  // ─── API keys ────────────────────────────────────────────────
+  apiKeys = {
+    list: () => this.request<{ keys: Array<Record<string, unknown>> }>({
+      method: 'GET', path: '/api/v1/api-keys',
+    }),
+    create: (input: { description?: string; scope?: string } = {}) => this.request<{ key: Record<string, unknown> }>({
+      method: 'POST', path: '/api/v1/api-keys', body: input, idempotencyKey: this.genIdem(),
+    }),
+    revoke: (id: string) => this.request<{ revoked: boolean }>({
+      method: 'POST', path: `/api/v1/api-keys/${id}/revoke`, body: {},
+    }),
+  };
+
+  // ─── Audit log ───────────────────────────────────────────────
+  auditLog = {
+    list: (params: { limit?: number; cursor?: string; since?: string; eventType?: string } = {}) =>
+      this.request<{ entries: Array<Record<string, unknown>>; nextCursor?: string }>({
+        method: 'GET', path: `/api/v1/audit-log${qs(params)}`,
+      }),
+  };
+
+  // ─── Billing (merchant subscription to Fulkruma) ────────────
+  billing = {
+    plans: () => this.request<Array<Record<string, unknown>>>({ method: 'GET', path: '/api/v1/billing/plans' }),
+    currentPlan: () => this.request<Record<string, unknown>>({ method: 'GET', path: '/api/v1/billing/plan' }),
+    subscription: () => this.request<Record<string, unknown>>({ method: 'GET', path: '/api/v1/billing/subscription' }),
+    usage: () => this.request<Record<string, unknown>>({ method: 'GET', path: '/api/v1/billing/usage' }),
+    invoices: (params: { limit?: number; cursor?: string } = {}) =>
+      this.request<{ invoices: Array<Record<string, unknown>>; nextCursor?: string }>({
+        method: 'GET', path: `/api/v1/billing/invoices${qs(params)}`,
+      }),
+    checkout: (input: { planId: string; successUrl?: string; cancelUrl?: string }) =>
+      this.request<{ url: string; sessionId: string }>({
+        method: 'POST', path: '/api/v1/billing/checkout', body: input,
+      }),
+    cancel: () => this.request<Record<string, unknown>>({
+      method: 'POST', path: '/api/v1/billing/cancel', body: {},
+    }),
+  };
+
+  // ─── Integrations status (Biteship, Plugipay, Storlaunch) ───
+  integrations = {
+    status: () => this.request<{
+      huudis?: Record<string, unknown>;
+      biteship?: Record<string, unknown>;
+      plugipay?: Record<string, unknown>;
+      storlaunch?: Record<string, unknown>;
+    }>({ method: 'GET', path: '/api/v1/integrations/status' }),
+  };
+
+  // ─── Stats / overview ────────────────────────────────────────
+  stats = {
+    overview: () => this.request<{
+      counters: Record<string, number>;
+      recent: Record<string, unknown>;
+    }>({ method: 'GET', path: '/api/v1/stats/overview' }),
+  };
+
+  // ─── Webhook endpoints + events ─────────────────────────────
+  webhooks = {
+    listEndpoints: () =>
+      this.request<{ endpoints: Array<Record<string, unknown>> }>({
+        method: 'GET', path: '/api/v1/webhooks/endpoints',
+      }),
+    createEndpoint: (input: { url: string; events?: string[]; description?: string }) =>
+      this.request<{ endpoint: Record<string, unknown> }>({
+        method: 'POST', path: '/api/v1/webhooks/endpoints', body: input, idempotencyKey: this.genIdem(),
+      }),
+    updateEndpoint: (id: string, patch: Partial<{ url: string; events: string[]; description: string; active: boolean }>) =>
+      this.request<{ endpoint: Record<string, unknown> }>({
+        method: 'PATCH', path: `/api/v1/webhooks/endpoints/${id}`, body: patch,
+      }),
+    deleteEndpoint: (id: string) =>
+      this.request<{ deleted: boolean }>({ method: 'DELETE', path: `/api/v1/webhooks/endpoints/${id}` }),
+    listEvents: (params: { limit?: number; cursor?: string; type?: string } = {}) =>
+      this.request<{ events: Array<Record<string, unknown>>; nextCursor?: string }>({
+        method: 'GET', path: `/api/v1/webhooks/events${qs(params)}`,
+      }),
+  };
+
   // ─── Platform-admin (Pattern 2 partner billing) ──────────────
 
   admin = {
