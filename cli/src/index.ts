@@ -33,7 +33,7 @@ export function buildProgram(): Command {
   const program = new Command()
     .name(brand)
     .description(`CLI for ${brand} — part of the Forjio commerce suite.`)
-    .version('0.2.0')
+    .version('0.3.0')
     .option('--json', 'emit JSON instead of human-readable tables')
     .option('--profile <name>', 'credential profile name (default: "default")')
     .option('--base-url <url>', 'override the Fulkruma API base URL')

@@ -1,12 +1,17 @@
 /**
  * `fulkruma products …` — list, get, create, update, archive.
  *
+ * Includes a `variants` subgroup (list/get/create/update/archive). The
+ * SDK exposes addVariant/updateVariant/archiveVariant directly, but does
+ * not have variant list/get endpoints — variants are returned as part of
+ * the parent product, so list+get derive from `products.get(id).variants`.
+ *
  * All calls go through `FulkrumaClient.products` from `@forjio/fulkruma-node`.
  */
 import { Command } from 'commander';
-import type { Product, ProductType } from '@forjio/fulkruma-node';
+import type { Product, ProductType, ProductVariant } from '@forjio/fulkruma-node';
 import { getClient } from '../lib/client.js';
-import { formatOpts, getGlobalOpts, handleError, parseIntArg } from '../lib/util.js';
+import { formatOpts, getGlobalOpts, handleError, parseBody, parseIntArg } from '../lib/util.js';
 import { printResult, type Column } from '../lib/output.js';
 
 const productColumns: readonly Column<Product>[] = [
@@ -136,3 +141,121 @@ productsCommand
       handleError(err, g);
     }
   });
+
+// ─── Variants ────────────────────────────────────────────────
+
+const variantColumns: readonly Column<ProductVariant>[] = [
+  { header: 'ID', accessor: (v) => v.id },
+  { header: 'Name', accessor: (v) => v.name },
+  { header: 'SKU', accessor: (v) => v.sku },
+  { header: 'Price', accessor: (v) => v.priceCents },
+  { header: 'Default', accessor: (v) => v.isDefault },
+  { header: 'Archived', accessor: (v) => v.archived },
+];
+
+const variantsCommand = new Command('variants').description('Manage product variants');
+
+variantsCommand
+  .command('list <product-id>')
+  .description('List variants on a product (derived from products.get)')
+  .action(async (productId: string, _options, cmd) => {
+    const g = getGlobalOpts(cmd);
+    try {
+      const client = getClient(g);
+      const { product } = await client.products.get(productId);
+      const variants = product.variants ?? [];
+      printResult(variants, variantColumns, formatOpts(g));
+      process.exit(0);
+    } catch (err) {
+      handleError(err, g);
+    }
+  });
+
+variantsCommand
+  .command('get <product-id> <variant-id>')
+  .description('Get a single variant (filters products.get response)')
+  .action(async (productId: string, variantId: string, _options, cmd) => {
+    const g = getGlobalOpts(cmd);
+    try {
+      const client = getClient(g);
+      const { product } = await client.products.get(productId);
+      const variant = (product.variants ?? []).find((v) => v.id === variantId);
+      if (!variant) {
+        throw new Error(`variant ${variantId} not found on product ${productId}`);
+      }
+      printResult(variant, variantColumns, formatOpts(g));
+      process.exit(0);
+    } catch (err) {
+      handleError(err, g);
+    }
+  });
+
+variantsCommand
+  .command('create <product-id>')
+  .description('Create a variant on a product (use --body for JSON payload)')
+  .requiredOption('--body <json>', 'variant payload (inline JSON, @file, or "-")')
+  .action(async (productId: string, options: { body: string }, cmd) => {
+    const g = getGlobalOpts(cmd);
+    try {
+      const client = getClient(g);
+      const body = parseBody(options.body);
+      if (!body) throw new Error('--body is required');
+      const { variant } = await client.products.addVariant(
+        productId,
+        body as unknown as Parameters<typeof client.products.addVariant>[1],
+      );
+      printResult(variant, variantColumns, formatOpts(g));
+      process.exit(0);
+    } catch (err) {
+      handleError(err, g);
+    }
+  });
+
+variantsCommand
+  .command('update <product-id> <variant-id>')
+  .description('Update a variant (use --body for JSON patch)')
+  .requiredOption('--body <json>', 'variant patch (inline JSON, @file, or "-")')
+  .action(
+    async (productId: string, variantId: string, options: { body: string }, cmd) => {
+      const g = getGlobalOpts(cmd);
+      try {
+        const client = getClient(g);
+        const body = parseBody(options.body);
+        if (!body) throw new Error('--body is required');
+        const { variant } = await client.products.updateVariant(
+          productId,
+          variantId,
+          body as Parameters<typeof client.products.updateVariant>[2],
+        );
+        printResult(variant, variantColumns, formatOpts(g));
+        process.exit(0);
+      } catch (err) {
+        handleError(err, g);
+      }
+    },
+  );
+
+variantsCommand
+  .command('archive <product-id> <variant-id>')
+  .description('Archive a variant')
+  .action(async (productId: string, variantId: string, _options, cmd) => {
+    const g = getGlobalOpts(cmd);
+    try {
+      const client = getClient(g);
+      const result = await client.products.archiveVariant(productId, variantId);
+      printResult(
+        { productId, variantId, archived: result.archived },
+        [
+          { header: 'Product', accessor: (r) => r.productId },
+          { header: 'Variant', accessor: (r) => r.variantId },
+          { header: 'Archived', accessor: (r) => r.archived },
+        ],
+        formatOpts(g),
+      );
+      process.exit(0);
+    } catch (err) {
+      handleError(err, g);
+    }
+  });
+
+productsCommand.addCommand(variantsCommand);

@@ -1,6 +1,6 @@
 {
   "name": "@forjio/fulkruma-cli",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "CLI for Fulkruma (part of the Forjio commerce suite).",
   "type": "module",
   "main": "dist/index.js",

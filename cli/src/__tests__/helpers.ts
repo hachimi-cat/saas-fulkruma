@@ -70,6 +70,12 @@ export function installFakeClient(): FakeClient {
   for (const g of groups) {
     client[g] = makeProxy(g, calls, responses);
   }
+  // Top-level `request` used by passthrough fall-back routes.
+  client['request'] = (args: unknown) => {
+    calls.push({ group: 'client', method: 'request', args: [args] });
+    if (responses.has('client.request')) return Promise.resolve(responses.get('client.request'));
+    return Promise.resolve({});
+  };
   setClientFactory(() => client as never);
   return {
     calls,

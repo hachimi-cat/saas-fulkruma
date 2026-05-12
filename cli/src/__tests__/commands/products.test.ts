@@ -154,3 +154,126 @@ describe('products', () => {
     expect(call!.args).toEqual(['p_2']);
   });
 });
+
+describe('products variants', () => {
+  function fakeProductWith(variants: Array<Record<string, unknown>>): Record<string, unknown> {
+    return {
+      id: 'p_1',
+      accountId: 'acc',
+      name: 'Hoodie',
+      sku: null,
+      description: null,
+      type: 'physical',
+      weight: null,
+      length: null,
+      width: null,
+      height: null,
+      licenseEnabled: false,
+      maxActivations: 0,
+      externalRef: null,
+      externalSource: null,
+      archived: false,
+      metadata: {},
+      createdAt: '',
+      updatedAt: '',
+      variants,
+    };
+  }
+
+  function fakeVariant(id: string, overrides: Record<string, unknown> = {}): Record<string, unknown> {
+    return {
+      id,
+      productId: 'p_1',
+      sku: `SKU-${id}`,
+      name: `Variant ${id}`,
+      priceCents: 1000,
+      costCents: null,
+      lowStockThreshold: null,
+      weight: null,
+      isDefault: false,
+      archived: false,
+      externalRef: null,
+      externalSource: null,
+      createdAt: '',
+      updatedAt: '',
+      ...overrides,
+    };
+  }
+
+  it('list <product-id> derives from products.get', async () => {
+    fake.on('products.get', {
+      product: fakeProductWith([fakeVariant('v_1'), fakeVariant('v_2')]),
+    });
+    const s = silenceStdio();
+    try {
+      await runCli(buildProgram, ['products', 'variants', 'list', 'p_1']);
+    } finally {
+      s.restore();
+    }
+    const call = fake.calls.find((c) => c.group === 'products' && c.method === 'get');
+    expect(call!.args).toEqual(['p_1']);
+  });
+
+  it('get <product-id> <variant-id> filters from products.get', async () => {
+    fake.on('products.get', {
+      product: fakeProductWith([fakeVariant('v_1'), fakeVariant('v_2')]),
+    });
+    const s = silenceStdio();
+    try {
+      await runCli(buildProgram, ['products', 'variants', 'get', 'p_1', 'v_2']);
+    } finally {
+      s.restore();
+    }
+    const call = fake.calls.find((c) => c.group === 'products' && c.method === 'get');
+    expect(call!.args).toEqual(['p_1']);
+  });
+
+  it('create calls products.addVariant with parsed body', async () => {
+    fake.on('products.addVariant', { variant: fakeVariant('v_new') });
+    const body = JSON.stringify({ name: 'Red / M', priceCents: 1500 });
+    const s = silenceStdio();
+    try {
+      await runCli(buildProgram, ['products', 'variants', 'create', 'p_1', '--body', body]);
+    } finally {
+      s.restore();
+    }
+    const call = fake.calls.find((c) => c.group === 'products' && c.method === 'addVariant');
+    expect(call!.args[0]).toBe('p_1');
+    expect(call!.args[1]).toEqual({ name: 'Red / M', priceCents: 1500 });
+  });
+
+  it('update calls products.updateVariant with patch body', async () => {
+    fake.on('products.updateVariant', { variant: fakeVariant('v_1', { priceCents: 1999 }) });
+    const body = JSON.stringify({ priceCents: 1999 });
+    const s = silenceStdio();
+    try {
+      await runCli(buildProgram, [
+        'products',
+        'variants',
+        'update',
+        'p_1',
+        'v_1',
+        '--body',
+        body,
+      ]);
+    } finally {
+      s.restore();
+    }
+    const call = fake.calls.find((c) => c.group === 'products' && c.method === 'updateVariant');
+    expect(call!.args[0]).toBe('p_1');
+    expect(call!.args[1]).toBe('v_1');
+    expect(call!.args[2]).toEqual({ priceCents: 1999 });
+  });
+
+  it('archive calls products.archiveVariant', async () => {
+    fake.on('products.archiveVariant', { archived: true });
+    const s = silenceStdio();
+    try {
+      await runCli(buildProgram, ['products', 'variants', 'archive', 'p_1', 'v_1']);
+    } finally {
+      s.restore();
+    }
+    const call = fake.calls.find((c) => c.group === 'products' && c.method === 'archiveVariant');
+    expect(call!.args).toEqual(['p_1', 'v_1']);
+  });
+});
