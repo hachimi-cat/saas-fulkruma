@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { AlertCircle, Loader2 } from 'lucide-react';
+import { useHuudisProviders } from './use-huudis-providers';
 
 export function NativeAuthForm({ mode }: { mode: 'login' | 'signup' }) {
   const router = useRouter();
@@ -11,6 +12,7 @@ export function NativeAuthForm({ mode }: { mode: 'login' | 'signup' }) {
   const returnTo = params?.get('return_to') || '/dashboard';
   const ssoError = params?.get('sso_error');
   const ssoDetail = params?.get('sso_detail');
+  const { providers } = useHuudisProviders();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -63,28 +65,36 @@ export function NativeAuthForm({ mode }: { mode: 'login' | 'signup' }) {
         </div>
       )}
 
-      <div className="grid gap-2">
-        <a
-          href={socialUrl('google')}
-          className="flex w-full items-center justify-center gap-2 rounded-md border border-border bg-background py-2 text-sm font-medium hover:bg-accent transition"
-        >
-          <GoogleMark className="h-4 w-4" />
-          Continue with Google
-        </a>
-        <a
-          href={socialUrl('apple')}
-          className="flex w-full items-center justify-center gap-2 rounded-md border border-border bg-background py-2 text-sm font-medium hover:bg-accent transition"
-        >
-          <AppleMark className="h-4 w-4" />
-          Continue with Apple
-        </a>
-      </div>
+      {(providers?.google !== false || providers?.apple !== false) && (
+        <>
+          <div className="grid gap-2">
+            {providers?.google !== false && (
+              <a
+                href={socialUrl('google')}
+                className="flex w-full items-center justify-center gap-2 rounded-md border border-border bg-background py-2 text-sm font-medium hover:bg-accent transition"
+              >
+                <GoogleMark className="h-4 w-4" />
+                Continue with Google
+              </a>
+            )}
+            {providers?.apple !== false && (
+              <a
+                href={socialUrl('apple')}
+                className="flex w-full items-center justify-center gap-2 rounded-md border border-border bg-background py-2 text-sm font-medium hover:bg-accent transition"
+              >
+                <AppleMark className="h-4 w-4" />
+                Continue with Apple
+              </a>
+            )}
+          </div>
 
-      <div className="my-4 flex items-center gap-3 text-[11px] text-muted-foreground">
-        <div className="flex-1 border-t border-border" />
-        OR
-        <div className="flex-1 border-t border-border" />
-      </div>
+          <div className="my-4 flex items-center gap-3 text-[11px] text-muted-foreground">
+            <div className="flex-1 border-t border-border" />
+            OR
+            <div className="flex-1 border-t border-border" />
+          </div>
+        </>
+      )}
 
       <form onSubmit={submit} className="space-y-3">
         {mode === 'signup' && (
