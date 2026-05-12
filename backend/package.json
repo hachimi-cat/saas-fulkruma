@@ -16,7 +16,7 @@
     "prisma:seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
-    "@forjio/plugipay-node": "file:./vendor/forjio-plugipay-node-0.4.0.tgz",
+    "@forjio/plugipay-node": "^0.5.0",
     "@forjio/sdk": "^0.1.0",
     "@prisma/client": "^6.0.0",
     "express": "^4.21.0",
