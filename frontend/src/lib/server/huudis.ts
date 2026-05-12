@@ -102,35 +102,60 @@ async function rawRefreshAccessToken(refreshToken: string): Promise<HuudisTokens
   return (await res.json()) as HuudisTokens;
 }
 
-// In-process single-flight cache. Huudis rotates refresh tokens AND
-// revokes the entire token family on reuse detection (saas-huudis/
-// backend/src/services/oidc.ts:refreshTokens). When two concurrent
-// requests in the same Next.js process try to refresh with the same
-// token, only the first succeeds — the second arrives at Huudis after
-// rotation, looks like a stolen token, and nukes every active session
-// for the user. Symptom: user gets logged out unexpectedly. Pawpado
-// hit this most often because its dashboard polls every 5s from two
-// components; plugipay never hit it because plugipay doesn't poll.
+// Two-layer cache to defend against Huudis's refresh-token-family
+// reuse detection (saas-huudis/backend/src/services/oidc.ts:refreshTokens).
 //
-// Dedup keyed by refresh-token value. Cache the resolved promise (in
-// either success or failure) for ~2s so concurrent callers all wait
-// on the same Huudis call. After that the entry is dropped so the
-// next genuine refresh attempt isn't blocked.
+// Why: Huudis rotates refresh tokens AND revokes the ENTIRE token family
+// on reuse — present a refresh token a second time and every session
+// for the user dies. The original 2 s single-flight catches strictly-
+// concurrent calls but loses requests that arrive seconds later still
+// carrying the pre-rotation cookie (the browser hasn't flushed the
+// Set-Cookie response yet, or a second tab is one step behind). Those
+// late arrivers used to hit raw Huudis with the rotated-out token and
+// nuke the freshly-issued session — the user-visible symptom was being
+// bounced back to /login mid-flow.
+//
+// Layer 1 — _refreshInFlight: in-progress promise dedup (2 s window).
+// Layer 2 — _rotatedTokens: post-success alias map. After a successful
+//   rotation, remember (oldRefreshToken → newTokens) for 5 minutes.
+//   Any later call presenting the now-rotated-out token short-circuits
+//   to the already-issued new tokens without re-hitting Huudis.
 const _refreshInFlight = new Map<string, Promise<HuudisTokens>>();
 const REFRESH_CACHE_MS = 2_000;
 
+const _rotatedTokens = new Map<string, HuudisTokens>();
+const ROTATED_TOKEN_TTL_MS = 5 * 60 * 1000;
+
 export async function refreshAccessToken(refreshToken: string): Promise<HuudisTokens> {
+  // Already-rotated: return the cached new tokens, never touch Huudis.
+  const aliased = _rotatedTokens.get(refreshToken);
+  if (aliased) return aliased;
+
+  // Strictly concurrent: share the in-flight promise.
   const cached = _refreshInFlight.get(refreshToken);
   if (cached) return cached;
+
   const promise = rawRefreshAccessToken(refreshToken);
   _refreshInFlight.set(refreshToken, promise);
-  void promise.finally(() => {
-    setTimeout(() => {
-      if (_refreshInFlight.get(refreshToken) === promise) {
-        _refreshInFlight.delete(refreshToken);
-      }
-    }, REFRESH_CACHE_MS);
-  });
+  promise
+    .then((tokens) => {
+      _rotatedTokens.set(refreshToken, tokens);
+      setTimeout(() => {
+        if (_rotatedTokens.get(refreshToken) === tokens) {
+          _rotatedTokens.delete(refreshToken);
+        }
+      }, ROTATED_TOKEN_TTL_MS);
+    })
+    .catch(() => {
+      /* don't cache failures — let the next attempt retry */
+    })
+    .finally(() => {
+      setTimeout(() => {
+        if (_refreshInFlight.get(refreshToken) === promise) {
+          _refreshInFlight.delete(refreshToken);
+        }
+      }, REFRESH_CACHE_MS);
+    });
   return promise;
 }
 
