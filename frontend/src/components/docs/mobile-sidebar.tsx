@@ -21,11 +21,9 @@ interface DocsMobileSidebarProps {
 
 // Mobile-only drawer triggered by the hamburger icon in the docs
 // header. Closes when a link is clicked or the user hits Escape.
+// Item styling mirrors the dashboard sidebar.
 export function DocsMobileSidebar({ groups, currentHref }: DocsMobileSidebarProps) {
   const [open, setOpen] = useState(false);
-  // Collapsible groups inside the drawer, mirroring desktop sidebar
-  // behavior. Initially: only the group containing the current page
-  // is expanded; others collapsed so the drawer fits more on screen.
   const initialExpanded = () => {
     const set = new Set<string>();
     for (const g of groups) {
@@ -76,7 +74,7 @@ export function DocsMobileSidebar({ groups, currentHref }: DocsMobileSidebarProp
                 <X className="h-4 w-4" />
               </button>
             </div>
-            <div className="space-y-1 px-4 py-4 pb-12">
+            <nav className="grid gap-4 px-4 py-4 pb-12" aria-label="Documentation">
               {groups.map((g) => {
                 const isOpen = expanded.has(g.heading);
                 return (
@@ -84,22 +82,22 @@ export function DocsMobileSidebar({ groups, currentHref }: DocsMobileSidebarProp
                     <button
                       type="button"
                       onClick={() => toggle(g.heading)}
-                      className="flex w-full items-center justify-between rounded-lg px-3 py-2 -mx-3 text-left hover:bg-muted/60"
+                      className="flex w-full items-center justify-between px-2.5 pb-1.5 text-left"
                       aria-expanded={isOpen}
                     >
-                      <span className="font-mono text-[11px] uppercase tracking-wide text-muted-foreground font-semibold">
+                      <span className="font-mono text-[10.5px] uppercase tracking-[0.12em] text-muted-foreground/70 font-semibold">
                         {g.heading}
                       </span>
                       <ChevronRight
                         className={
-                          'h-3.5 w-3.5 text-muted-foreground transition-transform ' +
+                          'h-3 w-3 text-muted-foreground/70 transition-transform ' +
                           (isOpen ? 'rotate-90' : '')
                         }
                         aria-hidden
                       />
                     </button>
                     {isOpen && (
-                      <ul className="space-y-0.5 mt-1 mb-3">
+                      <ul className="grid gap-px">
                         {g.items.map((item) => {
                           const active = item.href === currentHref;
                           return (
@@ -108,10 +106,10 @@ export function DocsMobileSidebar({ groups, currentHref }: DocsMobileSidebarProp
                                 href={item.href}
                                 onClick={() => setOpen(false)}
                                 className={
-                                  'block py-2 px-3 -mx-3 text-sm rounded-lg ' +
+                                  'flex items-center gap-2.5 rounded-lg py-[7px] px-2.5 text-[13.5px] transition-colors ' +
                                   (active
-                                    ? 'bg-primary/10 text-primary font-medium'
-                                    : 'text-muted-foreground hover:text-foreground hover:bg-muted')
+                                    ? 'bg-primary/10 text-primary font-semibold'
+                                    : 'text-muted-foreground hover:text-foreground hover:bg-muted/60')
                                 }
                               >
                                 {item.title}
@@ -124,7 +122,7 @@ export function DocsMobileSidebar({ groups, currentHref }: DocsMobileSidebarProp
                   </div>
                 );
               })}
-            </div>
+            </nav>
           </aside>
         </div>
       )}
