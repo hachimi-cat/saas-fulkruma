@@ -4,6 +4,9 @@ title: Warehouses
 
 # Warehouses
 
+![Plugipay family portal: warehouses](/docs-img/portal/warehouses.png)
+
+
 A **warehouse** is a physical location where you store stock. Every Fulkruma workspace has at least one. This page covers how to create, edit, and manage them from the dashboard.
 
 If you need the API equivalent, see [**API reference**](/docs/api).

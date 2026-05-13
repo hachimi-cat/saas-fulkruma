@@ -4,6 +4,9 @@ title: Products & stock
 
 # Products & stock
 
+![Plugipay family portal: products](/docs-img/portal/products.png)
+
+
 A **product** is something you sell &mdash; with one or more **variants** (sizes, colors, license tiers). **Stock** is the count of how many of each variant exist at each warehouse. This page covers managing both from the dashboard.
 
 If you came from Storlaunch, your product catalog is mirrored into Fulkruma automatically. You can still edit fulfilment-specific fields (weight, dimensions, license settings) directly here.

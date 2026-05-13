@@ -4,6 +4,9 @@ title: Shipments
 
 # Shipments
 
+![Plugipay family portal: shipments](/docs-img/portal/shipments.png)
+
+
 A **shipment** is a real-world delivery from one of your warehouses to a customer address. A **delivery** is the digital equivalent &mdash; a download URL or a license key. This page covers both, since the dashboard surfaces them side by side.
 
 ## Lifecycle
