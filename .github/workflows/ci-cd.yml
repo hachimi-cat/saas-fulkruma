@@ -136,7 +136,7 @@ jobs:
       - name: Deploy via rsync
         uses: burnett01/rsync-deployments@7.0.1
         with:
-          switches: -avz --exclude node_modules --exclude .git --exclude .env --exclude .env.production.local --exclude .npmrc --exclude frontend/.next/cache
+          switches: -avz --delete --exclude node_modules --exclude .git --exclude .env --exclude .env.production.local --exclude .npmrc --exclude frontend/.next/cache
           path: ./
           remote_path: /opt/fulkruma/
           remote_host: ${{ secrets.STAGING_HOST }}
@@ -212,7 +212,7 @@ jobs:
       - name: Deploy via rsync
         uses: burnett01/rsync-deployments@7.0.1
         with:
-          switches: -avz --exclude node_modules --exclude .git --exclude .env --exclude .env.production.local --exclude .npmrc --exclude frontend/.next/cache
+          switches: -avz --delete --exclude node_modules --exclude .git --exclude .env --exclude .env.production.local --exclude .npmrc --exclude frontend/.next/cache
           path: ./
           remote_path: /opt/fulkruma/
           remote_host: ${{ secrets.PRODUCTION_HOST }}
