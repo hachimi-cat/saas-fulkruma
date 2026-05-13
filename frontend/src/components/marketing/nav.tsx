@@ -22,6 +22,9 @@ export function MarketingNav() {
           <a href="/#faq" className="text-muted-foreground hover:text-foreground transition">
             FAQ
           </a>
+          <a href="/docs" className="text-muted-foreground hover:text-foreground transition">
+            Docs
+          </a>
         </div>
         <div className="flex items-center gap-3">
           <Link
