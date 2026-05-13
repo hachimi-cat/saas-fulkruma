@@ -1,0 +1,12 @@
+{
+  "base_url": "https://fulkruma.com",
+  "out_dir": "frontend/public/docs-img/portal",
+  "auth": { "type": "huudis", "email_env": "GOJO_HUUDIS_EMAIL", "password_env": "GOJO_HUUDIS_PASSWORD" },
+  "viewport": { "width": 1440, "height": 900 },
+  "pages": [
+    { "route": "dashboard", "name": "dashboard" },
+    { "route": "dashboard/warehouses", "name": "warehouses" },
+    { "route": "dashboard/products", "name": "products" },
+    { "route": "dashboard/shipments", "name": "shipments" }
+  ]
+}
