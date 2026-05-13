@@ -74,6 +74,51 @@ export const DOC_NAV: DocMeta[] = [
 
   // SDKs
   { slug: 'sdk', title: 'Overview', group: 'SDKs', href: '/docs/sdk' },
+
+  // Node.js SDK
+  { slug: 'sdk/node/resources/warehouses', title: 'Warehouses', group: 'Node.js SDK', href: '/docs/sdk/node/resources/warehouses' },
+  { slug: 'sdk/node/resources/products', title: 'Products', group: 'Node.js SDK', href: '/docs/sdk/node/resources/products' },
+  { slug: 'sdk/node/resources/stock', title: 'Stock', group: 'Node.js SDK', href: '/docs/sdk/node/resources/stock' },
+  { slug: 'sdk/node/resources/shipments', title: 'Shipments', group: 'Node.js SDK', href: '/docs/sdk/node/resources/shipments' },
+  { slug: 'sdk/node/resources/shipping', title: 'Shipping', group: 'Node.js SDK', href: '/docs/sdk/node/resources/shipping' },
+  { slug: 'sdk/node/resources/deliveries', title: 'Deliveries', group: 'Node.js SDK', href: '/docs/sdk/node/resources/deliveries' },
+  { slug: 'sdk/node/resources/licenses', title: 'Licenses', group: 'Node.js SDK', href: '/docs/sdk/node/resources/licenses' },
+  { slug: 'sdk/node/resources/addresses', title: 'Addresses', group: 'Node.js SDK', href: '/docs/sdk/node/resources/addresses' },
+  { slug: 'sdk/node/resources/api-keys', title: 'API keys', group: 'Node.js SDK', href: '/docs/sdk/node/resources/api-keys' },
+  { slug: 'sdk/node/resources/webhooks', title: 'Webhooks', group: 'Node.js SDK', href: '/docs/sdk/node/resources/webhooks' },
+  { slug: 'sdk/node/resources/audit-log', title: 'Audit log', group: 'Node.js SDK', href: '/docs/sdk/node/resources/audit-log' },
+  { slug: 'sdk/node/resources/billing', title: 'Billing', group: 'Node.js SDK', href: '/docs/sdk/node/resources/billing' },
+  { slug: 'sdk/node/resources/integrations', title: 'Integrations', group: 'Node.js SDK', href: '/docs/sdk/node/resources/integrations' },
+
+  // Python SDK
+  { slug: 'sdk/python/resources/warehouses', title: 'Warehouses', group: 'Python SDK', href: '/docs/sdk/python/resources/warehouses' },
+  { slug: 'sdk/python/resources/products', title: 'Products', group: 'Python SDK', href: '/docs/sdk/python/resources/products' },
+  { slug: 'sdk/python/resources/stock', title: 'Stock', group: 'Python SDK', href: '/docs/sdk/python/resources/stock' },
+  { slug: 'sdk/python/resources/shipments', title: 'Shipments', group: 'Python SDK', href: '/docs/sdk/python/resources/shipments' },
+  { slug: 'sdk/python/resources/shipping', title: 'Shipping', group: 'Python SDK', href: '/docs/sdk/python/resources/shipping' },
+  { slug: 'sdk/python/resources/deliveries', title: 'Deliveries', group: 'Python SDK', href: '/docs/sdk/python/resources/deliveries' },
+  { slug: 'sdk/python/resources/licenses', title: 'Licenses', group: 'Python SDK', href: '/docs/sdk/python/resources/licenses' },
+  { slug: 'sdk/python/resources/addresses', title: 'Addresses', group: 'Python SDK', href: '/docs/sdk/python/resources/addresses' },
+  { slug: 'sdk/python/resources/api-keys', title: 'API keys', group: 'Python SDK', href: '/docs/sdk/python/resources/api-keys' },
+  { slug: 'sdk/python/resources/webhooks', title: 'Webhooks', group: 'Python SDK', href: '/docs/sdk/python/resources/webhooks' },
+  { slug: 'sdk/python/resources/audit-log', title: 'Audit log', group: 'Python SDK', href: '/docs/sdk/python/resources/audit-log' },
+  { slug: 'sdk/python/resources/billing', title: 'Billing', group: 'Python SDK', href: '/docs/sdk/python/resources/billing' },
+  { slug: 'sdk/python/resources/integrations', title: 'Integrations', group: 'Python SDK', href: '/docs/sdk/python/resources/integrations' },
+
+  // Go SDK
+  { slug: 'sdk/go/resources/warehouses', title: 'Warehouses', group: 'Go SDK', href: '/docs/sdk/go/resources/warehouses' },
+  { slug: 'sdk/go/resources/products', title: 'Products', group: 'Go SDK', href: '/docs/sdk/go/resources/products' },
+  { slug: 'sdk/go/resources/stock', title: 'Stock', group: 'Go SDK', href: '/docs/sdk/go/resources/stock' },
+  { slug: 'sdk/go/resources/shipments', title: 'Shipments', group: 'Go SDK', href: '/docs/sdk/go/resources/shipments' },
+  { slug: 'sdk/go/resources/shipping', title: 'Shipping', group: 'Go SDK', href: '/docs/sdk/go/resources/shipping' },
+  { slug: 'sdk/go/resources/deliveries', title: 'Deliveries', group: 'Go SDK', href: '/docs/sdk/go/resources/deliveries' },
+  { slug: 'sdk/go/resources/licenses', title: 'Licenses', group: 'Go SDK', href: '/docs/sdk/go/resources/licenses' },
+  { slug: 'sdk/go/resources/addresses', title: 'Addresses', group: 'Go SDK', href: '/docs/sdk/go/resources/addresses' },
+  { slug: 'sdk/go/resources/api-keys', title: 'API keys', group: 'Go SDK', href: '/docs/sdk/go/resources/api-keys' },
+  { slug: 'sdk/go/resources/webhooks', title: 'Webhooks', group: 'Go SDK', href: '/docs/sdk/go/resources/webhooks' },
+  { slug: 'sdk/go/resources/audit-log', title: 'Audit log', group: 'Go SDK', href: '/docs/sdk/go/resources/audit-log' },
+  { slug: 'sdk/go/resources/billing', title: 'Billing', group: 'Go SDK', href: '/docs/sdk/go/resources/billing' },
+  { slug: 'sdk/go/resources/integrations', title: 'Integrations', group: 'Go SDK', href: '/docs/sdk/go/resources/integrations' },
 ];
 
 export function docsGroups(): Array<{ heading: string; items: DocMeta[] }> {
