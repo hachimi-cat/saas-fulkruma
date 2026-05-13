@@ -3,6 +3,7 @@ import { readDoc, docsGroups, buildSearchIndex } from '@/lib/markdown';
 import { DocsSearch } from '@/components/docs/search';
 import { CrossProductNav } from '@/components/docs/cross-product-nav';
 import { DocsMobileSidebar } from '@/components/docs/mobile-sidebar';
+import { DocsSidebar } from '@/components/docs/sidebar';
 
 type Params = { slug?: string[] };
 
@@ -38,35 +39,10 @@ export default async function DocsPage({ params }: { params: Promise<Params> }) 
 
       <main className="max-w-7xl mx-auto px-4 md:px-6 py-8 md:py-10">
         <div className="grid grid-cols-1 lg:grid-cols-[240px_minmax(0,1fr)] gap-8">
-          {/* Sidebar — hidden on mobile (use the drawer trigger above) */}
-          <aside className="hidden lg:block lg:sticky lg:top-20 lg:self-start space-y-6 pb-6">
-            {groups.map((g) => (
-              <div key={g.heading}>
-                <h5 className="font-mono text-[11px] uppercase tracking-wide text-muted-foreground font-semibold mb-2">
-                  {g.heading}
-                </h5>
-                <ul className="space-y-0.5">
-                  {g.items.map((item) => {
-                    const active = item.href === currentHref;
-                    return (
-                      <li key={item.href}>
-                        <Link
-                          href={item.href}
-                          className={
-                            'block py-1.5 px-2 -mx-2 text-sm rounded-md ' +
-                            (active
-                              ? 'bg-primary/10 text-primary font-medium'
-                              : 'text-muted-foreground hover:text-foreground hover:bg-muted')
-                          }
-                        >
-                          {item.title}
-                        </Link>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </div>
-            ))}
+          {/* Sidebar — fixed-height, scrollable, collapsible. Hidden on
+              mobile (use drawer trigger in the header). */}
+          <aside className="hidden lg:block lg:sticky lg:top-[57px] lg:self-start lg:h-[calc(100vh-57px)] lg:overflow-y-auto pr-2 pb-6 pt-2">
+            <DocsSidebar groups={groups} currentHref={currentHref} />
           </aside>
 
           {/* Main */}
