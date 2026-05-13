@@ -89,7 +89,7 @@ export function DocsSidebar({ groups, currentHref }: DocsSidebarProps) {
               type="button"
               onClick={() => toggle(g.heading)}
               className={
-                'group flex w-full items-center justify-between rounded-md px-2 py-1.5 -mx-2 text-left transition ' +
+                'group flex w-full items-center justify-between rounded-lg px-3 py-2 -mx-3 text-left transition ' +
                 'hover:bg-muted/60'
               }
               aria-expanded={isOpen}
@@ -121,7 +121,7 @@ export function DocsSidebar({ groups, currentHref }: DocsSidebarProps) {
                       <Link
                         href={item.href}
                         className={
-                          'block py-1 px-2 -mx-2 text-sm rounded-md ' +
+                          'block py-2 px-3 -mx-3 text-sm rounded-lg ' +
                           (active
                             ? 'bg-primary/10 text-primary font-medium'
                             : 'text-muted-foreground hover:text-foreground hover:bg-muted')

@@ -84,7 +84,7 @@ export function DocsMobileSidebar({ groups, currentHref }: DocsMobileSidebarProp
                     <button
                       type="button"
                       onClick={() => toggle(g.heading)}
-                      className="flex w-full items-center justify-between rounded-md px-2 py-1.5 -mx-2 text-left hover:bg-muted/60"
+                      className="flex w-full items-center justify-between rounded-lg px-3 py-2 -mx-3 text-left hover:bg-muted/60"
                       aria-expanded={isOpen}
                     >
                       <span className="font-mono text-[11px] uppercase tracking-wide text-muted-foreground font-semibold">
@@ -108,7 +108,7 @@ export function DocsMobileSidebar({ groups, currentHref }: DocsMobileSidebarProp
                                 href={item.href}
                                 onClick={() => setOpen(false)}
                                 className={
-                                  'block py-1 px-2 -mx-2 text-sm rounded-md ' +
+                                  'block py-2 px-3 -mx-3 text-sm rounded-lg ' +
                                   (active
                                     ? 'bg-primary/10 text-primary font-medium'
                                     : 'text-muted-foreground hover:text-foreground hover:bg-muted')
