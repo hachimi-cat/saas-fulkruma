@@ -48,6 +48,30 @@ export const DOC_NAV: DocMeta[] = [
   { slug: 'api', title: 'Overview', group: 'API reference', href: '/docs/api' },
   { slug: 'api/authentication', title: 'Authentication', group: 'API reference', href: '/docs/api/authentication' },
 
+  // API resources
+  { slug: 'api/resources', title: 'Overview', group: 'API resources', href: '/docs/api/resources' },
+  { slug: 'api/resources/warehouses', title: 'Warehouses', group: 'API resources', href: '/docs/api/resources/warehouses' },
+  { slug: 'api/resources/products', title: 'Products', group: 'API resources', href: '/docs/api/resources/products' },
+  { slug: 'api/resources/stock', title: 'Stock', group: 'API resources', href: '/docs/api/resources/stock' },
+  { slug: 'api/resources/shipments', title: 'Shipments', group: 'API resources', href: '/docs/api/resources/shipments' },
+  { slug: 'api/resources/shipping', title: 'Shipping', group: 'API resources', href: '/docs/api/resources/shipping' },
+  { slug: 'api/resources/deliveries', title: 'Deliveries', group: 'API resources', href: '/docs/api/resources/deliveries' },
+  { slug: 'api/resources/licenses', title: 'Licenses', group: 'API resources', href: '/docs/api/resources/licenses' },
+  { slug: 'api/resources/addresses', title: 'Addresses', group: 'API resources', href: '/docs/api/resources/addresses' },
+  { slug: 'api/resources/api-keys', title: 'API keys', group: 'API resources', href: '/docs/api/resources/api-keys' },
+  { slug: 'api/resources/webhooks', title: 'Webhooks', group: 'API resources', href: '/docs/api/resources/webhooks' },
+  { slug: 'api/resources/audit-log', title: 'Audit log', group: 'API resources', href: '/docs/api/resources/audit-log' },
+  { slug: 'api/resources/billing', title: 'Billing', group: 'API resources', href: '/docs/api/resources/billing' },
+  { slug: 'api/resources/integrations', title: 'Integrations', group: 'API resources', href: '/docs/api/resources/integrations' },
+
+  // Webhook events
+  { slug: 'api/webhooks/events/fulkruma.product.created', title: 'product.created', group: 'Webhook events', href: '/docs/api/webhooks/events/fulkruma.product.created' },
+  { slug: 'api/webhooks/events/fulkruma.stock.adjusted', title: 'stock.adjusted', group: 'Webhook events', href: '/docs/api/webhooks/events/fulkruma.stock.adjusted' },
+  { slug: 'api/webhooks/events/fulkruma.shipment.created', title: 'shipment.created', group: 'Webhook events', href: '/docs/api/webhooks/events/fulkruma.shipment.created' },
+  { slug: 'api/webhooks/events/fulkruma.delivery.created', title: 'delivery.created', group: 'Webhook events', href: '/docs/api/webhooks/events/fulkruma.delivery.created' },
+  { slug: 'api/webhooks/events/fulkruma.license.issued', title: 'license.issued', group: 'Webhook events', href: '/docs/api/webhooks/events/fulkruma.license.issued' },
+  { slug: 'api/webhooks/events/fulkruma.license.revoked', title: 'license.revoked', group: 'Webhook events', href: '/docs/api/webhooks/events/fulkruma.license.revoked' },
+
   // SDKs
   { slug: 'sdk', title: 'Overview', group: 'SDKs', href: '/docs/sdk' },
 ];
