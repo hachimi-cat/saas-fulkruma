@@ -9,12 +9,15 @@ router.use(requireAuth);
 
 const createSchema = z.object({
   name: z.string().min(1).max(120),
-  address: z.string().optional(),
-  city: z.string().optional(),
-  postal: z.string().optional(),
-  lat: z.number().optional(),
-  lng: z.number().optional(),
-  phone: z.string().optional(),
+  // The frontend WarehouseForm sends these as `value || null` when the
+  // (optional) field is left blank, so the schema must accept null — not
+  // just absent. Without .nullable() a name-only create 400s.
+  address: z.string().nullable().optional(),
+  city: z.string().nullable().optional(),
+  postal: z.string().nullable().optional(),
+  lat: z.number().nullable().optional(),
+  lng: z.number().nullable().optional(),
+  phone: z.string().nullable().optional(),
   isDefault: z.boolean().optional(),
 });
 
