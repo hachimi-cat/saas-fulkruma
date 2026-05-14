@@ -83,11 +83,12 @@ export async function hmacAuth(req: Request, res: Response, next: NextFunction) 
   const bodyJson = req.body && Object.keys(req.body).length > 0 ? JSON.stringify(req.body) : '';
   const bodyHash = sha256Hex(bodyJson);
 
-  // The SDK signs the full URL path including the /api/v1 mount prefix
-  // and excluding the query string. Express `req.path` strips the mount
-  // prefix when accessed inside a sub-router, so use req.originalUrl
-  // (split on '?' to drop the query).
-  const fullPath = (req.originalUrl ?? req.url).split('?')[0];
+  // The SDK signs the full URL path INCLUDING query string (and the
+  // /api/v1 mount prefix). Use req.originalUrl as-is so GET requests
+  // with query params (e.g. /api/v1/addresses?customer_id=cmpXXX)
+  // hash to the same canonical string the client signed. Mirrors
+  // plugipay's HMAC verifier (which also includes the query).
+  const fullPath = req.originalUrl ?? req.url;
   const stringToSign = `${req.method.toUpperCase()}\n${fullPath}\n${ts}\n${bodyHash}${idemPart}`;
 
   // Fetch the key; verify the key is active.
