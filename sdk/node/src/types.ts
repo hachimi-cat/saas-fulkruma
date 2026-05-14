@@ -132,6 +132,7 @@ export interface CustomerAddress {
   contactPhone: string;
   email: string | null;
   address: string;
+  note: string | null;
   postalCode: string | null;
   areaId: string | null;
   lat: number | null;

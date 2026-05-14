@@ -1,6 +1,6 @@
 {
   "name": "@forjio/fulkruma-node",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Official Node.js SDK for Fulkruma — stock, warehouses, shipping (Biteship), licenses, deliveries, API keys, audit log, billing, integrations status, stats, webhooks. Platform-partner mode for Storlaunch.",
   "type": "module",
   "main": "./dist/index.cjs",

@@ -243,10 +243,17 @@ export class FulkrumaClient {
       this.request<{ addresses: CustomerAddress[] }>({ method: 'GET', path: `/api/v1/addresses${qs(params)}` }),
     create: (input: {
       customerId: string; label: string; contactName: string; contactPhone: string;
-      email?: string; address: string; postalCode?: string; areaId?: string;
+      email?: string; address: string; note?: string; postalCode?: string; areaId?: string;
       lat?: number; lng?: number; isDefault?: boolean;
     }) => this.request<{ address: CustomerAddress }>({
       method: 'POST', path: '/api/v1/addresses', body: input,
+    }),
+    update: (id: string, patch: {
+      label?: string; contactName?: string; contactPhone?: string;
+      email?: string; address?: string; note?: string; postalCode?: string;
+      areaId?: string; lat?: number; lng?: number; isDefault?: boolean;
+    }) => this.request<{ address: CustomerAddress }>({
+      method: 'PATCH', path: `/api/v1/addresses/${id}`, body: patch,
     }),
     delete: (id: string) =>
       this.request<{ deleted: boolean }>({ method: 'DELETE', path: `/api/v1/addresses/${id}` }),

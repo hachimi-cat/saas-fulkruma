@@ -55,6 +55,35 @@ router.post('/', async (req, res) => {
   res.status(201).json(ok({ address: result }, req.requestId ?? 'req_unknown'));
 });
 
+// Partial update. `customerId` is intentionally not updatable — an address
+// can't be reassigned to a different customer. Passing `isDefault: true`
+// promotes this address and demotes the customer's other default in the
+// same transaction (mirrors the create path), so the storlaunch
+// set-default endpoint can route through here too.
+const updateSchema = createSchema.omit({ customerId: true }).partial();
+
+router.patch('/:id', async (req, res) => {
+  const accountId = req.auth?.accountId;
+  if (!accountId) return res.status(403).json(err('NO_ACCOUNT', 'token missing accountId', req.requestId ?? 'req_unknown'));
+  const parsed = updateSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json(err('VALIDATION', parsed.error.message, req.requestId ?? 'req_unknown'));
+  }
+  const row = await prisma.customerAddress.findFirst({ where: { id: req.params.id, accountId } });
+  if (!row) return res.status(404).json(err('NOT_FOUND', 'address not found', req.requestId ?? 'req_unknown'));
+  const data = parsed.data;
+  const result = await prisma.$transaction(async (tx) => {
+    if (data.isDefault) {
+      await tx.customerAddress.updateMany({
+        where: { customerId: row.customerId, isDefault: true, NOT: { id: row.id } },
+        data: { isDefault: false },
+      });
+    }
+    return tx.customerAddress.update({ where: { id: row.id }, data });
+  });
+  res.json(ok({ address: result }, req.requestId ?? 'req_unknown'));
+});
+
 router.delete('/:id', async (req, res) => {
   const accountId = req.auth?.accountId;
   if (!accountId) return res.status(403).json(err('NO_ACCOUNT', 'token missing accountId', req.requestId ?? 'req_unknown'));
