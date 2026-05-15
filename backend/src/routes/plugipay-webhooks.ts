@@ -11,7 +11,7 @@ import { Router } from 'express';
 import express from 'express';
 import { ok, err } from '@forjio/sdk/http';
 import crypto from 'node:crypto';
-import { applyInvoicePaid, applySubscriptionCanceled } from '../services/plugipay-billing.js';
+import { applyInvoicePaid, applySubscriptionCanceled, getPlatformClient } from '../services/plugipay-billing.js';
 import type { PlanKey } from '../lib/plans.js';
 
 const router = Router();
@@ -63,42 +63,64 @@ router.post('/', express.raw({ type: 'application/json' }), async (req, res) => 
 
   try {
     switch (event.type) {
-      case 'invoice.paid': {
-        const invoice = event.data as {
-          id: string;
-          customerId: string;
+      // Plugipay emits fully-qualified `plugipay.<entity>.<verb>.v1`
+      // types per ADR-0006. The bare `invoice.paid` / `subscription.
+      // canceled` we matched before never fired (F-002 drift).
+      case 'plugipay.invoice.paid.v1': {
+        // Envelope: `event.data.object` is the entity; reading
+        // `event.data` flat was the other half of F-002.
+        const obj = ((event.data as { object?: Record<string, unknown> })?.object ?? {}) as {
+          id?: string;
           subscriptionId?: string;
-          total: number;
-          currency: string;
+          total?: number;
+          currency?: string;
           metadata?: Record<string, unknown>;
           receiptUrl?: string;
         };
-        const md = (invoice.metadata ?? {}) as Record<string, unknown>;
-        const accountId = String(md.fulkrumaAccountId ?? '');
-        const tier = String(md.fulkrumaTier ?? '').toUpperCase() as PlanKey;
+        // Auto-issued subscription invoices have empty metadata —
+        // Plugipay stores the merchant linkage on the SUBSCRIPTION.
+        // Resolve it via SDK lookup (P-006 + L-002 pattern).
+        const subId = obj.subscriptionId;
+        if (!subId) break;
+        let accountId: string | undefined;
+        let tier: PlanKey | undefined;
+        let periodStart: Date | undefined;
+        let periodEnd: Date | undefined;
+        try {
+          const sub = await getPlatformClient().subscriptions.get(subId) as unknown as {
+            metadata?: { fulkrumaAccountId?: string; fulkrumaTier?: string };
+            currentPeriodStart?: string;
+            currentPeriodEnd?: string;
+          };
+          accountId = sub.metadata?.fulkrumaAccountId;
+          const t = (sub.metadata?.fulkrumaTier ?? '').toUpperCase();
+          if (t === 'STARTER' || t === 'GROWTH' || t === 'SCALE') tier = t as PlanKey;
+          if (sub.currentPeriodStart) periodStart = new Date(sub.currentPeriodStart);
+          if (sub.currentPeriodEnd) periodEnd = new Date(sub.currentPeriodEnd);
+        } catch (e) {
+          console.warn('[plugipay-webhook] could not fetch subscription', subId, (e as Error).message);
+        }
         if (!accountId || !tier) break;
-        // Period bounds come from the parent subscription on the SDK shape;
-        // fall back to a 30-day window from now if absent (defensive).
-        const sub = invoice as unknown as {
-          currentPeriodStart?: string;
-          currentPeriodEnd?: string;
-        };
         const now = new Date();
-        const start = sub.currentPeriodStart ? new Date(sub.currentPeriodStart) : now;
-        const end = sub.currentPeriodEnd
-          ? new Date(sub.currentPeriodEnd)
-          : new Date(now.getTime() + 30 * 24 * 3600 * 1000);
-        await applyInvoicePaid(accountId, tier, start, end, {
-          id: invoice.id,
-          amount: invoice.total,
-          currency: invoice.currency,
-          receiptUrl: invoice.receiptUrl,
-        });
+        await applyInvoicePaid(accountId, tier,
+          periodStart ?? now,
+          periodEnd ?? new Date(now.getTime() + 30 * 24 * 3600 * 1000),
+          {
+            id: obj.id ?? '',
+            amount: obj.total ?? 0,
+            currency: obj.currency ?? 'IDR',
+            receiptUrl: obj.receiptUrl,
+          },
+        );
         break;
       }
-      case 'subscription.canceled': {
-        const sub = event.data as { metadata?: Record<string, unknown> };
-        const md = (sub.metadata ?? {}) as Record<string, unknown>;
+      case 'plugipay.subscription.canceled.v1': {
+        // For subscription events `data.object` IS the subscription —
+        // its metadata is what startSubscription stamped at create time.
+        const obj = ((event.data as { object?: Record<string, unknown> })?.object ?? {}) as {
+          metadata?: Record<string, unknown>;
+        };
+        const md = (obj.metadata ?? {}) as Record<string, unknown>;
         const accountId = String(md.fulkrumaAccountId ?? '');
         if (!accountId) break;
         await applySubscriptionCanceled(accountId);
