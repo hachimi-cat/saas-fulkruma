@@ -93,6 +93,11 @@ jobs:
       - name: Build backend
         run: cd backend && npm ci && npx prisma generate && npm run build
       - name: Build frontend
+        env:
+          # NEXT_PUBLIC_* vars are inlined by Next.js at build time, so
+          # they have to be present in the build runner's environment
+          # (not just on the droplet's .env). Source from GH secret.
+          NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: ${{ secrets.GOOGLE_MAPS_API_KEY }}
         run: cd frontend && npm ci && npm run build
       - name: Upload backend dist
         uses: actions/upload-artifact@v4
