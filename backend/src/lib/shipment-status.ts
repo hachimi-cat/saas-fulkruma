@@ -21,6 +21,32 @@ export interface ShipmentStatusDescriptor {
 }
 
 export const SHIPMENT_STATUSES: Record<string, ShipmentStatusDescriptor> = {
+  // ─── Storlaunch ManualOrder.fulfillmentStatus values ────────────
+  // These are storlaunch-managed; surfaced here so the same descriptor
+  // module serves both the granular Biteship view + the high-level
+  // ManualOrder flow on the buyer order tracking page.
+  preparing: {
+    status: 'preparing',
+    label: 'Preparing',
+    merchantDescription: 'You\'re preparing the order — packing, printing the label, etc.',
+    buyerDescription: 'The seller is preparing your order.',
+    stage: 'pre_pickup',
+  },
+  ready_to_ship: {
+    status: 'ready_to_ship',
+    label: 'Ready to ship',
+    merchantDescription: 'Order is packed and ready. Hand it to the courier next.',
+    buyerDescription: 'Your order is packed and waiting for the courier.',
+    stage: 'pre_pickup',
+  },
+  shipped: {
+    status: 'shipped',
+    label: 'Shipped',
+    merchantDescription: 'You\'ve handed the parcel to the courier; it\'s on its way.',
+    buyerDescription: 'Your order is on its way to you.',
+    stage: 'in_flight',
+  },
+  // ─── Biteship statuses (Fulkruma) ──────────────────────────────
   pending: {
     status: 'pending',
     label: 'Pending',
