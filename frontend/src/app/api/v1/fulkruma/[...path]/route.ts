@@ -42,7 +42,16 @@ async function handle(
     headers.set(key, value);
   });
   headers.set('x-fulkruma-internal-secret', internalSecret());
-  headers.set('x-fulkruma-account-id', session.huudisUserId);
+  // The active workspace context — if the client passed X-Account-Id
+  // (e.g., the merchant picked a partner-provisioned workspace like
+  // a Storlaunch merchant's), use that. Otherwise fall back to the
+  // user's own Huudis id which == accountId for single-user fulkruma.
+  // Proper session-persisted switcher = S-050 follow-up. For now this
+  // lets the dashboard read cirengs's data by setting:
+  //   localStorage.setItem('fulkruma_account_id', 'acc_xxx')
+  // and reloading. Same primitive Storlaunch uses.
+  const overrideAccountId = req.headers.get('x-account-id') ?? undefined;
+  headers.set('x-fulkruma-account-id', overrideAccountId || session.huudisUserId);
   headers.set('x-fulkruma-user-id', session.huudisUserId);
 
   const init: RequestInit = { method: req.method, headers };

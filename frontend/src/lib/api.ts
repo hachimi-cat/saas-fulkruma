@@ -35,6 +35,14 @@ export async function api<T>(
   if (init.body && !headers.has('content-type')) {
     headers.set('content-type', 'application/json');
   }
+  // S-050-stub: workspace context override. Set via
+  //   localStorage.setItem('fulkruma_account_id', 'acc_xxx')
+  // to access a partner-provisioned workspace (e.g. a Storlaunch
+  // merchant's). Empty → defaults to user's own Huudis-id workspace.
+  if (typeof window !== 'undefined' && !headers.has('x-account-id')) {
+    const accountOverride = localStorage.getItem('fulkruma_account_id');
+    if (accountOverride) headers.set('x-account-id', accountOverride);
+  }
   const res = await fetch(url, { ...init, headers, credentials: 'include' });
   let body: Envelope<T> | { error?: { code: string; message: string } };
   try {
