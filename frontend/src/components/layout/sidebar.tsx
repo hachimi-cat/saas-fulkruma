@@ -64,6 +64,7 @@ const navSections: NavSection[] = [
     label: 'Physical',
     items: [
       { href: '/dashboard/shipments', label: 'Shipments', icon: Truck },
+      { href: '/dashboard/shipping-credits', label: 'Shipping Credits', icon: Wallet },
       { href: '/dashboard/stock', label: 'Inventory', icon: Boxes },
       { href: '/dashboard/warehouses', label: 'Warehouse', icon: Warehouse },
       { href: '/dashboard/shipping', label: 'Shipping', icon: Send },
