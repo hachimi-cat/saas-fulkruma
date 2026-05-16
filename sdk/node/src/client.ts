@@ -275,6 +275,50 @@ export class FulkrumaClient {
     }) => this.request<{ shipment: Shipment }>({
       method: 'POST', path: '/api/v1/shipments', body: input, idempotencyKey: this.genIdem(),
     }),
+    // F-004 / S-045 — confirm a Biteship draft → real order (driver
+    // dispatched). Gated server-side by ShippingCredit balance (S-046).
+    confirmPickup: (id: string) =>
+      this.request<{ shipment: Shipment }>({
+        method: 'POST', path: `/api/v1/shipments/${id}/confirm-pickup`, idempotencyKey: this.genIdem(),
+      }),
+    cancel: (id: string, reason?: string) =>
+      this.request<{ shipment: Shipment }>({
+        method: 'POST', path: `/api/v1/shipments/${id}/cancel`, body: { reason },
+      }),
+  };
+
+  // S-046: per-merchant prepaid shipping credit + ledger.
+  shippingCredits = {
+    get: () => this.request<{ accountId: string; balance: number; updatedAt: string }>({
+      method: 'GET', path: '/api/v1/shipping-credits',
+    }),
+    listTransactions: (params: { limit?: number; cursor?: string } = {}) =>
+      this.request<{
+        data: Array<{
+          id: string;
+          kind: 'topup' | 'shipment_charge' | 'shipment_refund' | 'manual_adjustment';
+          amount: number;
+          balanceAfter: number;
+          shipmentId: string | null;
+          externalRef: string | null;
+          memo: string | null;
+          createdAt: string;
+        }>;
+        nextCursor: string | null;
+      }>({ method: 'GET', path: `/api/v1/shipping-credits/transactions${qs(params)}` }),
+    topUp: (input: { amount: number; externalRef?: string; memo?: string }) =>
+      this.request<{ accountId: string; balance: number; updatedAt: string }>({
+        method: 'POST', path: '/api/v1/shipping-credits/topup', body: input, idempotencyKey: this.genIdem(),
+      }),
+    adjust: (input: {
+      amount: number;
+      kind: 'manual_adjustment' | 'shipment_refund';
+      shipmentId?: string;
+      externalRef?: string;
+      memo?: string;
+    }) => this.request<{ accountId: string; balance: number; updatedAt: string }>({
+      method: 'POST', path: '/api/v1/shipping-credits/adjust', body: input, idempotencyKey: this.genIdem(),
+    }),
   };
 
   shipping = {

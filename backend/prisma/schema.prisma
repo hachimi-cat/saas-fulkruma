@@ -642,3 +642,51 @@ model BiteshipConfig {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 }
+
+/// S-046: Per-merchant prepaid shipping credit. Biteship has no
+/// multi-tenant billing on its API — there's just one Saldo per
+/// Biteship API key, and the only documented payment alternatives are
+/// "top up Saldo" or (dashboard-only) "Invoice". So we operate a single
+/// Biteship Saldo for Forjio + bookkeep per-merchant prepaid credit
+/// here. Merchants top up via Plugipay (Midtrans) → balance increments;
+/// each confirmed pickup debits the cost atomically before calling
+/// Biteship. Refunds on cancel credit it back.
+///
+/// One row per merchant; created lazily on first top-up.
+model ShippingCredit {
+  accountId String   @id
+  /// IDR whole units (no fractional Rupiah).
+  balance   Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  transactions ShippingCreditTransaction[]
+}
+
+enum ShippingCreditTransactionKind {
+  topup              // prepaid credit added via Plugipay payment
+  shipment_charge    // debit when confirmPickup succeeds
+  shipment_refund    // credit when shipment cancels post-pickup
+  manual_adjustment  // ops/promo credit, also used for backfills
+}
+
+model ShippingCreditTransaction {
+  id          String                          @id @default(cuid())
+  accountId   String
+  kind        ShippingCreditTransactionKind
+  /// IDR; positive = credit, negative = debit.
+  amount      Int
+  /// Resulting balance AFTER this transaction (denormalized for audit).
+  balanceAfter Int
+  /// Linked shipment when kind ∈ {shipment_charge, shipment_refund}.
+  shipmentId  String?
+  /// Linked Plugipay invoice/checkout id when kind = topup.
+  externalRef String?
+  memo        String?  @db.Text
+  createdAt   DateTime @default(now())
+
+  credit ShippingCredit @relation(fields: [accountId], references: [accountId], onDelete: Cascade)
+
+  @@index([accountId, createdAt(sort: Desc)])
+  @@index([shipmentId])
+}

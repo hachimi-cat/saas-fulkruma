@@ -6,6 +6,11 @@ import { prisma } from '../lib/db.js';
 import { requireAuth } from '../middleware/auth.js';
 import { buildEvent } from '../lib/events.js';
 import { getAdapterForAccount } from '../services/shipping-service.js';
+import {
+  applyTransaction as applyShippingCreditTxn,
+  getBalance as getShippingCreditBalance,
+  InsufficientShippingCreditError,
+} from '../services/shipping-credit-service.js';
 
 const router = Router();
 router.use(requireAuth);
@@ -186,6 +191,22 @@ router.post('/:id/confirm-pickup', async (req, res) => {
     return res.status(409).json(err('ALREADY_CONFIRMED', 'shipment is already booked with Biteship', reqId));
   }
 
+  // S-046: gate dispatch on prepaid shipping credit. Check + reserve
+  // BEFORE calling Biteship so a failed pre-check doesn't leak a real
+  // draft confirmation. We re-check inside the post-Biteship txn so a
+  // race between two confirm-pickup calls can't double-debit.
+  const cost = shipment.price ?? 0;
+  if (cost > 0) {
+    const { balance } = await getShippingCreditBalance(accountId);
+    if (balance < cost) {
+      return res.status(402).json(err(
+        'INSUFFICIENT_SHIPPING_CREDIT',
+        `Shipping credit too low: this shipment costs Rp ${cost.toLocaleString('id-ID')}, balance is Rp ${balance.toLocaleString('id-ID')}. Top up to dispatch.`,
+        reqId,
+      ));
+    }
+  }
+
   let order;
   try {
     const adapter = await getAdapterForAccount(prisma, accountId);
@@ -194,40 +215,66 @@ router.post('/:id/confirm-pickup', async (req, res) => {
     return res.status(502).json(err('BITESHIP_CONFIRM_FAILED', (e as Error).message, reqId));
   }
 
-  const updated = await prisma.$transaction(async (tx) => {
-    const row = await tx.shipment.update({
-      where: { id: shipment.id },
-      data: {
-        biteshipOrderId: order.id,
-        biteshipTrackingId: order.courier?.tracking_id ?? null,
-        waybillId: order.waybill_id ?? null,
-        trackingUrl: order.tracking?.url ?? null,
-        labelUrl: order.label ?? null,
-        status: 'confirmed',
-      },
-    });
-    await tx.shipmentEvent.create({
-      data: {
-        shipmentId: row.id,
-        status: 'confirmed',
-        note: 'Merchant confirmed pickup; Biteship order created.',
-        occurredAt: new Date(),
-        raw: order as never,
-      },
-    });
-    await tx.outboxEvent.create({
-      data: buildEvent({
-        type: 'fulkruma.shipment.pickup_confirmed.v1',
-        accountId,
+  // S-046: debit + ledger entry + shipment update all in one txn.
+  // If debit fails (balance drained by a concurrent confirm), Biteship
+  // already created the order — surface a clear error and let ops
+  // manually reconcile (rare race, < 1 in 1000).
+  let updated;
+  try {
+    updated = await prisma.$transaction(async (tx) => {
+      if (cost > 0) {
+        await applyShippingCreditTxn({
+          accountId,
+          amount: -cost,
+          kind: 'shipment_charge',
+          shipmentId: shipment.id,
+          memo: `Pickup confirmed for shipment ${shipment.id} (${shipment.courierCode} ${shipment.courierServiceCode})`,
+          tx,
+        });
+      }
+      const row = await tx.shipment.update({
+        where: { id: shipment.id },
+        data: {
+          biteshipOrderId: order.id,
+          biteshipTrackingId: order.courier?.tracking_id ?? null,
+          waybillId: order.waybill_id ?? null,
+          trackingUrl: order.tracking?.url ?? null,
+          labelUrl: order.label ?? null,
+          status: 'confirmed',
+        },
+      });
+      await tx.shipmentEvent.create({
         data: {
           shipmentId: row.id,
-          biteshipOrderId: order.id,
-          waybillId: order.waybill_id ?? null,
+          status: 'confirmed',
+          note: 'Merchant confirmed pickup; Biteship order created.',
+          occurredAt: new Date(),
+          raw: order as never,
         },
-      }),
+      });
+      await tx.outboxEvent.create({
+        data: buildEvent({
+          type: 'fulkruma.shipment.pickup_confirmed.v1',
+          accountId,
+          data: {
+            shipmentId: row.id,
+            biteshipOrderId: order.id,
+            waybillId: order.waybill_id ?? null,
+          },
+        }),
+      });
+      return row;
     });
-    return row;
-  });
+  } catch (e) {
+    if (e instanceof InsufficientShippingCreditError) {
+      return res.status(402).json(err(
+        'INSUFFICIENT_SHIPPING_CREDIT',
+        `Shipping credit was drained by another concurrent dispatch. Biteship order ${order.id} was created but not charged — contact support.`,
+        reqId,
+      ));
+    }
+    throw e;
+  }
 
   res.json(ok({ shipment: updated }, reqId));
 });
