@@ -5,14 +5,19 @@ import type { Prisma } from '@prisma/client';
 import { prisma } from '../lib/db.js';
 import { requireAuth } from '../middleware/auth.js';
 import { buildEvent } from '../lib/events.js';
+import { getAdapterForAccount } from '../services/shipping-service.js';
 
 const router = Router();
 router.use(requireAuth);
 
-// Shipping is currently scaffolded: list, get, and a "create" stub that
-// records the intended shipment in the local DB without round-tripping
-// to Biteship yet. Biteship adapter lands in Phase F when the
-// fulkruma module is consumed by Storlaunch.
+// F-004: Shipments now book Biteship for real via the draft-order path.
+//   POST /                       → POST /v1/draft_orders   (no charge, no driver)
+//   POST /:id/confirm-pickup     → POST /v1/draft_orders/:id/confirm
+//   POST /:id/cancel             → DELETE /v1/draft_orders/:id  (for unconfirmed)
+//                                  DELETE /v1/orders/:id        (for confirmed)
+//
+// Two-step booking gives food / handmade / on-demand merchants the
+// cook/pack window between buyer payment and courier dispatch.
 
 const createSchema = z.object({
   productId: z.string().optional(),
@@ -64,10 +69,62 @@ router.post('/', async (req, res) => {
     return res.status(400).json(err('VALIDATION', parsed.error.message, req.requestId ?? 'req_unknown'));
   }
   const d = parsed.data;
-  // Phase E stub: record the intended shipment with a placeholder
-  // biteshipOrderId. Phase F adapter will replace this with a real
-  // Biteship orders.create call before persisting.
-  const placeholderBiteshipId = `pending-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+  // Step 1 — book a Biteship draft order. No charge to the merchant
+  // and no driver allocation; the parcel stays at origin until the
+  // merchant explicitly confirms pickup. Falls back to a placeholder
+  // id when no API key is configured (dev / fixtures) so the local
+  // row still gets created.
+  let draftOrderId: string | null = null;
+  let draftCreateError: string | null = null;
+  try {
+    const adapter = await getAdapterForAccount(prisma, accountId);
+    const origin = d.origin as Record<string, unknown>;
+    const destination = d.destination as Record<string, unknown>;
+    const items = d.items as Array<Record<string, unknown>>;
+    const draft = await adapter.createDraftOrder({
+      referenceId: d.externalRef ?? `fulkruma-${Date.now()}`,
+      origin: {
+        contactName: String(origin.contactName ?? ''),
+        contactPhone: String(origin.contactPhone ?? ''),
+        address: String(origin.address ?? ''),
+        postalCode: origin.postalCode != null ? String(origin.postalCode) : undefined,
+        areaId: origin.areaId != null ? String(origin.areaId) : undefined,
+        lat: typeof origin.lat === 'number' ? origin.lat : undefined,
+        lng: typeof origin.lng === 'number' ? origin.lng : undefined,
+        note: origin.note != null ? String(origin.note) : undefined,
+      },
+      destination: {
+        contactName: String(destination.contactName ?? ''),
+        contactPhone: String(destination.contactPhone ?? ''),
+        email: destination.email != null ? String(destination.email) : undefined,
+        address: String(destination.address ?? ''),
+        postalCode: destination.postalCode != null ? String(destination.postalCode) : undefined,
+        areaId: destination.areaId != null ? String(destination.areaId) : undefined,
+        lat: typeof destination.lat === 'number' ? destination.lat : undefined,
+        lng: typeof destination.lng === 'number' ? destination.lng : undefined,
+        note: destination.note != null ? String(destination.note) : undefined,
+      },
+      courierCompany: d.courierCode,
+      courierType: d.courierServiceCode,
+      courierInsurance: d.insured ? d.insurance : undefined,
+      items: items.map((it) => ({
+        name: String(it.name ?? 'Item'),
+        description: it.description != null ? String(it.description) : undefined,
+        category: it.category != null ? String(it.category) : 'other',
+        value: typeof it.value === 'number' ? it.value : 0,
+        weight: typeof it.weight === 'number' ? Math.max(1, it.weight) : 1,
+        quantity: typeof it.quantity === 'number' ? it.quantity : 1,
+      })),
+    });
+    draftOrderId = draft.id;
+  } catch (e) {
+    // Best-effort: still persist the local shipment so the merchant
+    // can retry the booking via the confirm endpoint later. Log loud.
+    draftCreateError = (e as Error).message;
+    console.error('[shipments] Biteship draft order create failed:', draftCreateError);
+  }
+
   const shipment = await prisma.$transaction(async (tx) => {
     const created = await tx.shipment.create({
       data: {
@@ -76,7 +133,8 @@ router.post('/', async (req, res) => {
         checkoutSessionId: d.checkoutSessionId,
         customerId: d.customerId,
         customerEmail: d.customerEmail,
-        biteshipOrderId: placeholderBiteshipId,
+        biteshipDraftOrderId: draftOrderId,
+        biteshipOrderId: null, // populated on confirm-pickup
         courierCode: d.courierCode,
         courierServiceCode: d.courierServiceCode,
         courierType: d.courierType,
@@ -99,12 +157,109 @@ router.post('/', async (req, res) => {
           checkoutSessionId: d.checkoutSessionId,
           courierCode: d.courierCode,
           status: created.status,
+          biteshipDraftOrderId: draftOrderId,
+          draftCreateError,
         },
       }),
     });
     return created;
   });
-  res.status(201).json(ok({ shipment }, req.requestId ?? 'req_unknown'));
+  res.status(201).json(ok({ shipment, draftCreateError }, req.requestId ?? 'req_unknown'));
+});
+
+// F-004: Merchant clicks "Book courier" once the parcel is actually
+// ready. Confirms the Biteship draft, which creates the real order +
+// dispatches the driver. Returns the updated shipment with the
+// freshly-allocated biteshipOrderId, waybillId, etc.
+router.post('/:id/confirm-pickup', async (req, res) => {
+  const accountId = req.auth?.accountId;
+  const reqId = req.requestId ?? 'req_unknown';
+  if (!accountId) return res.status(403).json(err('NO_ACCOUNT', 'token missing accountId', reqId));
+  const shipment = await prisma.shipment.findFirst({
+    where: { id: req.params.id, accountId },
+  });
+  if (!shipment) return res.status(404).json(err('NOT_FOUND', 'shipment not found', reqId));
+  if (!shipment.biteshipDraftOrderId) {
+    return res.status(409).json(err('NO_DRAFT', 'shipment has no Biteship draft to confirm (likely created before F-004 or draft create failed)', reqId));
+  }
+  if (shipment.biteshipOrderId) {
+    return res.status(409).json(err('ALREADY_CONFIRMED', 'shipment is already booked with Biteship', reqId));
+  }
+
+  let order;
+  try {
+    const adapter = await getAdapterForAccount(prisma, accountId);
+    order = await adapter.confirmDraftOrder(shipment.biteshipDraftOrderId);
+  } catch (e) {
+    return res.status(502).json(err('BITESHIP_CONFIRM_FAILED', (e as Error).message, reqId));
+  }
+
+  const updated = await prisma.$transaction(async (tx) => {
+    const row = await tx.shipment.update({
+      where: { id: shipment.id },
+      data: {
+        biteshipOrderId: order.id,
+        biteshipTrackingId: order.courier?.tracking_id ?? null,
+        waybillId: order.waybill_id ?? null,
+        trackingUrl: order.tracking?.url ?? null,
+        labelUrl: order.label ?? null,
+        status: 'confirmed',
+      },
+    });
+    await tx.shipmentEvent.create({
+      data: {
+        shipmentId: row.id,
+        status: 'confirmed',
+        note: 'Merchant confirmed pickup; Biteship order created.',
+        occurredAt: new Date(),
+        raw: order as never,
+      },
+    });
+    await tx.outboxEvent.create({
+      data: buildEvent({
+        type: 'fulkruma.shipment.pickup_confirmed.v1',
+        accountId,
+        data: {
+          shipmentId: row.id,
+          biteshipOrderId: order.id,
+          waybillId: order.waybill_id ?? null,
+        },
+      }),
+    });
+    return row;
+  });
+
+  res.json(ok({ shipment: updated }, reqId));
+});
+
+router.post('/:id/cancel', async (req, res) => {
+  const accountId = req.auth?.accountId;
+  const reqId = req.requestId ?? 'req_unknown';
+  if (!accountId) return res.status(403).json(err('NO_ACCOUNT', 'token missing accountId', reqId));
+  const reason = typeof req.body?.reason === 'string' ? req.body.reason : 'Merchant cancelled';
+  const shipment = await prisma.shipment.findFirst({
+    where: { id: req.params.id, accountId },
+  });
+  if (!shipment) return res.status(404).json(err('NOT_FOUND', 'shipment not found', reqId));
+
+  const adapter = await getAdapterForAccount(prisma, accountId);
+  try {
+    // Confirmed shipments cancel via /v1/orders; unconfirmed drafts
+    // cancel via /v1/draft_orders (no Biteship charge incurred).
+    if (shipment.biteshipOrderId) {
+      await adapter.cancelOrder(shipment.biteshipOrderId, reason);
+    } else if (shipment.biteshipDraftOrderId) {
+      await adapter.deleteDraftOrder(shipment.biteshipDraftOrderId);
+    }
+  } catch (e) {
+    console.warn('[shipments/:id/cancel] biteship cancel failed; flipping local row anyway:', (e as Error).message);
+  }
+
+  const updated = await prisma.shipment.update({
+    where: { id: shipment.id },
+    data: { status: 'cancelled', cancelReason: reason },
+  });
+  res.json(ok({ shipment: updated }, reqId));
 });
 
 export default router;

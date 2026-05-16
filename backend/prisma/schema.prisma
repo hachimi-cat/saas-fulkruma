@@ -431,7 +431,14 @@ model Shipment {
   checkoutSessionId   String?
   customerId          String?
   customerEmail       String?
-  biteshipOrderId     String         @unique
+  // Biteship two-step booking (F-004). Shipments now start as drafts
+  // (no charge, no courier dispatch) so merchants can prep / cook / pack
+  // before the driver is allocated. `biteshipDraftOrderId` is set on
+  // shipment.create; `biteshipOrderId` only populates after the merchant
+  // calls confirm-pickup. Either one (but not both) being present is
+  // valid; both present after confirm.
+  biteshipDraftOrderId String?        @unique
+  biteshipOrderId     String?         @unique
   biteshipTrackingId  String?
   waybillId           String?
   courierCode         String

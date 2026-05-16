@@ -49,9 +49,9 @@ export const SHIPMENT_STATUSES: Record<string, ShipmentStatusDescriptor> = {
   // ─── Biteship statuses (Fulkruma) ──────────────────────────────
   pending: {
     status: 'pending',
-    label: 'Pending',
-    merchantDescription: 'We\'ve booked the shipment with the courier and are waiting for them to confirm.',
-    buyerDescription: 'Your order is being prepared — the courier hasn\'t accepted the booking yet.',
+    label: 'Awaiting pickup',
+    merchantDescription: 'Draft saved with Biteship — no courier dispatched yet. Click "Book courier" once the parcel is packed and ready.',
+    buyerDescription: 'The seller is preparing your order. They\'ll hand it to the courier once it\'s ready.',
     stage: 'pre_pickup',
   },
   confirmed: {

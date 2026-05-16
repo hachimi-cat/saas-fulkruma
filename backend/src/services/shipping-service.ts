@@ -109,6 +109,17 @@ export interface BiteshipOrder {
   label?: string; // PDF URL
 }
 
+// Returned by POST /v1/draft_orders. Shape is the same as a regular
+// order minus waybill / tracking / label fields — those only appear
+// after the draft is confirmed (POST /v1/draft_orders/:id/confirm).
+export interface BiteshipDraftOrder {
+  id: string;
+  status: 'placed' | 'ready' | 'confirmed';
+  courier?: { company: string; type: string };
+  price?: number;
+  reference_id?: string;
+}
+
 export interface BiteshipTrackingEvent {
   status: string;
   note?: string;
@@ -310,7 +321,21 @@ export class BiteshipAdapter {
   }
 
   // ─── Orders ──────────────────────────────────────────────────────────
-  async createOrder(params: CreateOrderParams): Promise<BiteshipOrder> {
+  //
+  // Two paths into a confirmed Biteship order:
+  //
+  // 1. createOrder() — immediate dispatch. Driver gets allocated right
+  //    away. Used by flows that don't need a "prep" gap (digital +
+  //    physical-with-ready-stock merchants who pre-pack).
+  //
+  // 2. createDraftOrder() + confirmDraftOrder() — two-step booking.
+  //    Draft holds no charge / no allocation. Merchant clicks "Book
+  //    courier" when the parcel is actually ready, then confirm()
+  //    flips it into a real order and dispatch begins. The right
+  //    default for food / handmade / on-demand merchants who need
+  //    cook + pack time after the buyer pays.
+
+  private buildOrderBody(params: CreateOrderParams): Record<string, unknown> {
     const body: Record<string, unknown> = {
       reference_id: params.referenceId,
       shipper_contact_name: params.origin.contactName,
@@ -351,11 +376,26 @@ export class BiteshipAdapter {
         quantity: i.quantity,
       })),
     };
-
-    // Strip undefined keys
     for (const k of Object.keys(body)) if (body[k] === undefined) delete body[k];
+    return body;
+  }
 
-    return await this.request<BiteshipOrder>('POST', '/v1/orders', body);
+  async createOrder(params: CreateOrderParams): Promise<BiteshipOrder> {
+    return await this.request<BiteshipOrder>('POST', '/v1/orders', this.buildOrderBody(params));
+  }
+
+  async createDraftOrder(params: CreateOrderParams): Promise<BiteshipDraftOrder> {
+    return await this.request<BiteshipDraftOrder>('POST', '/v1/draft_orders', this.buildOrderBody(params));
+  }
+
+  /** Confirms a draft and creates the real order (charges + dispatch). */
+  async confirmDraftOrder(draftOrderId: string): Promise<BiteshipOrder> {
+    return await this.request<BiteshipOrder>('POST', `/v1/draft_orders/${encodeURIComponent(draftOrderId)}/confirm`, {});
+  }
+
+  /** Delete an unconfirmed draft — no Biteship charge, soft cancel. */
+  async deleteDraftOrder(draftOrderId: string): Promise<{ success: boolean }> {
+    return await this.request<{ success: boolean }>('DELETE', `/v1/draft_orders/${encodeURIComponent(draftOrderId)}`);
   }
 
   async getOrder(orderId: string): Promise<BiteshipOrder> {
@@ -655,7 +695,13 @@ export async function cancelShipment(
     throw new Error(`Cannot cancel shipment in status ${shipment.status}`);
   }
   const ad = adapter ?? await getAdapterForAccount(prisma, shipment.accountId);
-  await ad.cancelOrder(shipment.biteshipOrderId, reason);
+  // F-004: confirmed shipments cancel via /v1/orders; unconfirmed
+  // drafts (biteshipOrderId still null) cancel via /v1/draft_orders.
+  if (shipment.biteshipOrderId) {
+    await ad.cancelOrder(shipment.biteshipOrderId, reason);
+  } else if (shipment.biteshipDraftOrderId) {
+    await ad.deleteDraftOrder(shipment.biteshipDraftOrderId);
+  }
   await prisma.shipment.update({
     where: { id: shipmentId },
     data: { status: 'cancelled', cancelReason: reason },

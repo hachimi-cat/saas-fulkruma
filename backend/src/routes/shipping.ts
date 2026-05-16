@@ -408,6 +408,11 @@ router.get('/shipments/:id/label', requireAuth, async (req, res, next) => {
       return res.status(404).json(err('NOT_FOUND', 'Shipment not found', rid(req)));
     }
     if (!shipment.labelUrl) {
+      if (!shipment.biteshipOrderId) {
+        // Draft state — no real order yet, so no label. The merchant
+        // hasn't clicked "Book courier" yet.
+        return res.status(409).json(err('NOT_READY', 'Label is not available until the courier is booked.', rid(req)));
+      }
       const adapter = await getAdapterForAccount(prisma, accountId);
       const order = await adapter.getOrder(shipment.biteshipOrderId);
       if (order.label) {
