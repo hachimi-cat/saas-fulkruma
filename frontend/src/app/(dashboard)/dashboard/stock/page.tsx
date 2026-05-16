@@ -1,10 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Boxes, Plus } from 'lucide-react';
+import { Boxes, Loader2, Plus } from 'lucide-react';
 import { api, type VariantStock, type Warehouse, type StockMovement } from '@/lib/api';
-import { PageHeader } from '@/components/dashboard/page-header';
-import { Modal, Field, ErrorBox, Loading, EmptyState, Button } from '@/components/dashboard/ui';
+import { Modal, Field, ErrorBox, Button } from '@/components/dashboard/ui';
+import { DataTable, type Column, type FilterDef } from '@/components/data-table';
 
 const REASONS = [
   'manual_adjust',
@@ -30,9 +30,9 @@ export default function StockPage() {
   async function reload() {
     try {
       const [s, w, m] = await Promise.all([
-        api<{ stock: VariantStock[] }>('/stock/levels'),
-        api<{ warehouses: Warehouse[] }>('/warehouses'),
-        api<{ movements: StockMovement[] }>('/stock/movements'),
+        api<{ stock: VariantStock[] }>('/stock/levels?limit=100'),
+        api<{ warehouses: Warehouse[] }>('/warehouses?limit=100'),
+        api<{ movements: StockMovement[] }>('/stock/movements?limit=100'),
       ]);
       setStock(s.stock);
       setWarehouses(w.warehouses);
@@ -41,20 +41,148 @@ export default function StockPage() {
   }
   useEffect(() => { reload(); }, []);
 
-  return (
-    <div className="">
-      <PageHeader
-        icon={Boxes}
-        title="Inventory"
-        description="On-hand quantity per (variant × warehouse) and the audit trail of every movement."
-        action={
-          <Button onClick={() => setShowForm(true)} disabled={warehouses.length === 0}>
-            <Plus size={14} /> Adjust stock
-          </Button>
-        }
-      />
+  const whName = (id: string) => warehouses.find((w) => w.id === id)?.name ?? id;
 
-      <div className="mb-4 flex items-center gap-1 rounded-lg border border-border bg-card p-1">
+  const levelColumns: Column<VariantStock>[] = [
+    {
+      key: 'sku',
+      header: 'SKU',
+      sortable: true,
+      sortValue: (s) => s.variantId,
+      searchValue: (s) => `${s.variantId} ${s.warehouse.name}`,
+      cell: (s) => <span className="font-mono text-xs">{s.variantId}</span>,
+    },
+    {
+      key: 'warehouse',
+      header: 'Warehouse',
+      sortable: true,
+      sortValue: (s) => s.warehouse.name,
+      cell: (s) => <span className="text-muted-foreground">{s.warehouse.name}</span>,
+    },
+    {
+      key: 'onhand',
+      header: 'On-hand',
+      align: 'right',
+      sortable: true,
+      sortValue: (s) => s.quantity,
+      cell: (s) => (
+        <span>
+          <span className="font-mono tabular-nums">{s.quantity}</span>
+          {s.quantity > 0 && s.quantity < LOW_THRESHOLD && (
+            <span className="ml-2 rounded-md bg-brand-50 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider text-brand-700">
+              low
+            </span>
+          )}
+          {s.quantity === 0 && (
+            <span className="ml-2 rounded-md bg-destructive/10 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider text-destructive">
+              out
+            </span>
+          )}
+        </span>
+      ),
+    },
+    {
+      key: 'updated',
+      header: 'Updated',
+      align: 'right',
+      sortable: true,
+      sortValue: (s) => new Date(s.updatedAt).getTime(),
+      cell: (s) => <span className="text-xs text-muted-foreground">{new Date(s.updatedAt).toLocaleString()}</span>,
+    },
+  ];
+
+  const levelFilters: FilterDef<VariantStock>[] = [
+    {
+      key: 'warehouse',
+      label: 'Warehouse',
+      accessor: (s) => s.warehouseId,
+      options: warehouses.map((w) => ({ value: w.id, label: w.name })),
+    },
+    {
+      key: 'level',
+      label: 'Level',
+      accessor: (s) => (s.quantity === 0 ? 'out' : s.quantity < LOW_THRESHOLD ? 'low' : 'ok'),
+      options: [
+        { value: 'ok', label: 'OK' },
+        { value: 'low', label: 'Low' },
+        { value: 'out', label: 'Out' },
+      ],
+    },
+  ];
+
+  const movementColumns: Column<StockMovement>[] = [
+    {
+      key: 'when',
+      header: 'When',
+      sortable: true,
+      sortValue: (m) => new Date(m.createdAt).getTime(),
+      cell: (m) => <span className="text-xs text-muted-foreground">{new Date(m.createdAt).toLocaleString()}</span>,
+    },
+    {
+      key: 'sku',
+      header: 'SKU',
+      sortable: true,
+      sortValue: (m) => m.variantId,
+      searchValue: (m) => `${m.variantId} ${whName(m.warehouseId)} ${m.reason}`,
+      cell: (m) => <span className="font-mono text-xs">{m.variantId}</span>,
+    },
+    {
+      key: 'warehouse',
+      header: 'Warehouse',
+      sortable: true,
+      sortValue: (m) => whName(m.warehouseId),
+      cell: (m) => <span className="text-xs text-muted-foreground">{whName(m.warehouseId)}</span>,
+    },
+    {
+      key: 'reason',
+      header: 'Reason',
+      sortable: true,
+      sortValue: (m) => m.reason,
+      cell: (m) => (
+        <span className="font-mono text-[11px] uppercase tracking-wider text-muted-foreground">
+          {m.reason.replace(/_/g, ' ')}
+        </span>
+      ),
+    },
+    {
+      key: 'delta',
+      header: 'Δ',
+      align: 'right',
+      sortable: true,
+      sortValue: (m) => m.delta,
+      cell: (m) => (
+        <span className={`font-mono tabular-nums ${m.delta < 0 ? 'text-destructive' : 'text-brand-700'}`}>
+          {m.delta > 0 ? '+' : ''}{m.delta}
+        </span>
+      ),
+    },
+  ];
+
+  const movementFilters: FilterDef<StockMovement>[] = [
+    { key: 'reason', label: 'Reason', accessor: (m) => m.reason },
+    {
+      key: 'warehouse',
+      label: 'Warehouse',
+      accessor: (m) => m.warehouseId,
+      options: warehouses.map((w) => ({ value: w.id, label: w.name })),
+    },
+  ];
+
+  return (
+    <div className="mx-auto max-w-5xl space-y-6">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-bold sm:text-2xl">Inventory</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            On-hand quantity per (variant × warehouse) and the audit trail of every movement.
+          </p>
+        </div>
+        <Button onClick={() => setShowForm(true)} disabled={warehouses.length === 0}>
+          <Plus size={14} /> Adjust stock
+        </Button>
+      </div>
+
+      <div className="flex items-center gap-1 rounded-lg border border-border bg-card p-1">
         {(['levels', 'movements'] as const).map((t) => (
           <button
             key={t}
@@ -71,87 +199,49 @@ export default function StockPage() {
       {error && <ErrorBox>{error}</ErrorBox>}
 
       {tab === 'levels' && (
-        <>
-          {!stock && !error && <Loading />}
-          {stock && stock.length === 0 && <EmptyState>No stock yet. Create a warehouse and adjust stock to start.</EmptyState>}
-          {stock && stock.length > 0 && (
-            <div className="overflow-hidden rounded-xl border border-border bg-card">
-              <table className="w-full text-sm">
-                <thead className="border-b border-border bg-secondary text-xs uppercase tracking-wider text-muted-foreground">
-                  <tr>
-                    <th className="px-4 py-3 text-left font-medium">SKU</th>
-                    <th className="px-4 py-3 text-left font-medium">Warehouse</th>
-                    <th className="px-4 py-3 text-right font-medium">On-hand</th>
-                    <th className="px-4 py-3 text-right font-medium">Updated</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {stock.map((s) => (
-                    <tr key={s.id} className="border-t border-border">
-                      <td className="px-4 py-3 font-mono text-xs">{s.variantId}</td>
-                      <td className="px-4 py-3 text-muted-foreground">{s.warehouse.name}</td>
-                      <td className="px-4 py-3 text-right">
-                        <span className="font-mono tabular-nums">{s.quantity}</span>
-                        {s.quantity > 0 && s.quantity < LOW_THRESHOLD && (
-                          <span className="ml-2 rounded-md bg-brand-50 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider text-brand-700">
-                            low
-                          </span>
-                        )}
-                        {s.quantity === 0 && (
-                          <span className="ml-2 rounded-md bg-destructive/10 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider text-destructive">
-                            out
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-right text-xs text-muted-foreground">{new Date(s.updatedAt).toLocaleString()}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </>
+        !stock && !error ? (
+          <div className="flex h-48 items-center justify-center rounded-lg border border-border bg-card">
+            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+          </div>
+        ) : stock && stock.length === 0 ? (
+          <div className="flex h-48 flex-col items-center justify-center gap-2 rounded-lg border border-border bg-card">
+            <Boxes className="h-6 w-6 text-muted-foreground" />
+            <p className="text-sm text-muted-foreground">No stock yet</p>
+          </div>
+        ) : stock && stock.length > 0 ? (
+          <DataTable
+            rows={stock}
+            columns={levelColumns}
+            filters={levelFilters}
+            rowKey={(s) => s.id}
+            searchPlaceholder="Search SKU, warehouse…"
+            defaultSort={{ key: 'updated', dir: 'desc' }}
+            empty="No stock matches."
+          />
+        ) : null
       )}
 
       {tab === 'movements' && (
-        <>
-          {!movements && !error && <Loading />}
-          {movements && movements.length === 0 && <EmptyState>No movements yet.</EmptyState>}
-          {movements && movements.length > 0 && (
-            <div className="overflow-hidden rounded-xl border border-border bg-card">
-              <table className="w-full text-sm">
-                <thead className="border-b border-border bg-secondary text-xs uppercase tracking-wider text-muted-foreground">
-                  <tr>
-                    <th className="px-4 py-3 text-left font-medium">When</th>
-                    <th className="px-4 py-3 text-left font-medium">SKU</th>
-                    <th className="px-4 py-3 text-left font-medium">Warehouse</th>
-                    <th className="px-4 py-3 text-left font-medium">Reason</th>
-                    <th className="px-4 py-3 text-right font-medium">Δ</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {movements.map((m) => (
-                    <tr key={m.id} className="border-t border-border">
-                      <td className="px-4 py-3 text-xs text-muted-foreground">{new Date(m.createdAt).toLocaleString()}</td>
-                      <td className="px-4 py-3 font-mono text-xs">{m.variantId}</td>
-                      <td className="px-4 py-3 text-xs text-muted-foreground">
-                        {warehouses.find((w) => w.id === m.warehouseId)?.name ?? m.warehouseId}
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className="font-mono text-[11px] uppercase tracking-wider text-muted-foreground">
-                          {m.reason.replace(/_/g, ' ')}
-                        </span>
-                      </td>
-                      <td className={`px-4 py-3 text-right font-mono tabular-nums ${m.delta < 0 ? 'text-destructive' : 'text-brand-700'}`}>
-                        {m.delta > 0 ? '+' : ''}{m.delta}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </>
+        !movements && !error ? (
+          <div className="flex h-48 items-center justify-center rounded-lg border border-border bg-card">
+            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+          </div>
+        ) : movements && movements.length === 0 ? (
+          <div className="flex h-48 flex-col items-center justify-center gap-2 rounded-lg border border-border bg-card">
+            <Boxes className="h-6 w-6 text-muted-foreground" />
+            <p className="text-sm text-muted-foreground">No movements yet</p>
+          </div>
+        ) : movements && movements.length > 0 ? (
+          <DataTable
+            rows={movements}
+            columns={movementColumns}
+            filters={movementFilters}
+            rowKey={(m) => m.id}
+            searchPlaceholder="Search SKU, warehouse, reason…"
+            defaultSort={{ key: 'when', dir: 'desc' }}
+            empty="No movements match."
+          />
+        ) : null
       )}
 
       {showForm && (

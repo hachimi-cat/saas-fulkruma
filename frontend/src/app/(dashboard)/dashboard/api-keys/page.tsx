@@ -1,10 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { KeyRound, Plus, Copy, Check } from 'lucide-react';
+import { Check, Copy, KeyRound, Loader2, Plus } from 'lucide-react';
 import { api, type ApiKey } from '@/lib/api';
-import { PageHeader } from '@/components/dashboard/page-header';
-import { Modal, Field, ErrorBox, Loading, EmptyState, Button } from '@/components/dashboard/ui';
+import { Modal, Field, ErrorBox, Button } from '@/components/dashboard/ui';
+import { DataTable, type Column, type FilterDef } from '@/components/data-table';
 
 export default function ApiKeysPage() {
   const [rows, setRows] = useState<ApiKey[] | null>(null);
@@ -13,7 +13,7 @@ export default function ApiKeysPage() {
   const [created, setCreated] = useState<{ apiKey: ApiKey; secret: string } | null>(null);
 
   async function reload() {
-    try { setRows((await api<{ apiKeys: ApiKey[] }>('/api-keys')).apiKeys); }
+    try { setRows((await api<{ apiKeys: ApiKey[] }>('/api-keys?limit=100')).apiKeys); }
     catch (e) { setError((e as Error).message); }
   }
   useEffect(() => { reload(); }, []);
@@ -24,57 +24,111 @@ export default function ApiKeysPage() {
     catch (e) { alert((e as Error).message); }
   }
 
+  const columns: Column<ApiKey>[] = [
+    {
+      key: 'name',
+      header: 'Name',
+      sortable: true,
+      sortValue: (k) => k.name,
+      searchValue: (k) => `${k.name} ${k.keyId} ${k.scopes.join(' ')}`,
+      cell: (k) => <span className="font-medium">{k.name}</span>,
+    },
+    {
+      key: 'keyId',
+      header: 'Key ID',
+      sortable: true,
+      sortValue: (k) => k.keyId,
+      cell: (k) => <span className="font-mono text-xs">{k.keyId}</span>,
+    },
+    {
+      key: 'scopes',
+      header: 'Scopes',
+      cell: (k) => (
+        <span className="text-xs text-muted-foreground">
+          {k.scopes.map((s) => (
+            <span key={s} className="mr-1 rounded-md border border-border bg-background px-1.5 py-0.5">{s}</span>
+          ))}
+        </span>
+      ),
+    },
+    {
+      key: 'createdAt',
+      header: 'Created',
+      sortable: true,
+      sortValue: (k) => new Date(k.createdAt).getTime(),
+      cell: (k) => <span className="text-xs text-muted-foreground">{new Date(k.createdAt).toLocaleDateString()}</span>,
+    },
+    {
+      key: 'lastUsed',
+      header: 'Last used',
+      sortable: true,
+      sortValue: (k) => (k.lastUsedAt ? new Date(k.lastUsedAt).getTime() : 0),
+      cell: (k) => <span className="text-xs text-muted-foreground">{k.lastUsedAt ? new Date(k.lastUsedAt).toLocaleDateString() : '—'}</span>,
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      align: 'right',
+      sortable: true,
+      sortValue: (k) => (k.revokedAt ? 'revoked' : 'active'),
+      cell: (k) => (
+        <span className="text-xs">
+          {k.revokedAt ? (
+            <span className="rounded-md bg-destructive/10 px-1.5 py-0.5 font-mono uppercase tracking-wider text-destructive">revoked</span>
+          ) : (
+            <button onClick={() => revoke(k)} className="font-medium text-muted-foreground hover:text-destructive">Revoke</button>
+          )}
+        </span>
+      ),
+    },
+  ];
+
+  const filters: FilterDef<ApiKey>[] = [
+    {
+      key: 'status',
+      label: 'Status',
+      accessor: (k) => (k.revokedAt ? 'revoked' : 'active'),
+      options: [
+        { value: 'active', label: 'Active' },
+        { value: 'revoked', label: 'Revoked' },
+      ],
+    },
+  ];
+
   return (
-    <div className="">
-      <PageHeader
-        icon={KeyRound}
-        title="API Keys"
-        description="HMAC keys to call the Fulkruma API server-to-server. Scoped per workspace, rotatable, audit-logged."
-        action={<Button onClick={() => setShowForm(true)}><Plus size={14} /> New key</Button>}
-      />
+    <div className="mx-auto max-w-5xl space-y-6">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-bold sm:text-2xl">API Keys</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            HMAC keys to call the Fulkruma API server-to-server. Scoped per workspace, rotatable, audit-logged.
+          </p>
+        </div>
+        <Button onClick={() => setShowForm(true)}><Plus size={14} /> New key</Button>
+      </div>
 
       {error && <ErrorBox>{error}</ErrorBox>}
-      {!rows && !error && <Loading />}
-      {rows && rows.length === 0 && <EmptyState>No API keys yet — create one for your CLI or server.</EmptyState>}
 
-      {rows && rows.length > 0 && (
-        <div className="overflow-hidden rounded-xl border border-border bg-card">
-          <table className="w-full text-sm">
-            <thead className="border-b border-border bg-secondary text-xs uppercase tracking-wider text-muted-foreground">
-              <tr>
-                <th className="px-4 py-3 text-left font-medium">Name</th>
-                <th className="px-4 py-3 text-left font-medium">Key ID</th>
-                <th className="px-4 py-3 text-left font-medium">Scopes</th>
-                <th className="px-4 py-3 text-left font-medium">Created</th>
-                <th className="px-4 py-3 text-left font-medium">Last used</th>
-                <th className="px-4 py-3 text-right font-medium">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((k) => (
-                <tr key={k.id} className="border-t border-border">
-                  <td className="px-4 py-3 font-medium">{k.name}</td>
-                  <td className="px-4 py-3 font-mono text-xs">{k.keyId}</td>
-                  <td className="px-4 py-3 text-xs text-muted-foreground">
-                    {k.scopes.map((s) => (
-                      <span key={s} className="mr-1 rounded-md border border-border bg-background px-1.5 py-0.5">{s}</span>
-                    ))}
-                  </td>
-                  <td className="px-4 py-3 text-xs text-muted-foreground">{new Date(k.createdAt).toLocaleDateString()}</td>
-                  <td className="px-4 py-3 text-xs text-muted-foreground">{k.lastUsedAt ? new Date(k.lastUsedAt).toLocaleDateString() : '—'}</td>
-                  <td className="px-4 py-3 text-right text-xs">
-                    {k.revokedAt ? (
-                      <span className="rounded-md bg-destructive/10 px-1.5 py-0.5 font-mono uppercase tracking-wider text-destructive">revoked</span>
-                    ) : (
-                      <button onClick={() => revoke(k)} className="font-medium text-muted-foreground hover:text-destructive">Revoke</button>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      {!rows && !error ? (
+        <div className="flex h-48 items-center justify-center rounded-lg border border-border bg-card">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
         </div>
-      )}
+      ) : rows && rows.length === 0 ? (
+        <div className="flex h-48 flex-col items-center justify-center gap-2 rounded-lg border border-border bg-card">
+          <KeyRound className="h-6 w-6 text-muted-foreground" />
+          <p className="text-sm text-muted-foreground">No API keys yet</p>
+        </div>
+      ) : rows && rows.length > 0 ? (
+        <DataTable
+          rows={rows}
+          columns={columns}
+          filters={filters}
+          rowKey={(k) => k.id}
+          searchPlaceholder="Search name, key id, scope…"
+          defaultSort={{ key: 'createdAt', dir: 'desc' }}
+          empty="No keys match."
+        />
+      ) : null}
 
       {showForm && (
         <CreateForm

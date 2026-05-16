@@ -1,10 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { KeyRound, Plus, Copy, Check } from 'lucide-react';
+import { Plus, Copy, Check, Loader2, KeyRound } from 'lucide-react';
 import { api, type License } from '@/lib/api';
-import { PageHeader } from '@/components/dashboard/page-header';
-import { Modal, Field, ErrorBox, Loading, EmptyState, Button, StatusPill } from '@/components/dashboard/ui';
+import { Modal, Field, ErrorBox, Button, StatusPill } from '@/components/dashboard/ui';
+import { DataTable, type Column, type FilterDef } from '@/components/data-table';
 
 interface ProductLite { id: string; name: string; type: string; licenseEnabled: boolean; maxActivations: number; }
 
@@ -19,8 +19,8 @@ export default function LicensesPage() {
   async function reload() {
     try {
       const [l, p] = await Promise.all([
-        api<{ licenses: License[] }>('/licenses'),
-        api<{ products: ProductLite[] }>('/products'),
+        api<{ licenses: License[] }>('/licenses?limit=100'),
+        api<{ products: ProductLite[] }>('/products?limit=100'),
       ]);
       setRows(l.licenses);
       setProducts(p.products.filter((x) => x.type === 'license'));
@@ -34,55 +34,113 @@ export default function LicensesPage() {
     catch (e) { alert((e as Error).message); }
   }
 
+  const productName = (id: string) => products.find((p) => p.id === id)?.name ?? id;
+
+  const columns: Column<License>[] = [
+    {
+      key: 'key',
+      header: 'Key',
+      sortable: true,
+      sortValue: (l) => l.key,
+      searchValue: (l) => `${l.key} ${productName(l.productId)} ${l.customerId}`,
+      cell: (l) => <code className="font-mono text-xs">{l.key}</code>,
+    },
+    {
+      key: 'product',
+      header: 'Product',
+      sortable: true,
+      sortValue: (l) => productName(l.productId),
+      cell: (l) => <span className="font-mono text-xs text-muted-foreground">{l.productId}</span>,
+    },
+    {
+      key: 'customer',
+      header: 'Customer',
+      sortable: true,
+      sortValue: (l) => l.customerId,
+      cell: (l) => <span className="font-mono text-xs text-muted-foreground">{l.customerId}</span>,
+    },
+    {
+      key: 'activations',
+      header: 'Activations',
+      align: 'right',
+      sortable: true,
+      sortValue: (l) => l.activations,
+      cell: (l) => (
+        <span className="font-mono tabular-nums">{l.activations}/{l.maxActivations}</span>
+      ),
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      sortable: true,
+      sortValue: (l) => l.status,
+      cell: (l) => <StatusPill status={l.status} />,
+    },
+    {
+      key: 'actions',
+      header: 'Actions',
+      align: 'right',
+      cell: (l) =>
+        l.status === 'active' ? (
+          <button onClick={() => revoke(l)} className="text-xs font-medium text-muted-foreground hover:text-destructive">
+            Revoke
+          </button>
+        ) : null,
+    },
+  ];
+
+  const filters: FilterDef<License>[] = [
+    {
+      key: 'status',
+      label: 'Status',
+      accessor: (l) => l.status,
+      options: [
+        { value: 'active', label: 'Active' },
+        { value: 'revoked', label: 'Revoked' },
+      ],
+    },
+    {
+      key: 'product',
+      label: 'Product',
+      accessor: (l) => l.productId,
+      options: products.map((p) => ({ value: p.id, label: p.name })),
+    },
+  ];
+
   return (
-    <div className="">
-      <PageHeader
-        icon={KeyRound}
-        title="Licenses"
-        description="Digital fulfilment — license keys minted on payment, activations tracked, revocation supported."
-        action={<Button onClick={() => setShowForm(true)}><Plus size={14} /> Issue license</Button>}
-      />
+    <div className="mx-auto max-w-5xl space-y-6">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-bold sm:text-2xl">Licenses</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Digital fulfilment — license keys minted on payment, activations tracked, revocation supported.
+          </p>
+        </div>
+        <Button onClick={() => setShowForm(true)}><Plus size={14} /> Issue license</Button>
+      </div>
 
       {error && <ErrorBox>{error}</ErrorBox>}
-      {!rows && !error && <Loading />}
-      {rows && rows.length === 0 && <EmptyState>No licenses yet.</EmptyState>}
 
-      {rows && rows.length > 0 && (
-        <div className="overflow-hidden rounded-xl border border-border bg-card">
-          <table className="w-full text-sm">
-            <thead className="border-b border-border bg-secondary text-xs uppercase tracking-wider text-muted-foreground">
-              <tr>
-                <th className="px-4 py-3 text-left font-medium">Key</th>
-                <th className="px-4 py-3 text-left font-medium">Product</th>
-                <th className="px-4 py-3 text-left font-medium">Customer</th>
-                <th className="px-4 py-3 text-right font-medium">Activations</th>
-                <th className="px-4 py-3 text-left font-medium">Status</th>
-                <th className="px-4 py-3 text-right font-medium">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((l) => (
-                <tr key={l.id} className="border-t border-border">
-                  <td className="px-4 py-3 font-mono text-xs">{l.key}</td>
-                  <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{l.productId}</td>
-                  <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{l.customerId}</td>
-                  <td className="px-4 py-3 text-right font-mono tabular-nums">
-                    {l.activations}/{l.maxActivations}
-                  </td>
-                  <td className="px-4 py-3"><StatusPill status={l.status} /></td>
-                  <td className="px-4 py-3 text-right">
-                    {l.status === 'active' && (
-                      <button onClick={() => revoke(l)} className="text-xs font-medium text-muted-foreground hover:text-destructive">
-                        Revoke
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      {!rows && !error ? (
+        <div className="flex h-48 items-center justify-center rounded-lg border border-border bg-card">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
         </div>
-      )}
+      ) : rows && rows.length === 0 ? (
+        <div className="flex h-48 flex-col items-center justify-center gap-2 rounded-lg border border-border bg-card">
+          <KeyRound className="h-6 w-6 text-muted-foreground" />
+          <p className="text-sm text-muted-foreground">No licenses yet</p>
+        </div>
+      ) : rows && rows.length > 0 ? (
+        <DataTable
+          rows={rows}
+          columns={columns}
+          filters={filters}
+          rowKey={(l) => l.id}
+          searchPlaceholder="Search key, product, customer…"
+          defaultSort={{ key: 'key', dir: 'asc' }}
+          empty="No licenses match."
+        />
+      ) : null}
 
       {showForm && (
         <IssueForm
@@ -129,7 +187,6 @@ function IssueForm({ products, onClose, onSaved }: { products: ProductLite[]; on
   const [submitting, setSubmitting] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
-  // When the picked product changes, default maxActivations to that product's preset.
   useEffect(() => {
     const p = products.find((x) => x.id === productId);
     if (p) setMaxActivations(p.maxActivations);

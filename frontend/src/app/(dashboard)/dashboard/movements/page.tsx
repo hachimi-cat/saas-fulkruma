@@ -1,10 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { ArrowLeftRight } from 'lucide-react';
+import { ArrowLeftRight, Loader2 } from 'lucide-react';
 import { api, type StockMovement, type Warehouse } from '@/lib/api';
-import { PageHeader } from '@/components/dashboard/page-header';
-import { ErrorBox, Loading, EmptyState } from '@/components/dashboard/ui';
+import { ErrorBox } from '@/components/dashboard/ui';
+import { DataTable, type Column, type FilterDef } from '@/components/data-table';
 
 export default function MovementsPage() {
   const [rows, setRows] = useState<StockMovement[] | null>(null);
@@ -13,8 +13,8 @@ export default function MovementsPage() {
 
   useEffect(() => {
     Promise.all([
-      api<{ movements: StockMovement[] }>('/stock/movements'),
-      api<{ warehouses: Warehouse[] }>('/warehouses'),
+      api<{ movements: StockMovement[] }>('/stock/movements?limit=100'),
+      api<{ warehouses: Warehouse[] }>('/warehouses?limit=100'),
     ])
       .then(([m, w]) => { setRows(m.movements); setWarehouses(w.warehouses); })
       .catch((e) => setError((e as Error).message));
@@ -22,48 +22,104 @@ export default function MovementsPage() {
 
   const whName = (id: string) => warehouses.find((w) => w.id === id)?.name ?? id;
 
+  const columns: Column<StockMovement>[] = [
+    {
+      key: 'when',
+      header: 'When',
+      sortable: true,
+      sortValue: (m) => new Date(m.createdAt).getTime(),
+      cell: (m) => (
+        <span className="whitespace-nowrap text-xs text-muted-foreground">
+          {new Date(m.createdAt).toLocaleString()}
+        </span>
+      ),
+    },
+    {
+      key: 'sku',
+      header: 'SKU',
+      sortable: true,
+      sortValue: (m) => m.variantId,
+      searchValue: (m) => `${m.variantId} ${whName(m.warehouseId)} ${m.reason} ${m.referenceId ?? ''}`,
+      cell: (m) => <span className="font-mono text-xs">{m.variantId}</span>,
+    },
+    {
+      key: 'warehouse',
+      header: 'Warehouse',
+      sortable: true,
+      sortValue: (m) => whName(m.warehouseId),
+      cell: (m) => <span className="text-xs text-muted-foreground">{whName(m.warehouseId)}</span>,
+    },
+    {
+      key: 'reason',
+      header: 'Reason',
+      sortable: true,
+      sortValue: (m) => m.reason,
+      cell: (m) => (
+        <span className="font-mono text-[11px] uppercase tracking-wider text-muted-foreground">
+          {m.reason.replace(/_/g, ' ')}
+        </span>
+      ),
+    },
+    {
+      key: 'reference',
+      header: 'Reference',
+      cell: (m) => <span className="font-mono text-xs text-muted-foreground">{m.referenceId ?? '—'}</span>,
+    },
+    {
+      key: 'delta',
+      header: 'Δ',
+      align: 'right',
+      sortable: true,
+      sortValue: (m) => m.delta,
+      cell: (m) => (
+        <span className={`font-mono tabular-nums ${m.delta < 0 ? 'text-destructive' : 'text-brand-700'}`}>
+          {m.delta > 0 ? '+' : ''}{m.delta}
+        </span>
+      ),
+    },
+  ];
+
+  const filters: FilterDef<StockMovement>[] = [
+    { key: 'reason', label: 'Reason', accessor: (m) => m.reason },
+    {
+      key: 'warehouse',
+      label: 'Warehouse',
+      accessor: (m) => m.warehouseId,
+      options: warehouses.map((w) => ({ value: w.id, label: w.name })),
+    },
+  ];
+
   return (
-    <div className="">
-      <PageHeader
-        icon={ArrowLeftRight}
-        title="Stock movements"
-        description="Append-only ledger of every receipt, transfer, adjustment, and shipment-out. Source of truth for on-hand."
-      />
+    <div className="mx-auto max-w-5xl space-y-6">
+      <div>
+        <h1 className="text-xl font-bold sm:text-2xl">Stock movements</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Append-only ledger of every receipt, transfer, adjustment, and shipment-out. Source of truth for on-hand.
+        </p>
+      </div>
 
       {error && <ErrorBox>{error}</ErrorBox>}
-      {!rows && !error && <Loading />}
-      {rows && rows.length === 0 && <EmptyState>No movements yet.</EmptyState>}
 
-      {rows && rows.length > 0 && (
-        <div className="overflow-hidden rounded-xl border border-border bg-card">
-          <table className="w-full text-sm">
-            <thead className="border-b border-border bg-secondary text-xs uppercase tracking-wider text-muted-foreground">
-              <tr>
-                <th className="px-4 py-3 text-left font-medium">When</th>
-                <th className="px-4 py-3 text-left font-medium">SKU</th>
-                <th className="px-4 py-3 text-left font-medium">Warehouse</th>
-                <th className="px-4 py-3 text-left font-medium">Reason</th>
-                <th className="px-4 py-3 text-left font-medium">Reference</th>
-                <th className="px-4 py-3 text-right font-medium">Δ</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((m) => (
-                <tr key={m.id} className="border-t border-border">
-                  <td className="px-4 py-3 text-xs text-muted-foreground whitespace-nowrap">{new Date(m.createdAt).toLocaleString()}</td>
-                  <td className="px-4 py-3 font-mono text-xs">{m.variantId}</td>
-                  <td className="px-4 py-3 text-xs text-muted-foreground">{whName(m.warehouseId)}</td>
-                  <td className="px-4 py-3 font-mono text-[11px] uppercase tracking-wider text-muted-foreground">{m.reason.replace(/_/g, ' ')}</td>
-                  <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{m.referenceId ?? '—'}</td>
-                  <td className={`px-4 py-3 text-right font-mono tabular-nums ${m.delta < 0 ? 'text-destructive' : 'text-brand-700'}`}>
-                    {m.delta > 0 ? '+' : ''}{m.delta}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      {!rows && !error ? (
+        <div className="flex h-48 items-center justify-center rounded-lg border border-border bg-card">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
         </div>
-      )}
+      ) : rows && rows.length === 0 ? (
+        <div className="flex h-48 flex-col items-center justify-center gap-2 rounded-lg border border-border bg-card">
+          <ArrowLeftRight className="h-6 w-6 text-muted-foreground" />
+          <p className="text-sm text-muted-foreground">No movements yet</p>
+        </div>
+      ) : rows && rows.length > 0 ? (
+        <DataTable
+          rows={rows}
+          columns={columns}
+          filters={filters}
+          rowKey={(m) => m.id}
+          searchPlaceholder="Search SKU, warehouse, reason…"
+          defaultSort={{ key: 'when', dir: 'desc' }}
+          empty="No movements match."
+        />
+      ) : null}
     </div>
   );
 }

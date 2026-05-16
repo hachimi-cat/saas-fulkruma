@@ -1,10 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Webhook, Plus, Copy, Check, Power, PowerOff, Trash2 } from 'lucide-react';
+import { Check, Copy, Loader2, Plus, Power, PowerOff, Trash2, Webhook } from 'lucide-react';
 import { api, type WebhookEndpoint, type WebhookEventRow } from '@/lib/api';
-import { PageHeader } from '@/components/dashboard/page-header';
-import { Modal, Field, ErrorBox, Loading, EmptyState, Button, StatusPill } from '@/components/dashboard/ui';
+import { Modal, Field, ErrorBox, Button, StatusPill } from '@/components/dashboard/ui';
+import { DataTable, type Column, type FilterDef } from '@/components/data-table';
 
 const EVENT_TYPES = [
   '*',
@@ -30,8 +30,8 @@ export default function WebhooksPage() {
   async function reload() {
     try {
       const [eps, evs] = await Promise.all([
-        api<{ endpoints: WebhookEndpoint[] }>('/webhooks/endpoints'),
-        api<{ events: WebhookEventRow[] }>('/webhooks/events'),
+        api<{ endpoints: WebhookEndpoint[] }>('/webhooks/endpoints?limit=100'),
+        api<{ events: WebhookEventRow[] }>('/webhooks/events?limit=100'),
       ]);
       setEndpoints(eps.endpoints);
       setEvents(evs.events);
@@ -50,16 +50,141 @@ export default function WebhooksPage() {
     catch (e) { alert((e as Error).message); }
   }
 
-  return (
-    <div className="">
-      <PageHeader
-        icon={Webhook}
-        title="Webhooks"
-        description="Outbound webhook endpoints. HMAC-SHA256-signed, retried with exponential backoff."
-        action={<Button onClick={() => setShowForm(true)}><Plus size={14} /> New endpoint</Button>}
-      />
+  const endpointColumns: Column<WebhookEndpoint>[] = [
+    {
+      key: 'url',
+      header: 'URL',
+      sortable: true,
+      sortValue: (ep) => ep.url,
+      searchValue: (ep) => `${ep.url} ${ep.description ?? ''} ${ep.events.join(' ')}`,
+      cell: (ep) => (
+        <div>
+          <p className="font-medium break-all">{ep.url}</p>
+          {ep.description && <p className="mt-0.5 text-xs text-muted-foreground">{ep.description}</p>}
+        </div>
+      ),
+    },
+    {
+      key: 'events',
+      header: 'Events',
+      cell: (ep) => (
+        <span className="text-xs">
+          {ep.events.slice(0, 3).map((e) => (
+            <span key={e} className="mr-1 rounded-md border border-border bg-background px-1.5 py-0.5 font-mono">{e}</span>
+          ))}
+          {ep.events.length > 3 && <span className="text-muted-foreground">+{ep.events.length - 3}</span>}
+        </span>
+      ),
+    },
+    {
+      key: 'active',
+      header: 'Active',
+      sortable: true,
+      sortValue: (ep) => (ep.active ? '0' : '1'),
+      cell: (ep) => (
+        <button
+          onClick={() => toggleActive(ep)}
+          className={`inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-xs ${
+            ep.active ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-border bg-secondary text-muted-foreground'
+          }`}
+        >
+          {ep.active ? <Power size={11} /> : <PowerOff size={11} />}
+          {ep.active ? 'on' : 'off'}
+        </button>
+      ),
+    },
+    {
+      key: 'actions',
+      header: 'Actions',
+      align: 'right',
+      cell: (ep) => (
+        <button onClick={() => remove(ep)} className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-destructive">
+          <Trash2 size={12} /> Delete
+        </button>
+      ),
+    },
+  ];
 
-      <div className="mb-4 flex items-center gap-1 rounded-lg border border-border bg-card p-1">
+  const endpointFilters: FilterDef<WebhookEndpoint>[] = [
+    {
+      key: 'active',
+      label: 'Active',
+      accessor: (ep) => (ep.active ? 'on' : 'off'),
+      options: [
+        { value: 'on', label: 'Active' },
+        { value: 'off', label: 'Disabled' },
+      ],
+    },
+  ];
+
+  const eventColumns: Column<WebhookEventRow>[] = [
+    {
+      key: 'when',
+      header: 'When',
+      sortable: true,
+      sortValue: (e) => new Date(e.createdAt).getTime(),
+      cell: (e) => <span className="text-xs text-muted-foreground">{new Date(e.createdAt).toLocaleString()}</span>,
+    },
+    {
+      key: 'type',
+      header: 'Type',
+      sortable: true,
+      sortValue: (e) => e.type,
+      searchValue: (e) => `${e.type} ${e.status}`,
+      cell: (e) => <span className="font-mono text-xs">{e.type}</span>,
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      sortable: true,
+      sortValue: (e) => e.status,
+      cell: (e) => <StatusPill status={e.status} />,
+    },
+    {
+      key: 'attempts',
+      header: 'Attempts',
+      align: 'right',
+      sortable: true,
+      sortValue: (e) => e.attempts,
+      cell: (e) => <span className="font-mono tabular-nums">{e.attempts}</span>,
+    },
+    {
+      key: 'code',
+      header: 'Code',
+      align: 'right',
+      sortable: true,
+      sortValue: (e) => e.responseCode ?? 0,
+      cell: (e) => <span className="font-mono tabular-nums">{e.responseCode ?? '—'}</span>,
+    },
+  ];
+
+  const eventFilters: FilterDef<WebhookEventRow>[] = [
+    {
+      key: 'status',
+      label: 'Status',
+      accessor: (e) => e.status,
+      options: [
+        { value: 'pending', label: 'Pending' },
+        { value: 'sent', label: 'Sent' },
+        { value: 'failed', label: 'Failed' },
+      ],
+    },
+    { key: 'type', label: 'Type', accessor: (e) => e.type },
+  ];
+
+  return (
+    <div className="mx-auto max-w-5xl space-y-6">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-bold sm:text-2xl">Webhooks</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Outbound webhook endpoints. HMAC-SHA256-signed, retried with exponential backoff.
+          </p>
+        </div>
+        <Button onClick={() => setShowForm(true)}><Plus size={14} /> New endpoint</Button>
+      </div>
+
+      <div className="flex items-center gap-1 rounded-lg border border-border bg-card p-1">
         {(['endpoints', 'events'] as const).map((t) => (
           <button
             key={t}
@@ -76,91 +201,49 @@ export default function WebhooksPage() {
       {error && <ErrorBox>{error}</ErrorBox>}
 
       {tab === 'endpoints' && (
-        <>
-          {!endpoints && !error && <Loading />}
-          {endpoints && endpoints.length === 0 && <EmptyState>No endpoints yet.</EmptyState>}
-          {endpoints && endpoints.length > 0 && (
-            <div className="overflow-hidden rounded-xl border border-border bg-card">
-              <table className="w-full text-sm">
-                <thead className="border-b border-border bg-secondary text-xs uppercase tracking-wider text-muted-foreground">
-                  <tr>
-                    <th className="px-4 py-3 text-left font-medium">URL</th>
-                    <th className="px-4 py-3 text-left font-medium">Events</th>
-                    <th className="px-4 py-3 text-left font-medium">Active</th>
-                    <th className="px-4 py-3 text-right font-medium">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {endpoints.map((ep) => (
-                    <tr key={ep.id} className="border-t border-border">
-                      <td className="px-4 py-3">
-                        <p className="font-medium break-all">{ep.url}</p>
-                        {ep.description && <p className="mt-0.5 text-xs text-muted-foreground">{ep.description}</p>}
-                      </td>
-                      <td className="px-4 py-3 text-xs">
-                        {ep.events.slice(0, 3).map((e) => (
-                          <span key={e} className="mr-1 rounded-md border border-border bg-background px-1.5 py-0.5 font-mono">
-                            {e}
-                          </span>
-                        ))}
-                        {ep.events.length > 3 && <span className="text-muted-foreground">+{ep.events.length - 3}</span>}
-                      </td>
-                      <td className="px-4 py-3">
-                        <button
-                          onClick={() => toggleActive(ep)}
-                          className={`inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-xs ${
-                            ep.active ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-border bg-secondary text-muted-foreground'
-                          }`}
-                        >
-                          {ep.active ? <Power size={11} /> : <PowerOff size={11} />}
-                          {ep.active ? 'on' : 'off'}
-                        </button>
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <button onClick={() => remove(ep)} className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-destructive">
-                          <Trash2 size={12} /> Delete
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </>
+        !endpoints && !error ? (
+          <div className="flex h-48 items-center justify-center rounded-lg border border-border bg-card">
+            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+          </div>
+        ) : endpoints && endpoints.length === 0 ? (
+          <div className="flex h-48 flex-col items-center justify-center gap-2 rounded-lg border border-border bg-card">
+            <Webhook className="h-6 w-6 text-muted-foreground" />
+            <p className="text-sm text-muted-foreground">No endpoints yet</p>
+          </div>
+        ) : endpoints && endpoints.length > 0 ? (
+          <DataTable
+            rows={endpoints}
+            columns={endpointColumns}
+            filters={endpointFilters}
+            rowKey={(ep) => ep.id}
+            searchPlaceholder="Search URL, description, event…"
+            defaultSort={{ key: 'url', dir: 'asc' }}
+            empty="No endpoints match."
+          />
+        ) : null
       )}
 
       {tab === 'events' && (
-        <>
-          {!events && !error && <Loading />}
-          {events && events.length === 0 && <EmptyState>No webhook events delivered yet.</EmptyState>}
-          {events && events.length > 0 && (
-            <div className="overflow-hidden rounded-xl border border-border bg-card">
-              <table className="w-full text-sm">
-                <thead className="border-b border-border bg-secondary text-xs uppercase tracking-wider text-muted-foreground">
-                  <tr>
-                    <th className="px-4 py-3 text-left font-medium">When</th>
-                    <th className="px-4 py-3 text-left font-medium">Type</th>
-                    <th className="px-4 py-3 text-left font-medium">Status</th>
-                    <th className="px-4 py-3 text-right font-medium">Attempts</th>
-                    <th className="px-4 py-3 text-right font-medium">Code</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {events.map((e) => (
-                    <tr key={e.id} className="border-t border-border">
-                      <td className="px-4 py-3 text-xs text-muted-foreground">{new Date(e.createdAt).toLocaleString()}</td>
-                      <td className="px-4 py-3 font-mono text-xs">{e.type}</td>
-                      <td className="px-4 py-3"><StatusPill status={e.status} /></td>
-                      <td className="px-4 py-3 text-right font-mono tabular-nums">{e.attempts}</td>
-                      <td className="px-4 py-3 text-right font-mono tabular-nums">{e.responseCode ?? '—'}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </>
+        !events && !error ? (
+          <div className="flex h-48 items-center justify-center rounded-lg border border-border bg-card">
+            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+          </div>
+        ) : events && events.length === 0 ? (
+          <div className="flex h-48 flex-col items-center justify-center gap-2 rounded-lg border border-border bg-card">
+            <Webhook className="h-6 w-6 text-muted-foreground" />
+            <p className="text-sm text-muted-foreground">No webhook events delivered yet</p>
+          </div>
+        ) : events && events.length > 0 ? (
+          <DataTable
+            rows={events}
+            columns={eventColumns}
+            filters={eventFilters}
+            rowKey={(e) => e.id}
+            searchPlaceholder="Search type, status…"
+            defaultSort={{ key: 'when', dir: 'desc' }}
+            empty="No events match."
+          />
+        ) : null
       )}
 
       {showForm && (

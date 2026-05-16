@@ -1,82 +1,136 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Truck, ExternalLink } from 'lucide-react';
+import { ExternalLink, Loader2, Truck } from 'lucide-react';
 import { api, type Shipment, type ShipmentEvent } from '@/lib/api';
-import { PageHeader } from '@/components/dashboard/page-header';
-import { Modal, ErrorBox, Loading, EmptyState, StatusPill } from '@/components/dashboard/ui';
+import { ErrorBox, StatusPill } from '@/components/dashboard/ui';
+import { DataTable, type Column, type FilterDef } from '@/components/data-table';
 
 export default function ShipmentsPage() {
   const [rows, setRows] = useState<Shipment[] | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [active, setActive] = useState<Shipment | null>(null);
 
   async function reload() {
-    try { setRows((await api<{ shipments: Shipment[] }>('/shipments')).shipments); }
+    try { setRows((await api<{ shipments: Shipment[] }>('/shipments?limit=100')).shipments); }
     catch (e) { setError((e as Error).message); }
   }
   useEffect(() => { reload(); }, []);
 
+  const columns: Column<Shipment>[] = [
+    {
+      key: 'createdAt',
+      header: 'Created',
+      sortable: true,
+      sortValue: (s) => new Date(s.createdAt).getTime(),
+      cell: (s) => (
+        <span className="text-xs text-muted-foreground">
+          {new Date(s.createdAt).toLocaleDateString()}
+        </span>
+      ),
+    },
+    {
+      key: 'waybill',
+      header: 'Waybill',
+      sortable: true,
+      sortValue: (s) => s.waybillId ?? '',
+      searchValue: (s) => `${s.waybillId ?? ''} ${s.customerEmail ?? ''}`,
+      cell: (s) => <span className="font-mono text-xs">{s.waybillId ?? '—'}</span>,
+    },
+    {
+      key: 'courier',
+      header: 'Courier',
+      sortable: true,
+      sortValue: (s) => `${s.courierCode} ${s.courierServiceCode}`,
+      cell: (s) => (
+        <span className="text-xs uppercase tracking-wider">
+          <span className="font-medium">{s.courierCode}</span>{' '}
+          <span className="text-muted-foreground">/ {s.courierServiceCode}</span>
+        </span>
+      ),
+    },
+    {
+      key: 'customer',
+      header: 'Customer',
+      sortable: true,
+      sortValue: (s) => s.customerEmail ?? '',
+      cell: (s) => (
+        <span className="block truncate max-w-[180px] text-xs text-muted-foreground">
+          {s.customerEmail ?? '—'}
+        </span>
+      ),
+    },
+    {
+      key: 'price',
+      header: 'Price',
+      align: 'right',
+      sortable: true,
+      sortValue: (s) => s.price,
+      cell: (s) => (
+        <span className="font-mono tabular-nums">Rp {s.price.toLocaleString('id-ID')}</span>
+      ),
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      sortable: true,
+      sortValue: (s) => s.status,
+      cell: (s) => <StatusPill status={s.status} />,
+    },
+    {
+      key: 'open',
+      header: '',
+      cell: () => <span className="text-xs text-muted-foreground">→</span>,
+    },
+  ];
+
+  const filters: FilterDef<Shipment>[] = [
+    { key: 'status', label: 'Status', accessor: (s) => s.status },
+    { key: 'courier', label: 'Courier', accessor: (s) => s.courierCode },
+  ];
+
   return (
-    <div className="">
-      <PageHeader
-        icon={Truck}
-        title="Shipments"
-        description="Outbound parcels, courier, tracking number, and event timeline. Backed by Biteship."
-      />
+    <div className="mx-auto max-w-5xl space-y-6">
+      <div>
+        <h1 className="text-xl font-bold sm:text-2xl">Shipments</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Outbound parcels, courier, tracking number, and event timeline. Backed by Biteship.
+        </p>
+      </div>
 
       {error && <ErrorBox>{error}</ErrorBox>}
-      {!rows && !error && <Loading />}
-      {rows && rows.length === 0 && <EmptyState>No shipments yet.</EmptyState>}
 
-      {rows && rows.length > 0 && (
-        <div className="overflow-hidden rounded-xl border border-border bg-card">
-          <table className="w-full text-sm">
-            <thead className="border-b border-border bg-secondary text-xs uppercase tracking-wider text-muted-foreground">
-              <tr>
-                <th className="px-4 py-3 text-left font-medium">Created</th>
-                <th className="px-4 py-3 text-left font-medium">Waybill</th>
-                <th className="px-4 py-3 text-left font-medium">Courier</th>
-                <th className="px-4 py-3 text-left font-medium">Customer</th>
-                <th className="px-4 py-3 text-right font-medium">Price</th>
-                <th className="px-4 py-3 text-left font-medium">Status</th>
-                <th className="px-4 py-3"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((s) => (
-                <tr key={s.id} className="border-t border-border hover:bg-secondary/50 cursor-pointer" onClick={() => setActive(s)}>
-                  <td className="px-4 py-3 text-xs text-muted-foreground">{new Date(s.createdAt).toLocaleDateString()}</td>
-                  <td className="px-4 py-3 font-mono text-xs">{s.waybillId ?? '—'}</td>
-                  <td className="px-4 py-3 text-xs uppercase tracking-wider">
-                    <span className="font-medium">{s.courierCode}</span>{' '}
-                    <span className="text-muted-foreground">/ {s.courierServiceCode}</span>
-                  </td>
-                  <td className="px-4 py-3 text-xs text-muted-foreground truncate max-w-[180px]">{s.customerEmail ?? '—'}</td>
-                  <td className="px-4 py-3 text-right font-mono tabular-nums">Rp {s.price.toLocaleString('id-ID')}</td>
-                  <td className="px-4 py-3"><StatusPill status={s.status} /></td>
-                  <td className="px-4 py-3 text-right text-xs text-muted-foreground">→</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      {!rows && !error ? (
+        <div className="flex h-48 items-center justify-center rounded-lg border border-border bg-card">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
         </div>
-      )}
-
-      {active && (
-        <ShipmentDetail shipment={active} onClose={() => setActive(null)} />
-      )}
+      ) : rows && rows.length === 0 ? (
+        <div className="flex h-48 flex-col items-center justify-center gap-2 rounded-lg border border-border bg-card">
+          <Truck className="h-6 w-6 text-muted-foreground" />
+          <p className="text-sm text-muted-foreground">No shipments yet</p>
+        </div>
+      ) : rows && rows.length > 0 ? (
+        <DataTable
+          rows={rows}
+          columns={columns}
+          filters={filters}
+          rowKey={(s) => s.id}
+          searchPlaceholder="Search waybill, customer…"
+          defaultSort={{ key: 'createdAt', dir: 'desc' }}
+          empty="No shipments match."
+          renderExpanded={(s) => <ShipmentDetailInline shipment={s} />}
+        />
+      ) : null}
     </div>
   );
 }
 
-function ShipmentDetail({ shipment, onClose }: { shipment: Shipment; onClose: () => void }) {
+function ShipmentDetailInline({ shipment }: { shipment: Shipment }) {
   const [full, setFull] = useState<Shipment & { events: ShipmentEvent[] } | null>(null);
 
   useEffect(() => {
     api<{ shipment: Shipment & { events: ShipmentEvent[] } }>(`/shipments/${shipment.id}`)
       .then((d) => setFull(d.shipment))
-      .catch(() => {/* fall through with whatever we have */});
+      .catch(() => {});
   }, [shipment.id]);
 
   const data = full ?? shipment;
@@ -85,71 +139,81 @@ function ShipmentDetail({ shipment, onClose }: { shipment: Shipment; onClose: ()
   const items = data.items as Array<{ name?: string; qty?: number; value?: number }>;
 
   return (
-    <Modal title={`Shipment ${data.waybillId ?? data.id.slice(-8)}`} onClose={onClose} wide>
-      <div className="space-y-5 text-sm">
-        <div className="flex flex-wrap items-center gap-3">
-          <StatusPill status={data.status} />
-          <span className="text-xs text-muted-foreground">
-            {data.courierCode.toUpperCase()} · {data.courierServiceCode} · {data.courierType}
-          </span>
-          {data.trackingUrl && (
-            <a href={data.trackingUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs font-medium text-brand-700 hover:underline">
-              Tracking <ExternalLink size={12} />
-            </a>
-          )}
+    <div className="space-y-4 text-sm">
+      <div className="flex flex-wrap items-center gap-3">
+        <StatusPill status={data.status} />
+        <span className="text-xs text-muted-foreground">
+          {data.courierCode.toUpperCase()} · {data.courierServiceCode} · {data.courierType}
+        </span>
+        {data.trackingUrl && (
+          <a href={data.trackingUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs font-medium text-brand-700 hover:underline">
+            Tracking <ExternalLink size={12} />
+          </a>
+        )}
+      </div>
+
+      <section className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <Box title="From">
+          <p className="font-medium">{origin?.contactName ?? '—'}</p>
+          <p className="text-muted-foreground">{origin?.address ?? '—'}</p>
+          <p className="text-muted-foreground">{origin?.city ?? '—'}</p>
+        </Box>
+        <Box title="To">
+          <p className="font-medium">{dest?.contactName ?? '—'}</p>
+          <p className="text-muted-foreground">{dest?.address ?? '—'}</p>
+          <p className="text-muted-foreground">{dest?.city ?? '—'} {dest?.postal ?? ''}</p>
+          <p className="text-muted-foreground">{dest?.contactPhone ?? '—'}</p>
+        </Box>
+      </section>
+
+      <Box title="Items">
+        <div className="hidden md:block">
+          <table className="w-full text-sm">
+            <tbody className="divide-y divide-border">
+              {items.map((it, i) => (
+                <tr key={i}>
+                  <td className="py-2">{it.name ?? '—'}</td>
+                  <td className="py-2 text-right font-mono text-xs text-muted-foreground">qty {it.qty ?? 1}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
+        <ul className="space-y-2 md:hidden">
+          {items.map((it, i) => (
+            <li key={i} className="flex items-center justify-between rounded-md border border-border bg-card px-2 py-2">
+              <span className="text-xs">{it.name ?? '—'}</span>
+              <span className="font-mono text-xs text-muted-foreground">qty {it.qty ?? 1}</span>
+            </li>
+          ))}
+        </ul>
+        <div className="mt-2 flex items-center justify-between border-t border-border pt-2 text-xs text-muted-foreground">
+          <span>Shipping cost</span>
+          <span className="font-mono tabular-nums">Rp {data.price.toLocaleString('id-ID')}</span>
+        </div>
+      </Box>
 
-        <section className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <Box title="From">
-            <p className="font-medium">{origin?.contactName ?? '—'}</p>
-            <p className="text-muted-foreground">{origin?.address ?? '—'}</p>
-            <p className="text-muted-foreground">{origin?.city ?? '—'}</p>
-          </Box>
-          <Box title="To">
-            <p className="font-medium">{dest?.contactName ?? '—'}</p>
-            <p className="text-muted-foreground">{dest?.address ?? '—'}</p>
-            <p className="text-muted-foreground">{dest?.city ?? '—'} {dest?.postal ?? ''}</p>
-            <p className="text-muted-foreground">{dest?.contactPhone ?? '—'}</p>
-          </Box>
-        </section>
-
-        <Box title="Items">
-          <ul className="divide-y divide-border">
-            {items.map((it, i) => (
-              <li key={i} className="flex items-center justify-between py-2">
-                <span>{it.name ?? '—'}</span>
-                <span className="font-mono text-xs text-muted-foreground">qty {it.qty ?? 1}</span>
+      <Box title="Timeline">
+        {!full && <p className="text-xs text-muted-foreground">Loading events…</p>}
+        {full && full.events.length === 0 && <p className="text-xs text-muted-foreground">No events recorded yet.</p>}
+        {full && full.events.length > 0 && (
+          <ol className="space-y-3">
+            {full.events.map((ev) => (
+              <li key={ev.id} className="flex gap-3">
+                <span className="mt-1 inline-block h-2 w-2 shrink-0 rounded-full bg-brand-500" />
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <StatusPill status={ev.status} />
+                    <span className="text-xs text-muted-foreground">{new Date(ev.occurredAt).toLocaleString()}</span>
+                  </div>
+                  {ev.note && <p className="mt-0.5 text-xs text-muted-foreground">{ev.note}</p>}
+                </div>
               </li>
             ))}
-          </ul>
-          <div className="mt-2 flex items-center justify-between border-t border-border pt-2 text-xs text-muted-foreground">
-            <span>Shipping cost</span>
-            <span className="font-mono tabular-nums">Rp {data.price.toLocaleString('id-ID')}</span>
-          </div>
-        </Box>
-
-        <Box title="Timeline">
-          {!full && <p className="text-xs text-muted-foreground">Loading events…</p>}
-          {full && full.events.length === 0 && <p className="text-xs text-muted-foreground">No events recorded yet.</p>}
-          {full && full.events.length > 0 && (
-            <ol className="space-y-3">
-              {full.events.map((ev) => (
-                <li key={ev.id} className="flex gap-3">
-                  <span className="mt-1 inline-block h-2 w-2 shrink-0 rounded-full bg-brand-500" />
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <StatusPill status={ev.status} />
-                      <span className="text-xs text-muted-foreground">{new Date(ev.occurredAt).toLocaleString()}</span>
-                    </div>
-                    {ev.note && <p className="mt-0.5 text-xs text-muted-foreground">{ev.note}</p>}
-                  </div>
-                </li>
-              ))}
-            </ol>
-          )}
-        </Box>
-      </div>
-    </Modal>
+          </ol>
+        )}
+      </Box>
+    </div>
   );
 }
 

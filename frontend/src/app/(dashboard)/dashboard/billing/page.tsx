@@ -1,10 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Wallet, Check, Loader2, AlertTriangle, CreditCard, Zap } from 'lucide-react';
+import { AlertTriangle, Check, CreditCard, Loader2, Zap } from 'lucide-react';
 import { api } from '@/lib/api';
-import { PageHeader } from '@/components/dashboard/page-header';
 import { Button, ErrorBox } from '@/components/dashboard/ui';
+import { DataTable, type Column, type FilterDef } from '@/components/data-table';
 
 interface Plan {
   id: string;
@@ -80,7 +80,7 @@ export default function BillingPage() {
         api<Plan[]>('/billing/plans'),
         api<Subscription>('/billing/subscription'),
         api<Usage>('/billing/usage'),
-        api<InvoicePage>('/billing/invoices?limit=20'),
+        api<InvoicePage>('/billing/invoices?limit=50'),
         fetch('/api/v1/session', { credentials: 'include' }).then((r) => r.ok ? r.json() : { user: null }),
       ]);
       setPlans(p);
@@ -139,17 +139,65 @@ export default function BillingPage() {
   const isInternal = sub?.isForjioInternal ?? false;
   const currentPlanSlug = (sub?.plan ?? 'free').toLowerCase();
 
+  const invoiceColumns: Column<Invoice>[] = [
+    {
+      key: 'date',
+      header: 'Date',
+      sortable: true,
+      sortValue: (inv) => new Date(inv.createdAt).getTime(),
+      searchValue: (inv) => `${inv.plan} ${inv.status} ${inv.id}`,
+      cell: (inv) => <span>{fmtDate(inv.createdAt)}</span>,
+    },
+    {
+      key: 'plan',
+      header: 'Plan',
+      sortable: true,
+      sortValue: (inv) => inv.plan,
+      cell: (inv) => <span className="capitalize">{inv.plan}</span>,
+    },
+    {
+      key: 'amount',
+      header: 'Amount',
+      align: 'right',
+      sortable: true,
+      sortValue: (inv) => inv.amount,
+      cell: (inv) => <span className="font-mono">{fmtIDR(inv.amount)}</span>,
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      sortable: true,
+      sortValue: (inv) => inv.status,
+      cell: (inv) => <span className="capitalize">{inv.status.toLowerCase()}</span>,
+    },
+    {
+      key: 'receipt',
+      header: 'Receipt',
+      align: 'right',
+      cell: (inv) =>
+        inv.receiptUrl ? (
+          <a href={inv.receiptUrl} target="_blank" rel="noopener noreferrer" className="text-brand-500 hover:underline">View</a>
+        ) : (
+          <span className="text-muted-foreground">—</span>
+        ),
+    },
+  ];
+
+  const invoiceFilters: FilterDef<Invoice>[] = [
+    { key: 'status', label: 'Status', accessor: (inv) => inv.status },
+    { key: 'plan', label: 'Plan', accessor: (inv) => inv.plan },
+  ];
+
   return (
-    <div className="">
-      <PageHeader
-        icon={Wallet}
-        title="Billing"
-        description="Plan, usage, and invoices. Billing is processed by Plugipay."
-      />
+    <div className="mx-auto max-w-5xl space-y-6">
+      <div>
+        <h1 className="text-xl font-bold sm:text-2xl">Billing</h1>
+        <p className="mt-1 text-sm text-muted-foreground">Plan, usage, and invoices. Billing is processed by Plugipay.</p>
+      </div>
 
       {error && <ErrorBox>{error}</ErrorBox>}
       {notice && (
-        <div className="mb-6 rounded-lg border border-brand-500/30 bg-brand-500/10 px-4 py-3 text-sm">
+        <div className="rounded-lg border border-brand-500/30 bg-brand-500/10 px-4 py-3 text-sm">
           {notice}
         </div>
       )}
@@ -163,7 +211,7 @@ export default function BillingPage() {
       {!isLoading && (
         <>
           {isInternal && (
-            <div className="mb-6 flex items-center gap-3 rounded-lg border border-brand-500/30 bg-brand-500/10 px-4 py-3">
+            <div className="flex items-center gap-3 rounded-lg border border-brand-500/30 bg-brand-500/10 px-4 py-3">
               <Zap className="h-5 w-5 shrink-0 text-brand-500" />
               <p className="text-sm">
                 <span className="font-semibold">Forjio-internal workspace.</span>{' '}
@@ -173,7 +221,7 @@ export default function BillingPage() {
           )}
 
           {sub?.cancelAt && (
-            <div className="mb-6 flex items-center gap-3 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3">
+            <div className="flex items-center gap-3 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3">
               <AlertTriangle className="h-5 w-5 shrink-0 text-amber-500" />
               <p className="text-sm">
                 Your plan ends on <span className="font-semibold">{fmtDate(sub.cancelAt)}</span>. You&rsquo;ll move to Free after that.
@@ -181,7 +229,7 @@ export default function BillingPage() {
             </div>
           )}
 
-          <section className="mb-8 rounded-xl border border-border bg-card p-6">
+          <section className="rounded-xl border border-border bg-card p-6">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
                 <p className="text-xs uppercase tracking-wider text-muted-foreground">Current plan</p>
@@ -209,8 +257,8 @@ export default function BillingPage() {
 
           {!isInternal && plans && plans.length > 0 && (
             <>
-              <h2 className="mb-3 text-sm font-semibold tracking-tight">Change plan</h2>
-              <div className="mb-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <h2 className="text-sm font-semibold tracking-tight">Change plan</h2>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                 {[...plans].sort((a, b) => PLAN_ORDER.indexOf(a.id) - PLAN_ORDER.indexOf(b.id)).map((p) => {
                   const isCurrent = p.id === currentPlanSlug;
                   const popular = p.id === 'starter';
@@ -254,42 +302,23 @@ export default function BillingPage() {
             </>
           )}
 
-          <section className="rounded-xl border border-border bg-card p-6">
-            <h2 className="mb-4 text-sm font-semibold tracking-tight">Invoice history</h2>
+          <section className="space-y-3">
+            <h2 className="text-sm font-semibold tracking-tight">Invoice history</h2>
             {invoices!.length === 0 ? (
-              <div className="flex flex-col items-center py-8 text-center text-muted-foreground">
+              <div className="flex flex-col items-center rounded-xl border border-border bg-card py-8 text-center text-muted-foreground">
                 <CreditCard className="h-10 w-10 opacity-40" />
                 <p className="mt-3 text-sm">No invoices yet.</p>
               </div>
             ) : (
-              <table className="w-full text-sm">
-                <thead className="border-b border-border text-xs uppercase tracking-wider text-muted-foreground">
-                  <tr>
-                    <th className="px-2 py-2 text-left font-medium">Date</th>
-                    <th className="px-2 py-2 text-left font-medium">Plan</th>
-                    <th className="px-2 py-2 text-left font-medium">Amount</th>
-                    <th className="px-2 py-2 text-left font-medium">Status</th>
-                    <th className="px-2 py-2 text-right font-medium">Receipt</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {invoices!.map((inv) => (
-                    <tr key={inv.id} className="border-t border-border">
-                      <td className="px-2 py-2">{fmtDate(inv.createdAt)}</td>
-                      <td className="px-2 py-2 capitalize">{inv.plan}</td>
-                      <td className="px-2 py-2 font-mono">{fmtIDR(inv.amount)}</td>
-                      <td className="px-2 py-2 capitalize">{inv.status.toLowerCase()}</td>
-                      <td className="px-2 py-2 text-right">
-                        {inv.receiptUrl ? (
-                          <a href={inv.receiptUrl} target="_blank" rel="noopener noreferrer" className="text-brand-500 hover:underline">View</a>
-                        ) : (
-                          <span className="text-muted-foreground">—</span>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              <DataTable
+                rows={invoices!}
+                columns={invoiceColumns}
+                filters={invoiceFilters}
+                rowKey={(inv) => inv.id}
+                searchPlaceholder="Search plan, status…"
+                defaultSort={{ key: 'date', dir: 'desc' }}
+                empty="No invoices match."
+              />
             )}
           </section>
         </>
@@ -313,3 +342,4 @@ function UsageCell({ label, current, limit }: { label: string; current: number; 
     </div>
   );
 }
+

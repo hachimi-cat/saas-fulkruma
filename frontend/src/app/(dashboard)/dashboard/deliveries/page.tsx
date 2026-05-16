@@ -1,12 +1,18 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { PackageCheck, Plus } from 'lucide-react';
+import { Loader2, PackageCheck, Plus } from 'lucide-react';
 import { api, type Delivery } from '@/lib/api';
-import { PageHeader } from '@/components/dashboard/page-header';
-import { Modal, Field, ErrorBox, Loading, EmptyState, Button } from '@/components/dashboard/ui';
+import { Modal, Field, ErrorBox, Button } from '@/components/dashboard/ui';
+import { DataTable, type Column, type FilterDef } from '@/components/data-table';
 
 interface ProductLite { id: string; name: string; type: string; }
+
+function deliveryStatus(d: Delivery): string {
+  if (new Date(d.expiresAt) < new Date()) return 'expired';
+  if (d.downloadCount >= d.maxDownloads) return 'exhausted';
+  return 'active';
+}
 
 export default function DeliveriesPage() {
   const [rows, setRows] = useState<Delivery[] | null>(null);
@@ -17,8 +23,8 @@ export default function DeliveriesPage() {
   async function reload() {
     try {
       const [d, p] = await Promise.all([
-        api<{ deliveries: Delivery[] }>('/deliveries'),
-        api<{ products: ProductLite[] }>('/products'),
+        api<{ deliveries: Delivery[] }>('/deliveries?limit=100'),
+        api<{ products: ProductLite[] }>('/products?limit=100'),
       ]);
       setRows(d.deliveries);
       setProducts(p.products.filter((x) => x.type === 'digital'));
@@ -26,64 +32,126 @@ export default function DeliveriesPage() {
   }
   useEffect(() => { reload(); }, []);
 
+  const productName = (id: string) => products.find((p) => p.id === id)?.name ?? id;
+
+  const columns: Column<Delivery>[] = [
+    {
+      key: 'createdAt',
+      header: 'Created',
+      sortable: true,
+      sortValue: (d) => new Date(d.createdAt).getTime(),
+      cell: (d) => <span className="text-xs text-muted-foreground">{new Date(d.createdAt).toLocaleDateString()}</span>,
+    },
+    {
+      key: 'product',
+      header: 'Product',
+      sortable: true,
+      sortValue: (d) => productName(d.productId),
+      searchValue: (d) => `${productName(d.productId)} ${d.productId} ${d.customerId} ${d.checkoutSessionId}`,
+      cell: (d) => (
+        <div className="text-xs">
+          <p className="font-medium">{productName(d.productId)}</p>
+          <p className="font-mono text-[10px] text-muted-foreground">{d.productId}</p>
+        </div>
+      ),
+    },
+    {
+      key: 'customer',
+      header: 'Customer',
+      sortable: true,
+      sortValue: (d) => d.customerId,
+      cell: (d) => <span className="font-mono text-xs text-muted-foreground">{d.customerId}</span>,
+    },
+    {
+      key: 'checkout',
+      header: 'Checkout',
+      cell: (d) => <span className="font-mono text-xs text-muted-foreground">{d.checkoutSessionId}</span>,
+    },
+    {
+      key: 'downloads',
+      header: 'Downloads',
+      align: 'right',
+      sortable: true,
+      sortValue: (d) => d.downloadCount,
+      cell: (d) => {
+        const exhausted = d.downloadCount >= d.maxDownloads;
+        return (
+          <span className={`font-mono tabular-nums ${exhausted ? 'text-destructive' : ''}`}>
+            {d.downloadCount} / {d.maxDownloads}
+          </span>
+        );
+      },
+    },
+    {
+      key: 'expires',
+      header: 'Expires',
+      sortable: true,
+      sortValue: (d) => new Date(d.expiresAt).getTime(),
+      cell: (d) => {
+        const expired = new Date(d.expiresAt) < new Date();
+        return (
+          <span className={`text-xs ${expired ? 'text-destructive' : 'text-muted-foreground'}`}>
+            {new Date(d.expiresAt).toLocaleDateString()}
+            {expired && ' · expired'}
+          </span>
+        );
+      },
+    },
+  ];
+
+  const filters: FilterDef<Delivery>[] = [
+    {
+      key: 'status',
+      label: 'Status',
+      accessor: (d) => deliveryStatus(d),
+      options: [
+        { value: 'active', label: 'Active' },
+        { value: 'exhausted', label: 'Exhausted' },
+        { value: 'expired', label: 'Expired' },
+      ],
+    },
+    {
+      key: 'product',
+      label: 'Product',
+      accessor: (d) => d.productId,
+      options: products.map((p) => ({ value: p.id, label: p.name })),
+    },
+  ];
+
   return (
-    <div className="">
-      <PageHeader
-        icon={PackageCheck}
-        title="Digital Deliveries"
-        description="Per-order download tracking. Buyers get a unique download URL after Plugipay confirms payment."
-        action={<Button onClick={() => setShowForm(true)}><Plus size={14} /> New delivery</Button>}
-      />
+    <div className="mx-auto max-w-5xl space-y-6">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-bold sm:text-2xl">Digital Deliveries</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Per-order download tracking. Buyers get a unique download URL after Plugipay confirms payment.
+          </p>
+        </div>
+        <Button onClick={() => setShowForm(true)}><Plus size={14} /> New delivery</Button>
+      </div>
 
       {error && <ErrorBox>{error}</ErrorBox>}
-      {!rows && !error && <Loading />}
-      {rows && rows.length === 0 && <EmptyState>No deliveries yet.</EmptyState>}
 
-      {rows && rows.length > 0 && (
-        <div className="overflow-hidden rounded-xl border border-border bg-card">
-          <table className="w-full text-sm">
-            <thead className="border-b border-border bg-secondary text-xs uppercase tracking-wider text-muted-foreground">
-              <tr>
-                <th className="px-4 py-3 text-left font-medium">Created</th>
-                <th className="px-4 py-3 text-left font-medium">Product</th>
-                <th className="px-4 py-3 text-left font-medium">Customer</th>
-                <th className="px-4 py-3 text-left font-medium">Checkout</th>
-                <th className="px-4 py-3 text-right font-medium">Downloads</th>
-                <th className="px-4 py-3 text-left font-medium">Expires</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((d) => {
-                const expired = new Date(d.expiresAt) < new Date();
-                const exhausted = d.downloadCount >= d.maxDownloads;
-                const productName = products.find((p) => p.id === d.productId)?.name ?? d.productId;
-                return (
-                  <tr key={d.id} className="border-t border-border">
-                    <td className="px-4 py-3 text-xs text-muted-foreground">{new Date(d.createdAt).toLocaleDateString()}</td>
-                    <td className="px-4 py-3 text-xs">
-                      <p className="font-medium">{productName}</p>
-                      <p className="font-mono text-[10px] text-muted-foreground">{d.productId}</p>
-                    </td>
-                    <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{d.customerId}</td>
-                    <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{d.checkoutSessionId}</td>
-                    <td className="px-4 py-3 text-right">
-                      <span className={`font-mono tabular-nums ${exhausted ? 'text-destructive' : ''}`}>
-                        {d.downloadCount} / {d.maxDownloads}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-xs">
-                      <span className={expired ? 'text-destructive' : 'text-muted-foreground'}>
-                        {new Date(d.expiresAt).toLocaleDateString()}
-                        {expired && ' · expired'}
-                      </span>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+      {!rows && !error ? (
+        <div className="flex h-48 items-center justify-center rounded-lg border border-border bg-card">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
         </div>
-      )}
+      ) : rows && rows.length === 0 ? (
+        <div className="flex h-48 flex-col items-center justify-center gap-2 rounded-lg border border-border bg-card">
+          <PackageCheck className="h-6 w-6 text-muted-foreground" />
+          <p className="text-sm text-muted-foreground">No deliveries yet</p>
+        </div>
+      ) : rows && rows.length > 0 ? (
+        <DataTable
+          rows={rows}
+          columns={columns}
+          filters={filters}
+          rowKey={(d) => d.id}
+          searchPlaceholder="Search product, customer, checkout…"
+          defaultSort={{ key: 'createdAt', dir: 'desc' }}
+          empty="No deliveries match."
+        />
+      ) : null}
 
       {showForm && (
         <CreateForm

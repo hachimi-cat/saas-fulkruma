@@ -1,10 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Warehouse, Plus, Archive } from 'lucide-react';
+import { Archive, Loader2, Plus, Warehouse as WarehouseIcon } from 'lucide-react';
 import { api, type Warehouse as Wh } from '@/lib/api';
-import { PageHeader } from '@/components/dashboard/page-header';
-import { Modal, Field, ErrorBox, Loading, EmptyState, Button } from '@/components/dashboard/ui';
+import { Modal, Field, ErrorBox, Button } from '@/components/dashboard/ui';
+import { DataTable, type Column, type FilterDef } from '@/components/data-table';
 
 export default function WarehousesPage() {
   const [rows, setRows] = useState<Wh[] | null>(null);
@@ -13,7 +13,7 @@ export default function WarehousesPage() {
   const [editing, setEditing] = useState<Wh | null>(null);
 
   async function reload() {
-    try { setRows((await api<{ warehouses: Wh[] }>('/warehouses')).warehouses); }
+    try { setRows((await api<{ warehouses: Wh[] }>('/warehouses?limit=100')).warehouses); }
     catch (e) { setError((e as Error).message); }
   }
   useEffect(() => { reload(); }, []);
@@ -24,63 +24,98 @@ export default function WarehousesPage() {
     catch (e) { alert((e as Error).message); }
   }
 
+  const columns: Column<Wh>[] = [
+    {
+      key: 'name',
+      header: 'Name',
+      sortable: true,
+      sortValue: (w) => w.name,
+      searchValue: (w) => `${w.name} ${w.city ?? ''} ${w.phone ?? ''}`,
+      cell: (w) => <span className="font-medium">{w.name}</span>,
+    },
+    {
+      key: 'city',
+      header: 'City',
+      sortable: true,
+      sortValue: (w) => w.city ?? '',
+      cell: (w) => <span className="text-muted-foreground">{w.city ?? '—'}</span>,
+    },
+    {
+      key: 'phone',
+      header: 'Phone',
+      cell: (w) => <span className="font-mono text-xs text-muted-foreground">{w.phone ?? '—'}</span>,
+    },
+    {
+      key: 'default',
+      header: 'Default',
+      sortable: true,
+      sortValue: (w) => (w.isDefault ? '0' : '1'),
+      cell: (w) =>
+        w.isDefault ? (
+          <span className="rounded-md border border-primary/30 bg-primary/10 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-primary">
+            default
+          </span>
+        ) : null,
+    },
+    {
+      key: 'actions',
+      header: 'Actions',
+      align: 'right',
+      cell: (w) => (
+        <div className="inline-flex items-center gap-3">
+          <button onClick={() => { setEditing(w); setShowForm(true); }} className="text-xs font-medium text-foreground hover:underline">Edit</button>
+          <button onClick={() => archive(w)} className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-destructive">
+            <Archive size={12} /> Archive
+          </button>
+        </div>
+      ),
+    },
+  ];
+
+  const filters: FilterDef<Wh>[] = [
+    {
+      key: 'default',
+      label: 'Default',
+      accessor: (w) => (w.isDefault ? 'yes' : 'no'),
+      options: [
+        { value: 'yes', label: 'Default' },
+        { value: 'no', label: 'Not default' },
+      ],
+    },
+  ];
+
   return (
-    <div className="">
-      <PageHeader
-        icon={Warehouse}
-        title="Warehouses"
-        description="Each physical or virtual location that holds stock."
-        action={
-          <Button onClick={() => { setEditing(null); setShowForm(true); }}>
-            <Plus size={14} /> New warehouse
-          </Button>
-        }
-      />
+    <div className="mx-auto max-w-5xl space-y-6">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-bold sm:text-2xl">Warehouses</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Each physical or virtual location that holds stock.</p>
+        </div>
+        <Button onClick={() => { setEditing(null); setShowForm(true); }}><Plus size={14} /> New warehouse</Button>
+      </div>
 
       {error && <ErrorBox>{error}</ErrorBox>}
-      {!rows && !error && <Loading />}
 
-      {rows && rows.length === 0 && <EmptyState>No warehouses yet — create one to start tracking stock.</EmptyState>}
-
-      {rows && rows.length > 0 && (
-        <div className="overflow-hidden rounded-xl border border-border bg-card">
-          <table className="w-full text-sm">
-            <thead className="border-b border-border bg-secondary text-xs uppercase tracking-wider text-muted-foreground">
-              <tr>
-                <th className="px-4 py-3 text-left font-medium">Name</th>
-                <th className="px-4 py-3 text-left font-medium">City</th>
-                <th className="px-4 py-3 text-left font-medium">Phone</th>
-                <th className="px-4 py-3 text-left font-medium">Default</th>
-                <th className="px-4 py-3 text-right font-medium">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((w) => (
-                <tr key={w.id} className="border-t border-border">
-                  <td className="px-4 py-3 font-medium">{w.name}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{w.city ?? '—'}</td>
-                  <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{w.phone ?? '—'}</td>
-                  <td className="px-4 py-3">
-                    {w.isDefault && (
-                      <span className="rounded-md border border-primary/30 bg-primary/10 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-primary">
-                        default
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <div className="inline-flex items-center gap-3">
-                      <button onClick={() => { setEditing(w); setShowForm(true); }} className="text-xs font-medium text-foreground hover:underline">Edit</button>
-                      <button onClick={() => archive(w)} className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-destructive">
-                        <Archive size={12} /> Archive
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      {!rows && !error ? (
+        <div className="flex h-48 items-center justify-center rounded-lg border border-border bg-card">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
         </div>
-      )}
+      ) : rows && rows.length === 0 ? (
+        <div className="flex h-48 flex-col items-center justify-center gap-2 rounded-lg border border-border bg-card">
+          <WarehouseIcon className="h-6 w-6 text-muted-foreground" />
+          <p className="text-sm text-muted-foreground">No warehouses yet</p>
+        </div>
+      ) : rows && rows.length > 0 ? (
+        <DataTable
+          rows={rows}
+          columns={columns}
+          filters={filters}
+          rowKey={(w) => w.id}
+          searchPlaceholder="Search name, city, phone…"
+          defaultSort={{ key: 'name', dir: 'asc' }}
+          empty="No warehouses match."
+        />
+      ) : null}
 
       {showForm && (
         <WarehouseForm

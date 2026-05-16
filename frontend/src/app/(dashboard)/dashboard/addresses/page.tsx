@@ -1,19 +1,18 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { MapPin, Plus, Trash2 } from 'lucide-react';
+import { Loader2, MapPin, Plus, Trash2 } from 'lucide-react';
 import { api, type CustomerAddress } from '@/lib/api';
-import { PageHeader } from '@/components/dashboard/page-header';
-import { Modal, Field, ErrorBox, Loading, EmptyState, Button } from '@/components/dashboard/ui';
+import { Modal, Field, ErrorBox, Button } from '@/components/dashboard/ui';
+import { DataTable, type Column, type FilterDef } from '@/components/data-table';
 
 export default function AddressesPage() {
   const [rows, setRows] = useState<CustomerAddress[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
-  const [filter, setFilter] = useState('');
 
   async function reload() {
-    try { setRows((await api<{ addresses: CustomerAddress[] }>('/addresses')).addresses); }
+    try { setRows((await api<{ addresses: CustomerAddress[] }>('/addresses?limit=100')).addresses); }
     catch (e) { setError((e as Error).message); }
   }
   useEffect(() => { reload(); }, []);
@@ -24,77 +23,112 @@ export default function AddressesPage() {
     catch (e) { alert((e as Error).message); }
   }
 
-  const filtered = rows?.filter((a) =>
-    !filter || a.contactName.toLowerCase().includes(filter.toLowerCase()) || a.customerId.toLowerCase().includes(filter.toLowerCase())
-  );
+  const columns: Column<CustomerAddress>[] = [
+    {
+      key: 'customer',
+      header: 'Customer',
+      sortable: true,
+      sortValue: (a) => a.customerId,
+      searchValue: (a) => `${a.customerId} ${a.contactName} ${a.label}`,
+      cell: (a) => <span className="font-mono text-xs text-muted-foreground">{a.customerId}</span>,
+    },
+    {
+      key: 'label',
+      header: 'Label',
+      sortable: true,
+      sortValue: (a) => a.label,
+      cell: (a) => (
+        <span>
+          <span className="font-medium">{a.label}</span>
+          {a.isDefault && (
+            <span className="ml-2 rounded-md border border-primary/30 bg-primary/10 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-primary">
+              default
+            </span>
+          )}
+        </span>
+      ),
+    },
+    {
+      key: 'contact',
+      header: 'Contact',
+      sortable: true,
+      sortValue: (a) => a.contactName,
+      cell: (a) => (
+        <div className="text-xs">
+          <p className="font-medium">{a.contactName}</p>
+          <p className="text-muted-foreground">{a.contactPhone}</p>
+          {a.email && <p className="text-muted-foreground">{a.email}</p>}
+        </div>
+      ),
+    },
+    {
+      key: 'address',
+      header: 'Address',
+      cell: (a) => (
+        <div className="text-xs text-muted-foreground max-w-[280px]">
+          <p>{a.address}</p>
+          {a.postalCode && <p>{a.postalCode}</p>}
+        </div>
+      ),
+    },
+    {
+      key: 'actions',
+      header: 'Actions',
+      align: 'right',
+      cell: (a) => (
+        <button onClick={() => remove(a)} className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-destructive">
+          <Trash2 size={12} /> Delete
+        </button>
+      ),
+    },
+  ];
+
+  const filters: FilterDef<CustomerAddress>[] = [
+    {
+      key: 'default',
+      label: 'Default',
+      accessor: (a) => (a.isDefault ? 'yes' : 'no'),
+      options: [
+        { value: 'yes', label: 'Default' },
+        { value: 'no', label: 'Not default' },
+      ],
+    },
+  ];
 
   return (
-    <div className="">
-      <PageHeader
-        icon={MapPin}
-        title="Customer addresses"
-        description="Buyer address book per merchant. Saved at checkout, reused on subsequent orders."
-        action={<Button onClick={() => setShowForm(true)}><Plus size={14} /> New address</Button>}
-      />
-
-      <div className="mb-4">
-        <input
-          type="search"
-          placeholder="Filter by name or customer ID…"
-          value={filter}
-          onChange={(e) => setFilter(e.target.value)}
-          className="input max-w-md"
-        />
+    <div className="mx-auto max-w-5xl space-y-6">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-bold sm:text-2xl">Customer addresses</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Buyer address book per merchant. Saved at checkout, reused on subsequent orders.
+          </p>
+        </div>
+        <Button onClick={() => setShowForm(true)}><Plus size={14} /> New address</Button>
       </div>
 
       {error && <ErrorBox>{error}</ErrorBox>}
-      {!rows && !error && <Loading />}
-      {filtered && filtered.length === 0 && <EmptyState>No addresses{filter ? ' match.' : ' yet.'}</EmptyState>}
 
-      {filtered && filtered.length > 0 && (
-        <div className="overflow-hidden rounded-xl border border-border bg-card">
-          <table className="w-full text-sm">
-            <thead className="border-b border-border bg-secondary text-xs uppercase tracking-wider text-muted-foreground">
-              <tr>
-                <th className="px-4 py-3 text-left font-medium">Customer</th>
-                <th className="px-4 py-3 text-left font-medium">Label</th>
-                <th className="px-4 py-3 text-left font-medium">Contact</th>
-                <th className="px-4 py-3 text-left font-medium">Address</th>
-                <th className="px-4 py-3 text-right font-medium">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((a) => (
-                <tr key={a.id} className="border-t border-border align-top">
-                  <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{a.customerId}</td>
-                  <td className="px-4 py-3">
-                    <span className="font-medium">{a.label}</span>
-                    {a.isDefault && (
-                      <span className="ml-2 rounded-md border border-primary/30 bg-primary/10 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-primary">
-                        default
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-xs">
-                    <p className="font-medium">{a.contactName}</p>
-                    <p className="text-muted-foreground">{a.contactPhone}</p>
-                    {a.email && <p className="text-muted-foreground">{a.email}</p>}
-                  </td>
-                  <td className="px-4 py-3 text-xs text-muted-foreground max-w-[280px]">
-                    <p>{a.address}</p>
-                    {a.postalCode && <p>{a.postalCode}</p>}
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <button onClick={() => remove(a)} className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-destructive">
-                      <Trash2 size={12} /> Delete
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      {!rows && !error ? (
+        <div className="flex h-48 items-center justify-center rounded-lg border border-border bg-card">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
         </div>
-      )}
+      ) : rows && rows.length === 0 ? (
+        <div className="flex h-48 flex-col items-center justify-center gap-2 rounded-lg border border-border bg-card">
+          <MapPin className="h-6 w-6 text-muted-foreground" />
+          <p className="text-sm text-muted-foreground">No addresses yet</p>
+        </div>
+      ) : rows && rows.length > 0 ? (
+        <DataTable
+          rows={rows}
+          columns={columns}
+          filters={filters}
+          rowKey={(a) => a.id}
+          searchPlaceholder="Search by name, customer, label…"
+          defaultSort={{ key: 'customer', dir: 'asc' }}
+          empty="No addresses match."
+        />
+      ) : null}
 
       {showForm && (
         <AddForm onClose={() => setShowForm(false)} onSaved={() => { setShowForm(false); reload(); }} />
