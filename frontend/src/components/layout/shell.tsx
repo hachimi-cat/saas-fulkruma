@@ -27,7 +27,7 @@ export function DashboardShell({
             <Menu className="h-5 w-5" />
           </button>
         </div>
-        <main className="flex-1 p-4 md:p-6 max-w-[1400px] w-full mx-auto">{children}</main>
+        <main className="min-w-0 flex-1 p-4 md:p-6 max-w-[1400px] w-full mx-auto">{children}</main>
       </div>
     </div>
   );
