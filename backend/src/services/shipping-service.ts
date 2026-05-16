@@ -547,13 +547,18 @@ export async function getAdapterForAccount(
 }
 
 // ─── Courier catalog ─────────────────────────────────────────────────────────
-// Per Biteship activation form — all 16 couriers approved by default.
+// All 16 couriers approved on the Biteship activation form, using the
+// canonical Biteship courier_code values. The most common gotcha:
+// Biteship returns `gojek` for the GoSend service (company name, not
+// product name) — using `gosend` causes "Unknown couriers: gosend"
+// validation failures because Biteship's live catalog doesn't list it.
 export const DEFAULT_COURIERS = [
   'jne', 'jnt', 'pos', 'sicepat', 'wahana', 'sap', 'ninja', 'tiki',
-  'lion', 'anteraja', 'idexpress', 'lalamove', 'grab', 'deliveree', 'gosend', 'borzo',
+  'lion', 'anteraja', 'idexpress', 'lalamove', 'grab', 'deliveree', 'gojek', 'borzo',
 ] as const;
 
-export const INSTANT_COURIERS = new Set(['gosend', 'grab', 'lalamove', 'borzo', 'deliveree']);
+// Biteship's canonical code is `gojek` not `gosend` (see DEFAULT_COURIERS).
+export const INSTANT_COURIERS = new Set(['gojek', 'grab', 'lalamove', 'borzo', 'deliveree']);
 
 export function isInstantCourier(courierCode: string): boolean {
   return INSTANT_COURIERS.has(courierCode);
