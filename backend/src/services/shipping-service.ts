@@ -198,6 +198,8 @@ export interface ParsedWebhook {
   raw: Record<string, unknown>;
 }
 
+import { isInsufficientBalanceError, fireLowBalanceAlert } from './biteship-balance-alert.js';
+
 export class BiteshipError extends Error {
   constructor(public readonly status: number, message: string, public readonly body?: unknown) {
     super(message);
@@ -258,6 +260,16 @@ export class BiteshipAdapter {
           if (response.status >= 500 && attempt < maxAttempts) {
             await new Promise(r => setTimeout(r, 300 * attempt));
             continue;
+          }
+          // S-052: detect "Saldo is empty" — Biteship has no balance
+          // API so the only signal is an error response. Fire a
+          // throttled email alert so ops can manually top up before
+          // the next merchant's confirmPickup fails.
+          if (isInsufficientBalanceError(parsed)) {
+            fireLowBalanceAlert({
+              operation: `${method} ${path}`,
+              biteshipResponseBody: parsed,
+            });
           }
           throw new BiteshipError(response.status, (parsed as { error?: string }).error ?? `Biteship ${response.status}`, parsed);
         }
