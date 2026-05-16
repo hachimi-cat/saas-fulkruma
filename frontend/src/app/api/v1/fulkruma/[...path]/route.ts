@@ -42,16 +42,16 @@ async function handle(
     headers.set(key, value);
   });
   headers.set('x-fulkruma-internal-secret', internalSecret());
-  // The active workspace context — if the client passed X-Account-Id
-  // (e.g., the merchant picked a partner-provisioned workspace like
-  // a Storlaunch merchant's), use that. Otherwise fall back to the
-  // user's own Huudis id which == accountId for single-user fulkruma.
-  // Proper session-persisted switcher = S-050 follow-up. For now this
-  // lets the dashboard read cirengs's data by setting:
-  //   localStorage.setItem('fulkruma_account_id', 'acc_xxx')
-  // and reloading. Same primitive Storlaunch uses.
-  const overrideAccountId = req.headers.get('x-account-id') ?? undefined;
-  headers.set('x-fulkruma-account-id', overrideAccountId || session.huudisUserId);
+  // S-050: active workspace context. The /dashboard/workspaces page
+  // sets the `fulkruma_active_workspace` cookie on every switch.
+  // Honor it here so server-side proxy calls reflect the picked
+  // workspace (admin users like gojo accessing partner-provisioned
+  // workspaces like cirengs's `acc_*`). Falls back to huudisUserId
+  // (== accountId for single-user fulkruma) when no cookie set.
+  const activeFromCookie = req.cookies.get('fulkruma_active_workspace')?.value;
+  const activeFromHeader = req.headers.get('x-account-id') ?? undefined;
+  const activeAccountId = activeFromHeader || activeFromCookie || session.huudisUserId;
+  headers.set('x-fulkruma-account-id', activeAccountId);
   headers.set('x-fulkruma-user-id', session.huudisUserId);
 
   const init: RequestInit = { method: req.method, headers };

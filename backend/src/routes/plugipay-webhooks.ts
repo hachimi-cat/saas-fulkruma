@@ -126,6 +126,31 @@ router.post('/', express.raw({ type: 'application/json' }), async (req, res) => 
         await applySubscriptionCanceled(accountId);
         break;
       }
+      case 'plugipay.checkout_session.completed.v1': {
+        // S-051: shipping-credit top-up flow. The checkout was created
+        // by POST /shipping-credits/checkout and metadata tags it. Any
+        // OTHER completed session here is unrelated (subscription
+        // first-invoice payments go through invoice.paid above).
+        const obj = ((event.data as { object?: Record<string, unknown> })?.object ?? {}) as {
+          id?: string;
+          metadata?: Record<string, unknown>;
+        };
+        const md = (obj.metadata ?? {}) as Record<string, unknown>;
+        if (md.shippingCreditTopup !== 'true') break;
+        const accountId = String(md.fulkrumaAccountId ?? '');
+        const amount = Number(md.requestedAmount ?? 0);
+        if (!accountId || !Number.isFinite(amount) || amount <= 0) break;
+        const { applyTransaction } = await import('../services/shipping-credit-service.js');
+        await applyTransaction({
+          accountId,
+          amount,
+          kind: 'topup',
+          externalRef: obj.id ?? null,
+          memo: `Top-up via Plugipay session ${obj.id ?? ''}`,
+        });
+        console.log(`[plugipay-webhook] shipping-credit topup Rp ${amount.toLocaleString('id-ID')} credited to ${accountId}`);
+        break;
+      }
       default:
         // Unknown event types — ack so plugipay stops retrying.
         break;

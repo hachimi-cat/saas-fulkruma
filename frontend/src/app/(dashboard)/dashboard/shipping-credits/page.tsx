@@ -2,9 +2,111 @@
 
 import { useEffect, useState } from 'react';
 import { Wallet, Plus, Truck, RefreshCcw, ArrowUpRight, ArrowDownRight, Sparkles, Loader2 } from 'lucide-react';
-import { api } from '@/lib/api';
+import { api, ApiError } from '@/lib/api';
 import { PageHeader } from '@/components/dashboard/page-header';
 import { ErrorBox, Loading } from '@/components/dashboard/ui';
+
+const PRESET_AMOUNTS = [50_000, 100_000, 250_000, 500_000, 1_000_000];
+
+function TopUpForm({ onError, onComplete }: { onError: (msg: string | null) => void; onComplete: () => void }) {
+  const [amount, setAmount] = useState<number>(100_000);
+  const [email, setEmail] = useState('');
+  const [needsEmail, setNeedsEmail] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  async function submit() {
+    setBusy(true);
+    onError(null);
+    try {
+      const body: { amount: number; email?: string } = { amount };
+      if (needsEmail && email.trim()) body.email = email.trim();
+      const res = await api<{ checkoutUrl?: string }>('/shipping-credits/checkout', {
+        method: 'POST',
+        body: JSON.stringify(body),
+      });
+      if (res.checkoutUrl) {
+        window.location.href = res.checkoutUrl;
+      } else {
+        onError('No checkout URL returned');
+      }
+    } catch (e) {
+      const err = e as ApiError;
+      if (err.code === 'EMAIL_REQUIRED') {
+        setNeedsEmail(true);
+        onError('First top-up needs an email — enter one below and try again.');
+      } else {
+        onError(err.message ?? 'Top-up failed');
+      }
+    } finally {
+      setBusy(false);
+      onComplete();
+    }
+  }
+
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white p-6 space-y-4">
+      <div>
+        <h2 className="text-sm font-semibold text-slate-900">Top up balance</h2>
+        <p className="mt-0.5 text-xs text-slate-600">
+          You&apos;ll be redirected to checkout — pay via QRIS, virtual account,
+          e-wallet, or card. Credit applies as soon as payment clears.
+        </p>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        {PRESET_AMOUNTS.map((p) => (
+          <button
+            key={p}
+            type="button"
+            onClick={() => setAmount(p)}
+            className={`rounded-full border px-3 py-1 text-xs font-medium tabular-nums transition-colors ${
+              amount === p ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-slate-300 text-slate-600 hover:bg-slate-100'
+            }`}
+          >
+            Rp {p.toLocaleString('id-ID')}
+          </button>
+        ))}
+      </div>
+      <div>
+        <label className="mb-1 block text-xs font-medium text-slate-700">Custom amount (IDR)</label>
+        <input
+          type="number"
+          value={amount}
+          min={10_000}
+          max={10_000_000}
+          step={10_000}
+          onChange={(e) => setAmount(Math.max(10_000, Number(e.target.value) || 0))}
+          className="w-full max-w-xs rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-mono tabular-nums focus:outline-none focus:ring-1 focus:ring-blue-500"
+        />
+        <p className="mt-1 text-[10px] text-slate-500">Min Rp 10,000 · Max Rp 10,000,000 per top-up.</p>
+      </div>
+      {needsEmail && (
+        <div>
+          <label className="mb-1 block text-xs font-medium text-slate-700">
+            Email for receipt <span className="text-red-500">*</span>
+          </label>
+          <input
+            type="email"
+            required
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="you@example.com"
+            className="w-full max-w-xs rounded-md border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+          />
+          <p className="mt-1 text-[10px] text-slate-500">One-time — saved on your Plugipay customer record for future top-ups.</p>
+        </div>
+      )}
+      <button
+        type="button"
+        onClick={submit}
+        disabled={busy || amount < 10_000 || (needsEmail && !email.trim())}
+        className="inline-flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+      >
+        {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+        Top up Rp {amount.toLocaleString('id-ID')}
+      </button>
+    </div>
+  );
+}
 
 // S-048b: Fulkruma standalone-portal view of shipping credits.
 // Mirror of Storlaunch's page, but for merchants using Fulkruma
@@ -113,18 +215,7 @@ export default function ShippingCreditsPage() {
               </button>
             </div>
 
-            <div className="rounded-xl border border-slate-200 bg-white p-6 space-y-3">
-              <h2 className="text-sm font-semibold text-slate-900">Top up balance</h2>
-              <p className="text-xs text-slate-600">
-                Standalone Fulkruma top-up isn&apos;t wired to Plugipay yet — for now,
-                contact your Forjio account manager to add credit. Merchants
-                accessing Fulkruma through Storlaunch can top up directly from
-                the Storlaunch dashboard.
-              </p>
-              <div className="rounded-md border border-amber-300 bg-amber-50 p-3 text-xs text-amber-800">
-                Coming soon: self-serve top-up via Plugipay (QRIS, VA, e-wallet, card).
-              </div>
-            </div>
+            <TopUpForm onError={(m) => setError(m)} onComplete={load} />
           </div>
 
           <div className="rounded-xl border border-slate-200 bg-white">
