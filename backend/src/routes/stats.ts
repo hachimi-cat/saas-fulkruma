@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { ok, err } from '@forjio/sdk/http';
 import { prisma } from '../lib/db.js';
 import { requireAuth } from '../middleware/auth.js';
+import { ACTIVE_SHIPMENT_STATUSES } from '../lib/shipment-status.js';
 
 const router = Router();
 router.use(requireAuth);
@@ -26,7 +27,13 @@ router.get('/overview', async (req, res) => {
     prisma.warehouse.count({ where: { accountId, archived: false } }),
     prisma.variantStock.count({ where: { warehouse: { accountId } } }),
     prisma.shipment.count({
-      where: { accountId, status: { in: ['confirmed', 'allocated', 'picking_up', 'picked_up', 'dropping_off', 'in_transit'] } },
+      // "Active" = anything still in the courier network. Sourced from
+      // the shared descriptors module so this list stays in step with
+      // the enum (F-003).
+      where: {
+        accountId,
+        status: { in: ACTIVE_SHIPMENT_STATUSES as never },
+      },
     }),
     prisma.license.count({ where: { accountId, status: 'active' } }),
     prisma.delivery.count({ where: { accountId, createdAt: { gte: since30d } } }),

@@ -520,27 +520,51 @@ export function isInstantCourier(courierCode: string): boolean {
 }
 
 // ─── Status mapping ──────────────────────────────────────────────────────────
-// Biteship sends status strings; we map to our Prisma enum (ShipmentStatus).
+//
+// 1:1 mirror of Biteship's status enum into our ShipmentStatus. The
+// only translation is `picked` → `picked_up` (Biteship has used both
+// spellings historically; we normalise to one). Anything we don't
+// recognise is logged and falls through to `pending` so the system
+// stays safe — but the goal is for this list to stay exhaustive.
+// 1:1 with Biteship's published status list. Accepts both the
+// camelCase form the docs show in examples and the snake_case form
+// the webhook actually delivers. `picked` is Biteship's terminology
+// for "picked up" — normalised to picked_up internally.
 const STATUS_MAP: Record<string, string> = {
+  // snake_case (webhook payloads)
   'confirmed': 'confirmed',
-  'scheduled': 'confirmed',
+  'scheduled': 'scheduled',
   'allocated': 'allocated',
   'picking_up': 'picking_up',
-  'rejected': 'cancelled',
   'picked': 'picked_up',
   'picked_up': 'picked_up',
   'dropping_off': 'dropping_off',
-  'on_hold': 'in_transit',
+  'on_hold': 'on_hold',
+  'return_in_transit': 'return_in_transit',
   'delivered': 'delivered',
-  'rejected_by_recipient': 'returned',
+  'rejected': 'rejected',
+  'rejected_by_recipient': 'rejected_by_recipient',
   'returned': 'returned',
-  'courier_not_found': 'failed',
   'cancelled': 'cancelled',
-  'disposed': 'failed',
+  'courier_not_found': 'courier_not_found',
+  'disposed': 'disposed',
+  // camelCase aliases (docs examples — defensive in case the API ever
+  // shifts to camelCase on us)
+  'pickingup': 'picking_up',
+  'droppingoff': 'dropping_off',
+  'onhold': 'on_hold',
+  'returnintransit': 'return_in_transit',
+  'couriernotfound': 'courier_not_found',
 };
 
 export function mapBiteshipStatus(biteshipStatus: string): string {
-  return STATUS_MAP[biteshipStatus.toLowerCase()] ?? 'pending';
+  const key = biteshipStatus.toLowerCase();
+  const mapped = STATUS_MAP[key];
+  if (!mapped) {
+    console.warn(`[biteship] unknown status "${biteshipStatus}" — falling back to pending`);
+    return 'pending';
+  }
+  return mapped;
 }
 
 // ─── Service: orchestration over adapter + prisma ───────────────────────────
@@ -620,7 +644,14 @@ export async function cancelShipment(
 ): Promise<void> {
   const shipment = await prisma.shipment.findUnique({ where: { id: shipmentId } });
   if (!shipment) throw new Error(`Shipment ${shipmentId} not found`);
-  if (['picked_up', 'in_transit', 'delivered', 'cancelled', 'returned'].includes(shipment.status)) {
+  // Once the parcel has left the origin we can't cancel — Biteship
+  // refuses, so we refuse upstream. F-003 removed our internal
+  // 'in_transit' value; the real Biteship lifecycle uses on_hold /
+  // dropping_off / return_in_transit between picked_up and delivered.
+  if ([
+    'picked_up', 'dropping_off', 'on_hold', 'return_in_transit',
+    'delivered', 'cancelled', 'returned', 'disposed',
+  ].includes(shipment.status)) {
     throw new Error(`Cannot cancel shipment in status ${shipment.status}`);
   }
   const ad = adapter ?? await getAdapterForAccount(prisma, shipment.accountId);

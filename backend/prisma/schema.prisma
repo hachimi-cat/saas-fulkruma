@@ -120,17 +120,34 @@ model MonthlyUsage {
 // ENUMS
 // =============================================================================
 
+// 1:1 with Biteship's published tracking-status list (F-003) — see
+// https://biteship.com/id/docs/api/trackings/status. We preserve every
+// status Biteship emits so the merchant + buyer timeline reflects
+// exactly what happened with the parcel.
+//
+//   pending  — internal, pre-courier-confirm
+//   failed   — internal, adapter-level error before Biteship answered
+//
+// The previous `in_transit` value was our own invention used as a
+// catch-all for on_hold + dropping_off; removed since we now keep
+// those granular states directly.
 enum ShipmentStatus {
   pending
   confirmed
+  scheduled
   allocated
   picking_up
   picked_up
   dropping_off
-  in_transit
+  on_hold
+  return_in_transit
   delivered
-  cancelled
+  rejected
+  rejected_by_recipient
   returned
+  cancelled
+  courier_not_found
+  disposed
   failed
 }
 
