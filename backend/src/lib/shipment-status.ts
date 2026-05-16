@@ -190,8 +190,21 @@ for (const d of Object.values(SHIPMENT_STATUSES)) {
 }
 
 // Statuses that count as "still moving" — used by stats / filters
-// that want a single count of active shipments.
+// that want a single count of active shipments. The descriptor module
+// includes some storlaunch-managed ManualOrder.fulfillmentStatus
+// values (preparing, ready_to_ship, shipped) which are NOT in
+// Fulkruma's Prisma ShipmentStatus enum. Filter those out so Prisma
+// doesn't blow up the stats endpoint with "Invalid value for enum"
+// (fixed after dashboard 502 spotted 2026-05-16).
+const FULKRUMA_SHIPMENT_STATUS_VALUES = new Set([
+  'pending', 'confirmed', 'scheduled', 'allocated',
+  'picking_up', 'picked_up', 'dropping_off',
+  'on_hold', 'return_in_transit',
+  'delivered', 'rejected', 'rejected_by_recipient',
+  'returned', 'cancelled', 'courier_not_found',
+]);
+
 export const ACTIVE_SHIPMENT_STATUSES: string[] = [
   ...STATUSES_BY_STAGE.pre_pickup.map((d) => d.status),
   ...STATUSES_BY_STAGE.in_flight.map((d) => d.status),
-].filter((s) => s !== 'pending'); // pending = not yet courier-confirmed
+].filter((s) => s !== 'pending' && FULKRUMA_SHIPMENT_STATUS_VALUES.has(s));
