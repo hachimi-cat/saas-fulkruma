@@ -41,7 +41,8 @@ jobs:
   test:
     name: Unit & Integration Tests
     runs-on: ubuntu-latest
-    needs: lint
+    # Independent of lint — they only share `checkout`. Running in parallel
+    # cuts ~45s off the pipeline.
     services:
       postgres:
         image: postgres:16
@@ -79,7 +80,13 @@ jobs:
 
   build:
     name: Build
-    needs: test
+    # The single source of truth for build artifacts. All NEXT_PUBLIC_* env
+    # vars are inlined here once and the artifact is reused by both staging
+    # and prod deploys — they happen to share the same NEXT_PUBLIC values
+    # so one build covers both. Server-side env vars (HUUDIS_*, BITESHIP_*,
+    # etc.) are read at runtime from droplet .env and don't require a
+    # rebuild when they change.
+    needs: [lint, test]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -141,6 +148,10 @@ jobs:
       - name: Deploy via rsync
         uses: burnett01/rsync-deployments@7.0.1
         with:
+          # node_modules excluded — droplet installs runtime deps with
+          # --omit=dev. .next/cache excluded — only the build output is
+          # needed for `next start`, the cache is webpack's incremental
+          # store and bloats the artifact.
           switches: -avz --delete --exclude node_modules --exclude .git --exclude .env --exclude .env.production.local --exclude .npmrc --exclude frontend/.next/cache
           path: ./
           remote_path: /opt/fulkruma/
@@ -158,11 +169,15 @@ jobs:
           script: |
             set -e
             cd /opt/fulkruma/backend
+            # --omit=dev — runtime deps only. dist/ + prisma client are
+            # already in the artifact from the Build job, so we just need
+            # the production node_modules tree here.
             npm ci --omit=dev
-            npx prisma generate
             npx prisma migrate deploy
             pm2 restart fulkruma-backend || pm2 start dist/index.js --name fulkruma-backend
             cd /opt/fulkruma/frontend
+            # .next/ is pre-built in the artifact — no `next build` here.
+            # Runtime deps only; next start needs them.
             npm ci --omit=dev
             pm2 restart fulkruma-frontend || pm2 start npm --name fulkruma-frontend -- start
             pm2 save
@@ -205,7 +220,9 @@ jobs:
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
     steps:
-      - uses: actions/checkout@v4
+      # Reuses the artifact from the Build job — no re-checkout, no rebuild.
+      # The staging artifact IS the production artifact since all NEXT_PUBLIC_*
+      # values are identical across envs.
       - uses: actions/download-artifact@v4
         with:
           name: backend-dist
@@ -235,10 +252,10 @@ jobs:
             set -e
             cd /opt/fulkruma/backend
             npm ci --omit=dev
-            npx prisma generate
             npx prisma migrate deploy
             pm2 restart fulkruma-backend || pm2 start dist/index.js --name fulkruma-backend
             cd /opt/fulkruma/frontend
+            # .next/ is pre-built in the artifact — no `next build` here.
             npm ci --omit=dev
             pm2 restart fulkruma-frontend || pm2 start npm --name fulkruma-frontend -- start
             pm2 save
