@@ -22,7 +22,7 @@ const footerLinks = {
 
 export function MarketingFooter() {
   return (
-    <footer className="border-t border-border bg-background">
+    <footer className="border-t border-border/50 bg-background">
       <div className="mx-auto max-w-7xl px-4 py-12 md:px-6">
         <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
           <div>
@@ -54,7 +54,7 @@ export function MarketingFooter() {
           ))}
         </div>
 
-        <div className="mt-12 grid gap-6 border-t border-border pt-8 text-xs text-muted-foreground sm:grid-cols-3">
+        <div className="mt-12 grid gap-6 border-t border-border/50 pt-8 text-xs text-muted-foreground sm:grid-cols-3">
           <div className="space-y-1.5">
             <p className="font-medium text-foreground">PT Forjio Teknologi Indonesia</p>
             <p className="flex items-start gap-2">

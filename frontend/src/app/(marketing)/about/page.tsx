@@ -38,14 +38,14 @@ export default function AboutPage() {
             and CLI.
           </p>
 
-          <h2 className="pt-6 text-xl font-semibold text-foreground">Built for Indonesia</h2>
+          <h2 className="pt-4 text-2xl font-bold text-foreground">Built for Indonesia</h2>
           <p>
             IDR-primary pricing. Native Biteship integration. PT Forjio Teknologi
             Indonesia is the registered operating entity. We pay tax here, we
             support here, and we respond to UU PDP requests within 30 days.
           </p>
 
-          <h2 className="pt-6 text-xl font-semibold text-foreground">The Forjio family</h2>
+          <h2 className="pt-4 text-2xl font-bold text-foreground">The Forjio family</h2>
           <p>
             Fulkruma is one of seven Forjio products — alongside Huudis (auth),
             Plugipay (payments), Storlaunch (storefront), Ripllo (marketing &amp;

@@ -21,7 +21,7 @@ export function MarketingNav() {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
-    <nav className="border-b border-border bg-background/80 backdrop-blur-sm">
+    <nav className="border-b border-border/50 bg-background/80 backdrop-blur-sm">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 md:px-6">
         <div className="flex items-center gap-8">
           <Link href="/" className="flex items-center gap-2">
@@ -71,7 +71,7 @@ export function MarketingNav() {
       </div>
 
       {mobileOpen && (
-        <div className="border-t border-border px-6 py-4 md:hidden">
+        <div className="border-t border-border/50 px-6 py-4 md:hidden">
           <div className="flex flex-col gap-3">
             {navLinks.map((link) => (
               <Link
@@ -88,7 +88,7 @@ export function MarketingNav() {
                 {link.label}
               </Link>
             ))}
-            <div className="mt-2 flex flex-col gap-2 border-t border-border pt-4">
+            <div className="mt-2 flex flex-col gap-2 border-t border-border/50 pt-4">
               <Link
                 href="/login"
                 onClick={() => setMobileOpen(false)}
