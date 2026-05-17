@@ -134,6 +134,16 @@ jobs:
             frontend/package.json
             frontend/package-lock.json
             frontend/next.config.*
+      # frontend/src/lib/markdown.tsx resolves `process.cwd()/../copy/docs`
+      # at request time, so the docs markdown source must be deployed to
+      # the same parent dir as frontend/. Without this artifact every
+      # /docs/* request returns "Doc not found:". Ship copy/ to both
+      # staging + production deploy jobs.
+      - name: Upload docs copy
+        uses: actions/upload-artifact@v4
+        with:
+          name: docs-copy
+          path: copy/
 
   deploy-staging:
     name: Deploy to Staging
@@ -154,6 +164,10 @@ jobs:
         with:
           name: deploy-configs
           path: deploy/
+      - uses: actions/download-artifact@v4
+        with:
+          name: docs-copy
+          path: copy/
       - name: Deploy via rsync
         uses: burnett01/rsync-deployments@7.0.1
         with:
@@ -161,6 +175,7 @@ jobs:
           # --omit=dev. .next/cache excluded — only the build output is
           # needed for `next start`, the cache is webpack's incremental
           # store and bloats the artifact.
+          # copy/ INCLUDED — see "Upload docs copy" step in build job.
           switches: -avz --delete --exclude node_modules --exclude .git --exclude .env --exclude .env.production.local --exclude .npmrc --exclude frontend/.next/cache
           path: ./
           remote_path: /opt/fulkruma/
@@ -244,9 +259,14 @@ jobs:
         with:
           name: deploy-configs
           path: deploy/
+      - uses: actions/download-artifact@v4
+        with:
+          name: docs-copy
+          path: copy/
       - name: Deploy via rsync
         uses: burnett01/rsync-deployments@7.0.1
         with:
+          # copy/ INCLUDED — see "Upload docs copy" step in build job.
           switches: -avz --delete --exclude node_modules --exclude .git --exclude .env --exclude .env.production.local --exclude .npmrc --exclude frontend/.next/cache
           path: ./
           remote_path: /opt/fulkruma/
