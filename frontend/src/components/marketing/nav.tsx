@@ -25,7 +25,7 @@ export function MarketingNav() {
       <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 md:px-6">
         <div className="flex items-center gap-8">
           <Link href="/" className="flex items-center gap-2">
-            <LogoMark size={26} />
+            <LogoMark size={24} />
             <span className="text-lg font-bold tracking-tight">Fulkruma</span>
           </Link>
           <div className="hidden items-center gap-6 md:flex">

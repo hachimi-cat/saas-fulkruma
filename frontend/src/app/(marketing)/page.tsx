@@ -38,9 +38,11 @@ function Hero() {
     <section className="relative overflow-hidden">
       <BackdropGrid />
       <div className="relative mx-auto max-w-3xl px-6 pb-12 pt-20 text-center sm:pt-28">
-        <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1 font-mono text-[11px] uppercase tracking-[0.2em] text-brand-700 shadow-xs">
-          <Sparkles size={12} /> Forjio family · stock + shipping
-        </span>
+        <div className="inline-flex items-center gap-2 rounded-full border border-border bg-card/60 backdrop-blur px-3 py-1 text-xs">
+          <Sparkles className="size-3 text-primary" strokeWidth={1.5} />
+          <span className="font-medium text-foreground">Stock + shipping</span>
+          <span className="text-muted-foreground">— Forjio family, Biteship inside</span>
+        </div>
         <h1 className="mt-5 text-4xl font-semibold tracking-tight sm:text-5xl">
           Stock and shipping that <span className="bg-gradient-to-r from-brand-500 to-brand-700 bg-clip-text text-transparent">just works</span> for Indonesian storefronts.
         </h1>
