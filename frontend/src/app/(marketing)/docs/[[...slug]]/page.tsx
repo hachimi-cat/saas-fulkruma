@@ -4,13 +4,14 @@ import { DocsSearch } from '@/components/docs/search';
 import { CrossProductNav } from '@/components/docs/cross-product-nav';
 import { DocsMobileSidebar } from '@/components/docs/mobile-sidebar';
 import { DocsSidebar } from '@/components/docs/sidebar';
+import { DocsToc } from '@/components/docs/toc';
 
 type Params = { slug?: string[] };
 
 export default async function DocsPage({ params }: { params: Promise<Params> }) {
   const p = await params;
   const slug = (p.slug ?? []).join('/');
-  const { html, title } = readDoc(slug);
+  const { html, title, toc } = readDoc(slug);
   const groups = docsGroups();
   const searchIndex = buildSearchIndex();
   const currentHref = slug === '' ? '/docs' : `/docs/${slug}`;
@@ -38,7 +39,13 @@ export default async function DocsPage({ params }: { params: Promise<Params> }) 
       </div>
 
       <main className="max-w-7xl mx-auto px-4 md:px-6 py-8 md:py-10">
-        <div className="grid grid-cols-1 lg:grid-cols-[240px_minmax(0,1fr)] gap-8">
+        <div
+          className={
+            toc.length >= 2
+              ? 'grid grid-cols-1 lg:grid-cols-[240px_minmax(0,1fr)_220px] gap-8'
+              : 'grid grid-cols-1 lg:grid-cols-[240px_minmax(0,1fr)] gap-8'
+          }
+        >
           {/* Sidebar — fixed-height, scrollable, collapsible. Hidden on
               mobile (use drawer trigger in the header). */}
           <aside className="hidden lg:block lg:sticky lg:top-[57px] lg:self-start lg:h-[calc(100vh-57px)] lg:overflow-y-auto pr-2 pb-6 pt-2">
@@ -63,14 +70,24 @@ export default async function DocsPage({ params }: { params: Promise<Params> }) 
               dangerouslySetInnerHTML={{ __html: html }}
             />
           </article>
+
+          {/* On-this-page TOC — sticky right rail with scroll-spy.
+              Hidden on lg- and when the page has fewer than 2 h2/h3
+              sections (e.g. short index page) since the column would
+              be empty noise. */}
+          {toc.length >= 2 && (
+            <aside className="hidden lg:block lg:sticky lg:top-[57px] lg:self-start lg:max-h-[calc(100vh-57px)] lg:overflow-y-auto pl-2 pb-6 pt-2">
+              <DocsToc entries={toc} />
+            </aside>
+          )}
         </div>
 
         <style>{`
           .docs-prose { color: hsl(var(--foreground)); font-size: 15px; line-height: 1.65; max-width: 72ch; }
           .docs-prose h1 { font-size: 30px; font-weight: 700; letter-spacing: -0.02em; margin: 0 0 18px; line-height: 1.15; }
-          .docs-prose h2 { font-size: 22px; font-weight: 700; letter-spacing: -0.015em; margin: 36px 0 14px; line-height: 1.2; border-top: 1px solid hsl(var(--border)); padding-top: 26px; }
+          .docs-prose h2 { font-size: 22px; font-weight: 700; letter-spacing: -0.015em; margin: 36px 0 14px; line-height: 1.2; border-top: 1px solid hsl(var(--border)); padding-top: 26px; scroll-margin-top: 80px; }
           .docs-prose h2:first-of-type { border-top: none; padding-top: 0; }
-          .docs-prose h3 { font-size: 17px; font-weight: 600; margin: 26px 0 10px; }
+          .docs-prose h3 { font-size: 17px; font-weight: 600; margin: 26px 0 10px; scroll-margin-top: 80px; }
           .docs-prose h4 { font-size: 14px; font-weight: 600; margin: 18px 0 8px; color: hsl(var(--muted-foreground)); font-family: var(--font-jetbrains-mono), monospace; letter-spacing: 0.02em; text-transform: uppercase; }
           .docs-prose p { margin: 0 0 14px; }
           .docs-prose a { color: hsl(var(--primary)); text-decoration: underline; text-underline-offset: 3px; }

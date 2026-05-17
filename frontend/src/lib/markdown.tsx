@@ -184,7 +184,11 @@ function readDocRaw(slug: string | undefined): { content: string } {
   return { content: '' };
 }
 
-export function readDoc(slug: string | undefined): { html: string; title: string; meta: DocMeta | null } {
+export type TocEntry = { depth: 2 | 3; text: string; slug: string };
+
+export function readDoc(
+  slug: string | undefined,
+): { html: string; title: string; meta: DocMeta | null; toc: TocEntry[] } {
   const cleanSlug = (slug ?? '').replace(/^\/+|\/+$/g, '');
   const rel = cleanSlug === '' ? 'index' : cleanSlug;
   const candidates = [
@@ -203,15 +207,65 @@ export function readDoc(slug: string | undefined): { html: string; title: string
       html: `<p>Doc not found: <code>${cleanSlug}</code></p>`,
       title: 'Not found',
       meta: null,
+      toc: [],
     };
   }
   const raw = fs.readFileSync(filepath, 'utf8');
   const parsed = matter(raw);
   const content = parsed.content;
   const frontTitle = (parsed.data?.title as string | undefined) ?? extractFirstHeading(content) ?? cleanSlug;
-  const html = marked.parse(content, { async: false }) as string;
+  const rawHtml = marked.parse(content, { async: false }) as string;
+  const { html, toc } = injectHeadingIds(rawHtml);
   const meta = DOC_NAV.find((d) => d.slug === cleanSlug) ?? null;
-  return { html, title: frontTitle, meta };
+  return { html, title: frontTitle, meta, toc };
+}
+
+// Walk the rendered HTML, inject id="…" on h2/h3, and collect a TOC.
+// Uses the heading's text content (after stripping any nested tags) to
+// derive a kebab-case slug. Duplicate slugs get a numeric suffix to
+// stay stable per render.
+function injectHeadingIds(html: string): { html: string; toc: TocEntry[] } {
+  const toc: TocEntry[] = [];
+  const seen = new Map<string, number>();
+  const out = html.replace(
+    /<(h[23])>([\s\S]*?)<\/\1>/g,
+    (_match, tag: 'h2' | 'h3', inner: string) => {
+      // Strip nested tags, then decode HTML entities — `marked` escapes
+      // apostrophes/quotes/etc. in the rendered HTML, but the TOC label
+      // is rendered as a JSX text node which would escape them again
+      // (e.g. "What's here" → "What&#39;s here" on screen).
+      const text = decodeEntities(inner.replace(/<[^>]+>/g, '').trim());
+      const base = slugify(text);
+      const count = (seen.get(base) ?? 0) + 1;
+      seen.set(base, count);
+      const slug = count === 1 ? base : `${base}-${count}`;
+      const depth = tag === 'h2' ? 2 : 3;
+      toc.push({ depth, text, slug });
+      return `<${tag} id="${slug}">${inner}</${tag}>`;
+    },
+  );
+  return { html: out, toc };
+}
+
+function decodeEntities(s: string): string {
+  return s
+    .replace(/&amp;/g, '&')
+    .replace(/&#39;/g, "'")
+    .replace(/&#x27;/g, "'")
+    .replace(/&quot;/g, '"')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&nbsp;/g, ' ');
+}
+
+function slugify(s: string): string {
+  return s
+    .toLowerCase()
+    .replace(/<[^>]+>/g, '')
+    .replace(/[^a-z0-9\s-]/g, '')
+    .trim()
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-');
 }
 
 function extractFirstHeading(md: string): string | null {

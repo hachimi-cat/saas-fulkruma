@@ -1,48 +1,60 @@
-import { LogoMark } from '@/components/brand/logo';
+import Link from 'next/link';
 import { MapPin, Phone, Mail } from 'lucide-react';
+import { LogoMark } from '@/components/brand/logo';
+
+const footerLinks = {
+  Product: [
+    { href: '/features', label: 'Features' },
+    { href: '/pricing', label: 'Pricing' },
+    { href: '/docs', label: 'Documentation' },
+    { href: '/changelog', label: 'Changelog' },
+  ],
+  Company: [
+    { href: '/about', label: 'About' },
+    { href: '/contact', label: 'Contact' },
+  ],
+  Legal: [
+    { href: '/privacy', label: 'Privacy Policy' },
+    { href: '/terms', label: 'Terms of Service' },
+    { href: '/refund', label: 'Refund Policy' },
+  ],
+};
 
 export function MarketingFooter() {
   return (
-    <footer className="border-t border-border bg-card">
-      <div className="mx-auto grid max-w-6xl grid-cols-1 gap-8 px-6 py-12 md:grid-cols-4">
-        <div>
-          <div className="inline-flex items-center gap-2">
-            <LogoMark size={26} />
-            <span className="text-base font-semibold tracking-tight">Fulkruma</span>
+    <footer className="border-t border-border bg-background">
+      <div className="mx-auto max-w-7xl px-4 py-12 md:px-6">
+        <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
+          <div>
+            <Link href="/" className="flex items-center gap-2">
+              <LogoMark size={22} />
+              <span className="font-bold tracking-tight">Fulkruma</span>
+            </Link>
+            <p className="mt-3 text-sm text-muted-foreground">
+              Stock + shipping for Indonesian storefronts — part of the Forjio family.
+            </p>
           </div>
-          <p className="mt-3 text-sm text-muted-foreground">
-            Stock + shipping for Indonesian storefronts. Part of the Forjio family.
-          </p>
+
+          {Object.entries(footerLinks).map(([category, links]) => (
+            <div key={category}>
+              <h3 className="text-sm font-semibold">{category}</h3>
+              <ul className="mt-3 space-y-2">
+                {links.map((link) => (
+                  <li key={link.href}>
+                    <Link
+                      href={link.href}
+                      className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+                    >
+                      {link.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
         </div>
-        <FooterCol
-          heading="Product"
-          links={[
-            { href: '/#features', label: 'Features' },
-            { href: '/#pricing', label: 'Pricing' },
-            { href: '/#integrations', label: 'Integrations' },
-            { href: '/login', label: 'Sign in' },
-          ]}
-        />
-        <FooterCol
-          heading="Forjio family"
-          links={[
-            { href: 'https://huudis.com', label: 'Huudis · auth' },
-            { href: 'https://plugipay.com', label: 'Plugipay · payments' },
-            { href: 'https://storlaunch.com', label: 'Storlaunch · storefront' },
-          ]}
-        />
-        <FooterCol
-          heading="Legal"
-          links={[
-            { href: '/privacy', label: 'Privacy' },
-            { href: '/terms', label: 'Terms' },
-            { href: '/refund', label: 'Refund' },
-            { href: '/contact', label: 'Contact' },
-          ]}
-        />
-      </div>
-      <div className="border-t border-border">
-        <div className="mx-auto grid max-w-6xl gap-4 px-6 py-6 text-xs text-muted-foreground sm:grid-cols-3">
+
+        <div className="mt-12 grid gap-6 border-t border-border pt-8 text-xs text-muted-foreground sm:grid-cols-3">
           <div className="space-y-1.5">
             <p className="font-medium text-foreground">PT Forjio Teknologi Indonesia</p>
             <p className="flex items-start gap-2">
@@ -71,30 +83,11 @@ export function MarketingFooter() {
             </p>
           </div>
           <div className="text-left sm:text-right">
-            <p>© {new Date().getFullYear()} PT Forjio Teknologi Indonesia.</p>
-            <p className="mt-1 font-mono">Part of the Forjio commerce family.</p>
+            <p>&copy; {new Date().getFullYear()} PT Forjio Teknologi Indonesia.</p>
+            <p className="mt-1">Stock · shipping · part of the Forjio family.</p>
           </div>
         </div>
       </div>
     </footer>
-  );
-}
-
-function FooterCol({ heading, links }: { heading: string; links: { href: string; label: string }[] }) {
-  return (
-    <div>
-      <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-        {heading}
-      </p>
-      <ul className="mt-3 space-y-2 text-sm">
-        {links.map((l) => (
-          <li key={l.href}>
-            <a href={l.href} className="text-foreground hover:text-brand-600 transition">
-              {l.label}
-            </a>
-          </li>
-        ))}
-      </ul>
-    </div>
   );
 }
