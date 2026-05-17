@@ -81,11 +81,11 @@ function BackdropGrid() {
     <>
       <div
         aria-hidden
-        className="absolute inset-0 bg-[linear-gradient(to_right,rgba(11,15,26,0.04)_1px,transparent_1px),linear-gradient(to_bottom,rgba(11,15,26,0.04)_1px,transparent_1px)] bg-[size:48px_48px]"
+        className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(circle_at_30%_20%,rgba(242,47,70,0.18)_0%,transparent_50%)]"
       />
       <div
         aria-hidden
-        className="absolute inset-x-0 top-0 h-[420px] bg-[radial-gradient(ellipse_at_top,rgba(242,47,70,0.12),transparent_60%)]"
+        className="pointer-events-none absolute inset-0 -z-10 [background-image:repeating-linear-gradient(45deg,hsl(var(--border))_0_1px,transparent_1px_14px)] opacity-50 [mask-image:radial-gradient(ellipse_at_center,black_30%,transparent_75%)]"
       />
     </>
   );
