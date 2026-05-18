@@ -354,7 +354,7 @@ export default function HomePage() {
             </p>
           </div>
 
-          <div className="mt-10 overflow-x-auto">
+          <div className="mt-10 overflow-x-auto -mx-4 md:mx-0">
             <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
               <table className="w-full text-sm min-w-[640px]">
                 <thead className="bg-muted/50 border-b border-border">
