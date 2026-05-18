@@ -18,6 +18,11 @@ import { createBiteshipAdapter, handleWebhook } from '../services/shipping-servi
 
 const router = Router();
 
+// Biteship's webhook installer probes the URL before activating. Some
+// installs do GET, some POST with an empty body. Respond 200 to both so
+// the installer succeeds; real status pushes always carry a body.
+router.get('/', (_req, res) => res.json({ ok: true }));
+
 router.post(
   '/',
   express.raw({ type: 'application/json' }),
@@ -25,8 +30,13 @@ router.post(
     const reqId = req.requestId ?? 'req_unknown';
     const raw = req.body as Buffer;
     let body: Record<string, unknown>;
+    const rawStr = raw?.toString('utf8') ?? '';
+    // Installer ping: empty body → 200 OK (no signature required).
+    if (!rawStr.trim()) {
+      return res.json(ok({ received: true, skipped: 'installer_ping' }, reqId));
+    }
     try {
-      body = JSON.parse(raw.toString('utf8'));
+      body = JSON.parse(rawStr);
     } catch {
       return res.status(400).json(err('MALFORMED', 'body is not JSON', reqId));
     }
