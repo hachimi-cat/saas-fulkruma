@@ -5,7 +5,7 @@ import type { Prisma } from '@prisma/client';
 import { prisma } from '../lib/db.js';
 import { requireAuth } from '../middleware/auth.js';
 import { buildEvent } from '../lib/events.js';
-import { getAdapterForAccount } from '../services/shipping-service.js';
+import { getAdapterForAccount, resolveOrigin } from '../services/shipping-service.js';
 import {
   applyTransaction as applyShippingCreditTxn,
   getBalance as getShippingCreditBalance,
@@ -82,9 +82,50 @@ router.post('/', async (req, res) => {
   // row still gets created.
   let draftOrderId: string | null = null;
   let draftCreateError: string | null = null;
+  // F-004/S-045: Resolve origin server-side from the merchant's
+  // BiteshipConfig when the caller passed an empty (or partial) origin.
+  // Storlaunch's storefront has no business knowing the merchant's
+  // pickup address — the canonical origin lives here, configured via
+  // PATCH /shipping/origin. Inline origin still wins per-field when the
+  // caller wants to override (e.g. multi-warehouse merchants later).
+  const inboundOrigin = d.origin as Record<string, unknown>;
+  let resolvedOriginPayload: Record<string, unknown> = inboundOrigin;
+  const originLooksEmpty = !inboundOrigin
+    || (
+      !String(inboundOrigin.contactName ?? '').trim()
+      && !String(inboundOrigin.contactPhone ?? '').trim()
+      && !String(inboundOrigin.address ?? '').trim()
+    );
+  if (originLooksEmpty) {
+    try {
+      const merchantOrigin = await resolveOrigin(prisma, accountId);
+      resolvedOriginPayload = {
+        contactName: merchantOrigin.contactName,
+        contactPhone: merchantOrigin.contactPhone,
+        address: merchantOrigin.address,
+        postalCode: merchantOrigin.postalCode,
+        areaId: merchantOrigin.areaId,
+        lat: merchantOrigin.lat,
+        lng: merchantOrigin.lng,
+        note: merchantOrigin.note,
+      };
+    } catch (e) {
+      // Origin not configured — record the reason so the caller (and
+      // the outbox event) can see why no draft was booked, but still
+      // persist the local Shipment row so the merchant can retry once
+      // they configure the origin via the dashboard.
+      draftCreateError = `Origin not configured for account ${accountId}: ${(e as Error).message}`;
+      console.error('[shipments] cannot resolve merchant origin:', draftCreateError);
+    }
+  }
   try {
+    if (draftCreateError) {
+      // Origin missing — skip the Biteship call but keep the local
+      // Shipment row. draftCreateError already populated above.
+      throw new Error('skip_biteship_call');
+    }
     const adapter = await getAdapterForAccount(prisma, accountId);
-    const origin = d.origin as Record<string, unknown>;
+    const origin = resolvedOriginPayload as Record<string, unknown>;
     const destination = d.destination as Record<string, unknown>;
     const items = d.items as Array<Record<string, unknown>>;
     const draft = await adapter.createDraftOrder({
@@ -126,8 +167,13 @@ router.post('/', async (req, res) => {
   } catch (e) {
     // Best-effort: still persist the local shipment so the merchant
     // can retry the booking via the confirm endpoint later. Log loud.
-    draftCreateError = (e as Error).message;
-    console.error('[shipments] Biteship draft order create failed:', draftCreateError);
+    // Preserve the upstream "origin not configured" reason when we
+    // intentionally short-circuited.
+    const msg = (e as Error).message;
+    if (msg !== 'skip_biteship_call') {
+      draftCreateError = msg;
+      console.error('[shipments] Biteship draft order create failed:', draftCreateError);
+    }
   }
 
   const shipment = await prisma.$transaction(async (tx) => {
@@ -146,7 +192,7 @@ router.post('/', async (req, res) => {
         price: d.price,
         insurance: d.insurance ?? 0,
         insured: d.insured ?? false,
-        originSnapshot: d.origin as Prisma.InputJsonValue,
+        originSnapshot: resolvedOriginPayload as Prisma.InputJsonValue,
         destinationSnapshot: d.destination as Prisma.InputJsonValue,
         items: d.items as Prisma.InputJsonValue,
         externalSource: d.externalSource ?? null,
