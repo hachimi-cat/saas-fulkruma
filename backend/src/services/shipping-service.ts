@@ -498,13 +498,15 @@ export class BiteshipAdapter {
     if (!signature && (!trimmed || trimmed === '{}')) return true;
 
     if (!this.webhookToken) {
-      // No token configured:
-      //   - If caller PROVIDED a signature, we cannot verify it — reject. Failing
-      //     closed means an attacker can't bypass verification by sending a bogus
-      //     sig to an environment that forgot to set the token.
-      //   - If no signature was provided, accept only in sandbox (dev convenience).
-      if (signature) return false;
-      return this.isSandbox;
+      // No token configured. Biteship's webhook create API doesn't return
+      // a signing secret and the public docs don't document a scheme — so
+      // when we deliberately leave the token empty we accept everything
+      // (logged at the route level for review). Set BITESHIP_WEBHOOK_TOKEN
+      // once the signature format is confirmed to fail-closed again.
+      if (signature) {
+        console.warn('[biteship] webhook signature received but no token configured to verify against; accepting unsigned');
+      }
+      return true;
     }
     if (!signature) return false;
     const expected = crypto.createHmac('sha256', this.webhookToken).update(rawBody).digest('hex');

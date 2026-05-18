@@ -44,7 +44,12 @@ router.post(
     const sigHeader =
       (req.headers['x-biteship-signature'] as string | undefined) ??
       (req.headers['x-biteship-webhook-signature'] as string | undefined);
-    if (!adapter.verifyWebhook(sigHeader, raw.toString('utf8'))) {
+    // F-008 bootstrap log: Biteship's webhook create API doesn't return a
+    // signing secret and the docs don't document the signature scheme —
+    // log every incoming header so we can configure verification after
+    // observing the first real push.
+    console.log('[biteship-webhook] headers:', JSON.stringify(req.headers));
+    if (!adapter.verifyWebhook(sigHeader, rawStr)) {
       return res.status(401).json(err('BAD_SIGNATURE', 'biteship signature invalid', reqId));
     }
     const parsed = adapter.parseWebhook(body);
