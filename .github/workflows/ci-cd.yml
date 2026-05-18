@@ -198,7 +198,12 @@ jobs:
             # the production node_modules tree here.
             npm ci --omit=dev
             npx prisma migrate deploy
-            pm2 restart fulkruma-backend || pm2 start dist/index.js --name fulkruma-backend
+            # Delete+restart (not just restart) so --node-args change
+            # actually takes effect — pm2 restart preserves the original
+            # launch args. --env-file makes node read .env at startup
+            # since the app code doesn't import dotenv.
+            pm2 delete fulkruma-backend 2>/dev/null || true
+            pm2 start dist/index.js --name fulkruma-backend --node-args="--env-file=.env"
             cd /opt/fulkruma/frontend
             # .next/ is pre-built in the artifact — no `next build` here.
             # Runtime deps only; next start needs them.
@@ -286,7 +291,12 @@ jobs:
             cd /opt/fulkruma/backend
             npm ci --omit=dev
             npx prisma migrate deploy
-            pm2 restart fulkruma-backend || pm2 start dist/index.js --name fulkruma-backend
+            # Delete+restart (not just restart) so --node-args change
+            # actually takes effect — pm2 restart preserves the original
+            # launch args. --env-file makes node read .env at startup
+            # since the app code doesn't import dotenv.
+            pm2 delete fulkruma-backend 2>/dev/null || true
+            pm2 start dist/index.js --name fulkruma-backend --node-args="--env-file=.env"
             cd /opt/fulkruma/frontend
             # .next/ is pre-built in the artifact — no `next build` here.
             npm ci --omit=dev
