@@ -354,41 +354,39 @@ export default function HomePage() {
             </p>
           </div>
 
-          <div className="mt-10 overflow-x-auto -mx-4 md:mx-0">
-            <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
-              <table className="w-full text-sm min-w-[640px]">
-                <thead className="bg-muted/50 border-b border-border">
-                  <tr>
-                    <th className="text-left px-4 py-3 font-medium text-muted-foreground text-xs uppercase tracking-wider">
-                      Capability
-                    </th>
-                    <th className="px-4 py-3 font-semibold text-primary">Fulkruma</th>
-                    <th className="px-4 py-3 font-medium text-muted-foreground">In-house</th>
-                    <th className="px-4 py-3 font-medium text-muted-foreground">Shipmondo</th>
+          <div className="mt-10 overflow-x-auto overflow-y-hidden -mx-4 md:mx-0 rounded-xl border border-border bg-card shadow-sm">
+            <table className="w-full text-sm min-w-[640px]">
+              <thead className="bg-muted/50 border-b border-border">
+                <tr>
+                  <th className="text-left px-4 py-3 font-medium text-muted-foreground text-xs uppercase tracking-wider">
+                    Capability
+                  </th>
+                  <th className="px-4 py-3 font-semibold text-primary">Fulkruma</th>
+                  <th className="px-4 py-3 font-medium text-muted-foreground">In-house</th>
+                  <th className="px-4 py-3 font-medium text-muted-foreground">Shipmondo</th>
+                </tr>
+              </thead>
+              <tbody>
+                {[
+                  { cap: 'Lowest paid tier', s: 'Rp 299k/mo', sh: 'engineer time', m: '~Rp 800k/mo (€50)' },
+                  { cap: 'IDR billing', s: true, sh: true, m: false },
+                  { cap: 'Multi-warehouse routing', s: true, sh: 'maybe', m: false },
+                  { cap: 'Reservations / no-oversell', s: true, sh: 'maybe', m: false },
+                  { cap: 'Indonesian courier coverage', s: true, sh: false, m: false },
+                  { cap: 'API + CLI + SDKs', s: true, sh: false, m: false },
+                  { cap: 'License-key digital fulfilment', s: true, sh: false, m: false },
+                  { cap: 'Native Storlaunch / Plugipay integration', s: true, sh: false, m: false },
+                  { cap: 'One login for sister products', s: true, sh: false, m: false },
+                ].map((row) => (
+                  <tr key={row.cap} className="border-b border-border last:border-b-0">
+                    <td className="px-4 py-3 text-foreground/90">{row.cap}</td>
+                    <Cell value={row.s} highlight />
+                    <Cell value={row.sh} />
+                    <Cell value={row.m} />
                   </tr>
-                </thead>
-                <tbody>
-                  {[
-                    { cap: 'Lowest paid tier', s: 'Rp 299k/mo', sh: 'engineer time', m: '~Rp 800k/mo (€50)' },
-                    { cap: 'IDR billing', s: true, sh: true, m: false },
-                    { cap: 'Multi-warehouse routing', s: true, sh: 'maybe', m: false },
-                    { cap: 'Reservations / no-oversell', s: true, sh: 'maybe', m: false },
-                    { cap: 'Indonesian courier coverage', s: true, sh: false, m: false },
-                    { cap: 'API + CLI + SDKs', s: true, sh: false, m: false },
-                    { cap: 'License-key digital fulfilment', s: true, sh: false, m: false },
-                    { cap: 'Native Storlaunch / Plugipay integration', s: true, sh: false, m: false },
-                    { cap: 'One login for sister products', s: true, sh: false, m: false },
-                  ].map((row) => (
-                    <tr key={row.cap} className="border-b border-border last:border-b-0">
-                      <td className="px-4 py-3 text-foreground/90">{row.cap}</td>
-                      <Cell value={row.s} highlight />
-                      <Cell value={row.sh} />
-                      <Cell value={row.m} />
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       </section>
