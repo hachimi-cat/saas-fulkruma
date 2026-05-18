@@ -489,6 +489,14 @@ export class BiteshipAdapter {
   // ─── Webhook signature ───────────────────────────────────────────────
   // Biteship webhooks send X-Biteship-Signature: HMAC-SHA256(body, webhook_secret)
   verifyWebhook(signature: string | undefined, rawBody: string): boolean {
+    // Biteship's webhook installation validates with an EMPTY body and no
+    // signature. We accept it because handleWebhook short-circuits anything
+    // without an orderId (returns `skipped: no_order_id`), so an unsigned
+    // empty body can't trigger any state change. Real status pushes always
+    // carry a body + signature.
+    const trimmed = rawBody?.trim();
+    if (!signature && (!trimmed || trimmed === '{}')) return true;
+
     if (!this.webhookToken) {
       // No token configured:
       //   - If caller PROVIDED a signature, we cannot verify it — reject. Failing
