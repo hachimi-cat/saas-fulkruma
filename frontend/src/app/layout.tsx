@@ -25,8 +25,10 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
+  // No bg on <html> — body bg propagates to canvas via CSS, which is
+  // required for the marketing hero's `-z-10` pattern divs to paint.
   return (
-    <html lang="en" className="bg-background">
+    <html lang="en">
       <body
         className={`${inter.variable} ${jetbrainsMono.variable} ${gellix.variable} bg-background text-foreground antialiased`}
       >

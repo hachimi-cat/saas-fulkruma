@@ -40,9 +40,16 @@ html, body {
   padding: 0;
   font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   color: hsl(var(--foreground));
-  background: hsl(var(--background));
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
+}
+
+/* Set background only on body, not html, so the body-bg gets propagated
+   to the canvas via CSS background propagation. This lets the hero's
+   `-z-10` pattern divs paint on TOP of the canvas instead of being
+   hidden behind html's opaque bg. */
+body {
+  background: hsl(var(--background));
 }
 
 /* The .marketing-site :is(h1...h6) display-font rule now ships from
