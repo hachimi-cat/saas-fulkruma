@@ -157,7 +157,7 @@ router.post('/', async (req, res) => {
       items: items.map((it) => ({
         name: String(it.name ?? 'Item'),
         description: it.description != null ? String(it.description) : undefined,
-        category: it.category != null ? String(it.category) : 'other',
+        category: it.category != null ? String(it.category) : 'others',
         value: typeof it.value === 'number' ? it.value : 0,
         weight: typeof it.weight === 'number' ? Math.max(1, it.weight) : 1,
         quantity: typeof it.quantity === 'number' ? it.quantity : 1,
@@ -256,7 +256,68 @@ router.post('/:id/confirm-pickup', async (req, res) => {
   let order;
   try {
     const adapter = await getAdapterForAccount(prisma, accountId);
-    order = await adapter.confirmDraftOrder(shipment.biteshipDraftOrderId);
+    try {
+      order = await adapter.confirmDraftOrder(shipment.biteshipDraftOrderId);
+    } catch (firstErr) {
+      // Draft created before a payload-shape bug fix (e.g. category=other
+      // pre-fix, courier code rename) gets rejected by Biteship at confirm
+      // time. Rebuild the draft inline from the stored snapshots so the
+      // merchant doesn't have to recreate the whole order. One retry only.
+      const msg = (firstErr as Error).message;
+      const isValidationFailure = /is not a valid value|invalid|Please check Biteship/i.test(msg);
+      if (!isValidationFailure) throw firstErr;
+      console.warn(`[shipments] confirm failed on stale draft ${shipment.biteshipDraftOrderId} for ${shipment.id}: ${msg} — rebuilding draft from snapshots`);
+
+      const origin = (shipment.originSnapshot as Record<string, unknown>) ?? {};
+      const destination = (shipment.destinationSnapshot as Record<string, unknown>) ?? {};
+      const items = (shipment.items as Array<Record<string, unknown>>) ?? [];
+
+      // Best-effort delete of the stale draft; ignore errors (Biteship
+      // may have already GC'd it or never accepted it cleanly).
+      try { await adapter.deleteDraftOrder(shipment.biteshipDraftOrderId); } catch { /* noop */ }
+
+      const fresh = await adapter.createDraftOrder({
+        referenceId: `${shipment.externalRef ?? shipment.id}-retry-${Date.now()}`,
+        origin: {
+          contactName: String(origin.contactName ?? ''),
+          contactPhone: String(origin.contactPhone ?? ''),
+          address: String(origin.address ?? ''),
+          postalCode: origin.postalCode != null ? String(origin.postalCode) : undefined,
+          areaId: origin.areaId != null ? String(origin.areaId) : undefined,
+          lat: typeof origin.lat === 'number' ? origin.lat : undefined,
+          lng: typeof origin.lng === 'number' ? origin.lng : undefined,
+          note: origin.note != null ? String(origin.note) : undefined,
+        },
+        destination: {
+          contactName: String(destination.contactName ?? ''),
+          contactPhone: String(destination.contactPhone ?? ''),
+          email: destination.email != null ? String(destination.email) : undefined,
+          address: String(destination.address ?? ''),
+          postalCode: destination.postalCode != null ? String(destination.postalCode) : undefined,
+          areaId: destination.areaId != null ? String(destination.areaId) : undefined,
+          lat: typeof destination.lat === 'number' ? destination.lat : undefined,
+          lng: typeof destination.lng === 'number' ? destination.lng : undefined,
+          note: destination.note != null ? String(destination.note) : undefined,
+        },
+        courierCompany: shipment.courierCode,
+        courierType: shipment.courierServiceCode,
+        courierInsurance: shipment.insured ? shipment.insurance : undefined,
+        items: items.map((it) => ({
+          name: String(it.name ?? 'Item'),
+          description: it.description != null ? String(it.description) : undefined,
+          category: it.category != null ? String(it.category) : 'others',
+          value: typeof it.value === 'number' ? it.value : 0,
+          weight: typeof it.weight === 'number' ? Math.max(1, it.weight) : 1,
+          quantity: typeof it.quantity === 'number' ? it.quantity : 1,
+        })),
+      });
+
+      await prisma.shipment.update({
+        where: { id: shipment.id },
+        data: { biteshipDraftOrderId: fresh.id },
+      });
+      order = await adapter.confirmDraftOrder(fresh.id);
+    }
   } catch (e) {
     return res.status(502).json(err('BITESHIP_CONFIRM_FAILED', (e as Error).message, reqId));
   }

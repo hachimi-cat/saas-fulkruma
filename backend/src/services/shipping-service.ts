@@ -302,7 +302,7 @@ export class BiteshipAdapter {
       items: params.items.map(i => ({
         name: i.name,
         description: i.description,
-        category: i.category ?? 'other',
+        category: i.category ?? 'others',
         value: i.value,
         weight: Math.max(1, i.weight), // Biteship requires weight >= 1
         length: i.length,
@@ -382,7 +382,7 @@ export class BiteshipAdapter {
       items: params.items.map(i => ({
         name: i.name,
         description: i.description,
-        category: i.category ?? 'other',
+        category: i.category ?? 'others',
         value: i.value,
         weight: Math.max(1, i.weight),
         quantity: i.quantity,
