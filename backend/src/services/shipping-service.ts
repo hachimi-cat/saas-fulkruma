@@ -199,6 +199,7 @@ export interface ParsedWebhook {
 }
 
 import { isInsufficientBalanceError, fireLowBalanceAlert } from './biteship-balance-alert.js';
+import { buildEvent } from '../lib/events.js';
 
 export class BiteshipError extends Error {
   constructor(public readonly status: number, message: string, public readonly body?: unknown) {
@@ -649,7 +650,7 @@ export interface QuoteRatesInput {
   insurance?: boolean;
 }
 
-type PrismaLike = Pick<PrismaClient, 'biteshipConfig' | 'shipment' | 'shipmentEvent'>;
+type PrismaLike = Pick<PrismaClient, 'biteshipConfig' | 'shipment' | 'shipmentEvent' | 'outboxEvent'>;
 
 /**
  * Resolve merchant's shipping origin from BiteshipConfig. Throws if incomplete.
@@ -779,6 +780,27 @@ export async function handleWebhook(
       status: mapped as never,
       waybillId: parsed.waybillId ?? shipment.waybillId,
     },
+  });
+
+  // F-008: relay to consumers (e.g. storlaunch) so partner products can
+  // mirror status into their ManualOrder/Order rows. Outbox worker
+  // delivers via HMAC-signed POST to the per-product webhook URLs.
+  await prisma.outboxEvent.create({
+    data: buildEvent({
+      type: 'fulkruma.shipment.status_updated.v1',
+      accountId: shipment.accountId,
+      data: {
+        shipmentId: shipment.id,
+        biteshipOrderId: shipment.biteshipOrderId,
+        biteshipTrackingId: shipment.biteshipTrackingId,
+        waybillId: parsed.waybillId ?? shipment.waybillId,
+        status: mapped,
+        note: parsed.note ?? null,
+        occurredAt: parsed.occurredAt.toISOString(),
+        externalSource: shipment.externalSource ?? null,
+        externalRef: shipment.externalRef ?? null,
+      },
+    }),
   });
 
   return { shipmentId: shipment.id, status: mapped };
