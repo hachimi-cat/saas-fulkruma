@@ -7,6 +7,9 @@ const isRemote = !!(process.env.FRONTEND_URL || process.env.BACKEND_URL || proce
 
 export default defineConfig({
   testDir: './tests',
+  // Visual regression has its own config (playwright.visual.config.ts).
+  // Excluding here so visual.spec.ts doesn't run in functional E2E.
+  testIgnore: /visual\.spec\.ts$/,
   fullyParallel: !isRemote,
   forbidOnly: !!process.env.CI,
   retries: isRemote ? 2 : 0,

@@ -1,0 +1,6 @@
+# Playwright transient outputs — never commit these. The
+# visual-regression baselines live under tests/visual.spec.ts-snapshots/
+# and ARE intentionally committed.
+playwright-report/
+test-results/
+.last-run.json
