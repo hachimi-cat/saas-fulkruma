@@ -535,7 +535,13 @@ export function createBiteshipAdapter(opts?: {
   apiKey?: string | null;
   environment?: 'test' | 'live';
 }): BiteshipAdapter {
-  const envToggle = process.env.BITESHIP_ENV ?? 'test';
+  // Default flip: in NODE_ENV=production, Biteship goes LIVE unless
+  // BITESHIP_ENV explicitly forces 'test'. In any other NODE_ENV
+  // (dev/test/staging), default to 'test'. Prior code defaulted to
+  // 'test' regardless of NODE_ENV, which silently shipped real-prod
+  // drafts into the sandbox (bang caught this on Naila's ORD-000001).
+  const envToggle = process.env.BITESHIP_ENV
+    ?? (process.env.NODE_ENV === 'production' ? 'live' : 'test');
   const isSandbox = opts?.environment ? opts.environment === 'test' : envToggle !== 'live';
   const fallbackKey = isSandbox
     ? (process.env.BITESHIP_TEST_API_KEY ?? process.env.BITESHIP_API_KEY ?? '')
