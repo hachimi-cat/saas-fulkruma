@@ -66,6 +66,30 @@ router.get('/:id', async (req, res) => {
   res.json(ok({ shipment }, req.requestId ?? 'req_unknown'));
 });
 
+// F-008: live tracking detail (driver, status history, ETA) from Biteship.
+// Reads biteshipTrackingId off the local shipment then calls
+// /v1/trackings/:id which returns the richer data including instant-courier
+// driver info. Used by storlaunch's order detail (merchant + buyer portal).
+router.get('/:id/tracking', async (req, res) => {
+  const reqId = req.requestId ?? 'req_unknown';
+  const accountId = req.auth?.accountId;
+  if (!accountId) return res.status(403).json(err('NO_ACCOUNT', 'token missing accountId', reqId));
+  const shipment = await prisma.shipment.findFirst({
+    where: { id: req.params.id, accountId },
+  });
+  if (!shipment) return res.status(404).json(err('NOT_FOUND', 'shipment not found', reqId));
+  if (!shipment.biteshipTrackingId) {
+    return res.status(409).json(err('NO_TRACKING', 'shipment has no Biteship tracking id yet (likely unconfirmed draft)', reqId));
+  }
+  try {
+    const adapter = await getAdapterForAccount(prisma, accountId);
+    const tracking = await adapter.getTrackingById(shipment.biteshipTrackingId);
+    return res.json(ok({ tracking, fetchedAt: new Date().toISOString() }, reqId));
+  } catch (e) {
+    return res.status(502).json(err('BITESHIP_TRACKING_FAILED', (e as Error).message, reqId));
+  }
+});
+
 router.post('/', async (req, res) => {
   const accountId = req.auth?.accountId;
   if (!accountId) return res.status(403).json(err('NO_ACCOUNT', 'token missing accountId', req.requestId ?? 'req_unknown'));

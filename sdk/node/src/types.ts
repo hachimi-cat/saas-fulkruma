@@ -249,6 +249,33 @@ export interface PartnerUsageSummary {
   }>;
 }
 
+// ─── Tracking detail (F-008) ─────────────────────────────────
+export interface BiteshipTrackingEventDetail {
+  status: string;
+  note?: string;
+  updated_at: string;
+  service_type?: string;
+}
+
+export interface BiteshipTrackingDetail {
+  id: string;
+  waybill_id?: string;
+  status: string;
+  courier: {
+    company: string;
+    type?: string;
+    driver_name?: string;
+    driver_phone?: string;
+    driver_photo_url?: string;
+    driver_plate_number?: string;
+  };
+  origin?: { contact_name?: string; address?: string };
+  destination?: { contact_name?: string; address?: string };
+  history: BiteshipTrackingEventDetail[];
+  link?: string;
+  order_id?: string;
+}
+
 // ─── Webhook events ─────────────────────────────────────────
 
 export interface WebhookEventEnvelope<T = unknown> {

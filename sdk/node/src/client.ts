@@ -17,6 +17,7 @@ import {
   FulkrumaError,
   StockMovementReason,
   ProductType,
+  BiteshipTrackingDetail,
 } from './types.js';
 
 export interface FulkrumaClientOptions {
@@ -284,6 +285,13 @@ export class FulkrumaClient {
     cancel: (id: string, reason?: string) =>
       this.request<{ shipment: Shipment }>({
         method: 'POST', path: `/api/v1/shipments/${id}/cancel`, body: { reason },
+      }),
+    // F-008 — live tracking detail (driver, status history, link to
+    // Biteship's public map) for native rendering in merchant + buyer
+    // portals. Pulls from Biteship /v1/trackings/:trackingId on each call.
+    tracking: (id: string) =>
+      this.request<{ tracking: BiteshipTrackingDetail; fetchedAt: string }>({
+        method: 'GET', path: `/api/v1/shipments/${id}/tracking`,
       }),
   };
 
