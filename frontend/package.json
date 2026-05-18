@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@forjio/sdk": "^0.1.0",
+    "@forjio/website-ui": "^0.1.1",
     "@vis.gl/react-google-maps": "^1.8.3",
     "gray-matter": "^4.0.3",
     "lucide-react": "^1.14.0",

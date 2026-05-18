@@ -1,7 +1,13 @@
 import type { Config } from 'tailwindcss';
 
 const config: Config = {
-  content: ['./src/**/*.{ts,tsx}'],
+  content: [
+    './src/**/*.{ts,tsx}',
+    // Scan the shared marketing-chrome package so its Tailwind classes
+    // (used inside MarketingNav / Footer / docs scaffold) get extracted
+    // into our CSS bundle. Required by every consumer of @forjio/website-ui.
+    './node_modules/@forjio/website-ui/dist/**/*.{js,cjs}',
+  ],
   theme: {
     extend: {
       colors: {

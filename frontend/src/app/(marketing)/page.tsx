@@ -23,6 +23,8 @@ import {
   X as XIcon,
   Zap,
 } from 'lucide-react';
+import { HeroBadge, SectionEyebrow } from '@forjio/website-ui';
+import { LogoMark } from '@/components/brand/logo';
 
 export default function HomePage() {
   return (
@@ -44,11 +46,11 @@ export default function HomePage() {
         />
         <div className="max-w-6xl mx-auto px-4 md:px-6 pt-14 md:pt-20 pb-12 md:pb-16">
           <div className="max-w-3xl mx-auto text-center flex flex-col items-center">
-            <div className="inline-flex items-center gap-2 rounded-full border border-border bg-card/60 backdrop-blur px-3 py-1 text-xs">
-              <Sparkles className="size-3 text-primary" strokeWidth={1.5} />
-              <span className="font-medium text-foreground">Stock + shipping</span>
-              <span className="text-muted-foreground">— Forjio family, Biteship inside</span>
-            </div>
+            <HeroBadge
+              brandIcon={<LogoMark size={12} className="text-primary" />}
+              primary="Stock + shipping"
+              secondary="Forjio family, Biteship inside"
+            />
 
             <h1 className="mt-5 text-[36px] leading-[1.05] md:text-[56px] md:leading-[1.02] font-semibold tracking-[-0.025em]">
               Stock and shipping that{' '}
@@ -104,9 +106,7 @@ export default function HomePage() {
       <section className="border-b border-border">
         <div className="max-w-5xl mx-auto px-4 md:px-6 py-16 md:py-24">
           <div className="max-w-2xl">
-            <p className="text-xs font-mono uppercase tracking-wider text-primary mb-3">
-              How it works
-            </p>
+            <SectionEyebrow>How it works</SectionEyebrow>
             <h2 className="text-[28px] md:text-[36px] leading-[1.1] font-semibold tracking-[-0.02em]">
               Up and running in an afternoon.
             </h2>
@@ -161,7 +161,7 @@ export default function HomePage() {
       <section className="border-b border-border">
         <div className="max-w-5xl mx-auto px-4 md:px-6 py-16 md:py-24">
           <div className="max-w-2xl">
-            <p className="text-xs font-mono uppercase tracking-wider text-primary mb-3">Features</p>
+            <SectionEyebrow>Features</SectionEyebrow>
             <h2 className="text-[28px] md:text-[36px] leading-[1.1] font-semibold tracking-[-0.02em]">
               Everything fulfilment, nothing else.
             </h2>
@@ -228,7 +228,7 @@ export default function HomePage() {
       <section id="pricing" className="border-b border-border">
         <div className="max-w-5xl mx-auto px-4 md:px-6 pt-16 md:pt-24">
           <div className="text-center max-w-3xl mx-auto">
-            <p className="text-xs font-mono uppercase tracking-wider text-primary mb-3">Pricing</p>
+            <SectionEyebrow>Pricing</SectionEyebrow>
             <h2 className="text-[28px] md:text-[36px] leading-[1.1] font-semibold tracking-[-0.02em]">
               Priced in Rupiah. No per-shipment fees.
             </h2>
@@ -344,7 +344,7 @@ export default function HomePage() {
       <section className="border-b border-border bg-muted/30">
         <div className="max-w-4xl mx-auto px-4 md:px-6 py-12 md:py-16">
           <div className="text-center max-w-2xl mx-auto">
-            <p className="text-xs font-mono uppercase tracking-wider text-primary mb-3">Compare</p>
+            <SectionEyebrow>Compare</SectionEyebrow>
             <h2 className="text-[28px] md:text-[36px] leading-[1.1] font-semibold tracking-[-0.02em]">
               Built for Indonesia. Not retrofit.
             </h2>
@@ -400,9 +400,7 @@ export default function HomePage() {
         <div className="max-w-5xl mx-auto px-4 md:px-6 py-16 md:py-24">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-12 items-start">
             <div>
-              <p className="text-xs font-mono uppercase tracking-wider text-primary mb-3">
-                For developers
-              </p>
+              <SectionEyebrow>For developers</SectionEyebrow>
               <h2 className="text-[28px] md:text-[36px] leading-[1.1] font-semibold tracking-[-0.02em]">
                 CLI-first. Type-safe SDKs. Webhooks that don&apos;t lie.
               </h2>
@@ -512,9 +510,7 @@ export default function HomePage() {
       <section className="border-b border-border bg-muted/30">
         <div className="max-w-4xl mx-auto px-4 md:px-6 py-12 md:py-16">
           <div className="text-center max-w-3xl mx-auto">
-            <p className="text-xs font-mono uppercase tracking-wider text-primary mb-3">
-              One login
-            </p>
+            <SectionEyebrow>One login</SectionEyebrow>
             <h2 className="text-[28px] md:text-[36px] leading-[1.1] font-semibold tracking-[-0.02em]">
               Sign in once. Use every Forjio product.
             </h2>
@@ -592,7 +588,7 @@ export default function HomePage() {
       <section className="border-b border-border">
         <div className="max-w-3xl mx-auto px-4 md:px-6 py-16 md:py-24">
           <div className="max-w-2xl">
-            <p className="text-xs font-mono uppercase tracking-wider text-primary mb-3">FAQ</p>
+            <SectionEyebrow>FAQ</SectionEyebrow>
             <h2 className="text-[28px] md:text-[36px] leading-[1.1] font-semibold tracking-[-0.02em]">
               Common questions.
             </h2>

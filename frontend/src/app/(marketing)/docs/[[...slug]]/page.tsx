@@ -1,12 +1,27 @@
 import Link from 'next/link';
 import { readDoc, docsGroups, buildSearchIndex } from '@/lib/markdown';
-import { DocsSearch } from '@/components/docs/search';
-import { CrossProductNav } from '@/components/docs/cross-product-nav';
-import { DocsMobileSidebar } from '@/components/docs/mobile-sidebar';
-import { DocsSidebar } from '@/components/docs/sidebar';
-import { DocsToc } from '@/components/docs/toc';
+import {
+  DocsSearch,
+  CrossProductNav,
+  DocsMobileSidebar,
+  DocsSidebar,
+  DocsToc,
+} from '@forjio/website-ui';
 
 type Params = { slug?: string[] };
+
+// The Forjio family — these products share identity (Huudis), billing
+// (Plugipay), and a docs aesthetic. Surfaced in the docs header so
+// readers exploring Fulkruma can jump sideways into related products.
+const FORJIO_PRODUCTS = [
+  { name: 'Huudis',     href: 'https://huudis.com/docs',     tagline: 'Identity' },
+  { name: 'Plugipay',   href: 'https://plugipay.com/docs',   tagline: 'Payments' },
+  { name: 'Storlaunch', href: 'https://storlaunch.com/docs', tagline: 'E-commerce' },
+  { name: 'Fulkruma',   href: '/docs',                       tagline: 'Fulfilment' },
+  { name: 'Ripllo',     href: 'https://ripllo.com',          tagline: 'Marketing' },
+  { name: 'LinkSnap',   href: 'https://linksnap.com/docs',   tagline: 'Short URLs' },
+  { name: 'Pawpado',    href: 'https://pawpado.com',         tagline: 'GPU streaming' },
+];
 
 export default async function DocsPage({ params }: { params: Promise<Params> }) {
   const p = await params;
@@ -18,7 +33,7 @@ export default async function DocsPage({ params }: { params: Promise<Params> }) 
 
   return (
     <>
-      <CrossProductNav />
+      <CrossProductNav products={FORJIO_PRODUCTS} current="Fulkruma" />
 
       {/* Docs header — search + mobile sidebar trigger */}
       <div className="sticky top-0 z-30 border-b border-border bg-background/80 backdrop-blur">

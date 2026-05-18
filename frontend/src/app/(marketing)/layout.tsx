@@ -1,13 +1,20 @@
 import type { ReactNode } from 'react';
-import { MarketingNav } from '@/components/marketing/nav';
-import { MarketingFooter } from '@/components/marketing/footer';
+import { MarketingShell, MarketingNav, MarketingFooter } from '@forjio/website-ui';
+import { LogoMark } from '@/components/brand/logo';
 
 export default function MarketingLayout({ children }: { children: ReactNode }) {
   return (
-    <div className="marketing-site flex min-h-screen flex-col bg-background text-foreground">
-      <MarketingNav />
+    <MarketingShell>
+      <MarketingNav
+        brandIcon={<LogoMark size={24} />}
+        brandName="Fulkruma"
+      />
       <div className="flex-1">{children}</div>
-      <MarketingFooter />
-    </div>
+      <MarketingFooter
+        brandIcon={<LogoMark size={22} />}
+        brandName="Fulkruma"
+        brandTagline="Stock + shipping for Indonesian storefronts — part of the Forjio family."
+      />
+    </MarketingShell>
   );
 }
