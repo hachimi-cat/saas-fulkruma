@@ -38,11 +38,11 @@ export default function HomePage() {
             from LinkSnap's dot grid + blue radial. */}
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(circle_at_30%_20%,theme(colors.brand.500/0.18)_0%,transparent_50%)]"
+          className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(circle_at_30%_20%,theme(colors.brand.500/0.28)_0%,transparent_55%)]"
         />
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-0 -z-10 [background-image:repeating-linear-gradient(45deg,hsl(var(--foreground)/0.08)_0_1px,transparent_1px_14px)] [mask-image:radial-gradient(ellipse_at_center,black_30%,transparent_75%)]"
+          className="pointer-events-none absolute inset-0 -z-10 [background-image:repeating-linear-gradient(45deg,hsl(var(--foreground)/0.16)_0_1px,transparent_1px_14px)] [mask-image:radial-gradient(ellipse_at_center,black_30%,transparent_75%)]"
         />
         <div className="max-w-6xl mx-auto px-4 md:px-6 pt-14 md:pt-20 pb-12 md:pb-16">
           <div className="max-w-3xl mx-auto text-center flex flex-col items-center">
