@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Check, Minus } from 'lucide-react';
+import { Price } from '@forjio/website-ui';
 
 export const metadata: Metadata = {
   title: 'Pricing',
@@ -11,35 +12,36 @@ export const metadata: Metadata = {
 // A7 (2026-05-18): every row reconciled with backend/src/lib/plans.ts
 // (PLAN_LIMITS + PLAN_PRICES_IDR). Tier order matches Prisma
 // FulkrumaPlan enum: FREE / STARTER / GROWTH / SCALE.
+// USD-cents mirror backend/src/lib/plans.ts PLAN_PRICES_USD_CENTS.
 const tiers = [
   {
     name: 'Free',
-    price: 'Rp 0',
-    period: '',
+    idr: 0,
+    usdCents: 0,
     description: 'For pilots and side projects.',
     cta: 'Start free',
     highlight: false,
   },
   {
     name: 'Starter',
-    price: 'Rp 299K',
-    period: '/mo',
+    idr: 299_000,
+    usdCents: 1_900,
     description: 'For growing storefronts.',
     cta: 'Start Starter',
     highlight: true,
   },
   {
     name: 'Growth',
-    price: 'Rp 799K',
-    period: '/mo',
+    idr: 799_000,
+    usdCents: 4_900,
     description: 'For multi-warehouse merchants.',
     cta: 'Start Growth',
     highlight: false,
   },
   {
     name: 'Scale',
-    price: 'Rp 1,999K',
-    period: '/mo',
+    idr: 1_999_000,
+    usdCents: 12_900,
     description: 'For high-volume operators.',
     cta: 'Start Scale',
     highlight: false,
@@ -107,10 +109,10 @@ export default function PricingPage() {
             <h2 className="text-xl font-bold">{tier.name}</h2>
             <p className="mt-1 text-sm text-muted-foreground">{tier.description}</p>
             <p className="mt-6 text-3xl font-bold tabular-nums">
-              {tier.price}
-              {tier.period && (
+              <Price idr={tier.idr} usdCents={tier.usdCents} />
+              {tier.idr > 0 && (
                 <span className="text-base font-normal text-muted-foreground">
-                  {tier.period}
+                  /mo
                 </span>
               )}
             </p>

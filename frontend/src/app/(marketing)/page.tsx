@@ -23,7 +23,7 @@ import {
   X as XIcon,
   Zap,
 } from 'lucide-react';
-import { HeroBadge, SectionEyebrow } from '@forjio/website-ui';
+import { HeroBadge, SectionEyebrow, Price } from '@forjio/website-ui';
 import { LogoMark } from '@/components/brand/logo';
 
 export default function HomePage() {
@@ -249,7 +249,8 @@ export default function HomePage() {
             {[
               {
                 name: 'Free',
-                price: 'Rp 0',
+                idr: 0,
+                usdCents: 0,
                 priceUnit: 'forever',
                 who: 'For pilots and side projects.',
                 features: [
@@ -263,7 +264,8 @@ export default function HomePage() {
               },
               {
                 name: 'Starter',
-                price: 'Rp 299k',
+                idr: 299_000,
+                usdCents: 1_900,
                 priceUnit: '/ month',
                 who: 'For growing Indonesian storefronts.',
                 featured: true,
@@ -278,7 +280,8 @@ export default function HomePage() {
               },
               {
                 name: 'Growth',
-                price: 'Rp 799k',
+                idr: 799_000,
+                usdCents: 4_900,
                 priceUnit: '/ month',
                 who: 'For multi-warehouse merchants.',
                 features: [
@@ -292,7 +295,8 @@ export default function HomePage() {
               },
               {
                 name: 'Scale',
-                price: 'Rp 1.999k',
+                idr: 1_999_000,
+                usdCents: 12_900,
                 priceUnit: '/ month',
                 who: 'For high-volume operators.',
                 features: [
@@ -324,7 +328,7 @@ export default function HomePage() {
                 </p>
                 <div className="mt-4 flex items-baseline gap-1.5">
                   <span className="text-[28px] font-bold tabular-nums tracking-tight">
-                    {tier.price}
+                    <Price idr={tier.idr} usdCents={tier.usdCents} />
                   </span>
                   <span className="text-xs text-muted-foreground">{tier.priceUnit}</span>
                 </div>
