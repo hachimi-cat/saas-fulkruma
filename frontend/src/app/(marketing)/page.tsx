@@ -771,7 +771,7 @@ function HeroStockPreview() {
           <MoreHorizontal className="size-3.5 text-muted-foreground" strokeWidth={1.5} />
         </div>
 
-        <div className="p-5 grid grid-cols-1 gap-5 items-start">
+        <div className="p-5 grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-5 items-start">
           <div className="min-w-0">
             <div className="flex items-center gap-2">
               <span className="text-[15px] font-mono font-semibold text-primary truncate">
@@ -828,10 +828,47 @@ function HeroStockPreview() {
             </div>
           </div>
 
+          {/* Real-portal artifact: a Biteship status timeline mirroring
+              what /dashboard/shipments/:id renders. Statuses come straight
+              from backend/src/lib/shipment-status.ts — no fabricated
+              waybill / barcode / QR. */}
+          <div className="hidden sm:block">
+            <div className="rounded-lg border border-border bg-background px-4 py-3 w-[180px]">
+              <div className="text-[9px] font-mono text-muted-foreground uppercase tracking-wider">
+                Tracking
+              </div>
+              <div className="mt-0.5 font-mono text-[11px] font-semibold text-foreground tabular-nums">
+                FUL-2026-Q2
+              </div>
+              <ol className="mt-3 space-y-1.5 text-[10px]">
+                <li className="flex items-center gap-2">
+                  <Check className="size-3 shrink-0 text-primary" strokeWidth={2.5} />
+                  <span className="text-muted-foreground">Picked up</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <Check className="size-3 shrink-0 text-primary" strokeWidth={2.5} />
+                  <span className="text-muted-foreground">In transit</span>
+                </li>
+                <li className="flex items-center gap-2 font-semibold text-foreground">
+                  <span className="relative flex size-3 shrink-0 items-center justify-center">
+                    <span className="absolute inline-flex size-3 animate-ping rounded-full bg-primary opacity-60" />
+                    <span className="relative inline-flex size-1.5 rounded-full bg-primary" />
+                  </span>
+                  <span>Out for delivery</span>
+                </li>
+                <li className="flex items-center gap-2 text-muted-foreground/50">
+                  <span className="inline-flex size-3 shrink-0 items-center justify-center">
+                    <span className="size-1.5 rounded-full border border-current" />
+                  </span>
+                  <span>Delivered</span>
+                </li>
+              </ol>
+            </div>
+          </div>
         </div>
       </div>
       <p className="mt-3 text-xs text-muted-foreground text-center">
-        Every fulfilled order gets a waybill + real-time tracking. Your stock, in IDR pricing.
+        Every shipment streams Biteship status events to your portal. Your stock, in IDR pricing.
       </p>
     </div>
   );
