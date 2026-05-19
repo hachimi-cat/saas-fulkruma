@@ -771,7 +771,7 @@ function HeroStockPreview() {
           <MoreHorizontal className="size-3.5 text-muted-foreground" strokeWidth={1.5} />
         </div>
 
-        <div className="p-5 grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-5 items-start">
+        <div className="p-5 grid grid-cols-1 gap-5 items-start">
           <div className="min-w-0">
             <div className="flex items-center gap-2">
               <span className="text-[15px] font-mono font-semibold text-primary truncate">
@@ -828,24 +828,6 @@ function HeroStockPreview() {
             </div>
           </div>
 
-          <div className="hidden sm:flex flex-col items-center gap-2">
-            <div className="rounded-lg border border-border bg-background p-2.5">
-              <div className="size-24 grid grid-cols-4 grid-rows-4 gap-0.5">
-                {/* Stylised waybill-grid: 16 cells, some filled, evokes a
-                    pick-list / pallet layout. Distinct from LinkSnap's QR. */}
-                {[1, 0, 1, 1, 1, 1, 0, 1, 0, 1, 1, 0, 1, 1, 1, 0].map((on, i) => (
-                  <span
-                    key={i}
-                    className={`rounded-sm ${on ? 'bg-primary/80' : 'bg-muted'}`}
-                  />
-                ))}
-              </div>
-              <div className="mt-1 flex items-center justify-center gap-1 text-[9px] font-mono text-primary">
-                <Truck className="size-2.5" strokeWidth={2} />
-                <span>waybill · JNE</span>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
       <p className="mt-3 text-xs text-muted-foreground text-center">
