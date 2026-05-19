@@ -287,7 +287,7 @@ export default function HomePage() {
                 features: [
                   '5,000 fulfilled orders / month',
                   '10 warehouses',
-                  'Multi-region routing',
+                  'Cross-warehouse stock transfers',
                   '5,000 license keys',
                   'Priority support',
                 ],
@@ -302,7 +302,7 @@ export default function HomePage() {
                 features: [
                   'Unlimited orders + warehouses',
                   'Unlimited license keys',
-                  'Custom courier rates',
+                  'Unlimited API keys + webhook endpoints',
                   '5,000 req/min API',
                   'SLA + dedicated infra',
                 ],
@@ -424,18 +424,19 @@ export default function HomePage() {
             <div>
               <SectionEyebrow>For developers</SectionEyebrow>
               <h2 className="text-[28px] md:text-[36px] leading-[1.1] font-semibold tracking-[-0.02em]">
-                CLI-first. Type-safe SDKs. Webhooks that don&apos;t lie.
+                CLI-first. Type-safe SDKs. Signed webhooks.
               </h2>
               <p className="mt-4 text-[15px] leading-relaxed text-muted-foreground max-w-[52ch]">
-                Real CLI, type-safe SDKs for Node.js, Python, and Go, REST API, signed webhooks,
-                idempotency keys, and a sandbox mode. Test before flipping a single real waybill.
+                A real CLI, type-safe SDKs for Node.js, Python, and Go, a REST API with idempotency
+                keys, and HMAC-signed outbound webhooks. Wire Fulkruma into your stack without
+                writing glue.
               </p>
               <ul className="mt-6 space-y-3">
                 {[
                   'Receive, transfer, ship — all scriptable from the CLI',
                   'OpenAPI spec + type-safe SDKs (Node, Python, Go)',
-                  'Webhooks with HMAC signatures + replay protection',
-                  'Sandbox mode with disposable test workspaces',
+                  'Outbound webhooks signed with Fulkruma-HMAC-SHA256',
+                  'Scoped API keys + per-workspace audit log',
                 ].map((b) => (
                   <li
                     key={b}
@@ -465,7 +466,7 @@ export default function HomePage() {
             </div>
 
             <div className="space-y-4">
-              <TerminalCard label="fulkruma — sandbox">
+              <TerminalCard label="fulkruma">
                 <span className="text-white/40"># Install once</span>
                 {'\n'}
                 <span className="text-white/90">$ npm i -g @forjio/fulkruma-cli</span>
@@ -760,7 +761,7 @@ function HeroStockPreview() {
             <span className="size-2.5 rounded-full bg-primary/70" />
             <Warehouse className="ml-2 size-3.5 text-muted-foreground" strokeWidth={1.5} />
             <span className="text-[11px] text-muted-foreground font-mono">
-              fulkruma / warehouses / jakarta-dc / stock
+              fulkruma / dashboard / stock
             </span>
           </div>
           <MoreHorizontal className="size-3.5 text-muted-foreground" strokeWidth={1.5} />

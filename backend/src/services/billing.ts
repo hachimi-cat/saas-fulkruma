@@ -35,7 +35,7 @@ export function listPlans() {
       features: [
         `${PLAN_LIMITS.GROWTH.ordersPerMonth.toLocaleString()} orders/month`,
         `${PLAN_LIMITS.GROWTH.warehouses} warehouses`,
-        'Multi-region routing',
+        'Cross-warehouse stock transfers',
         'Priority support',
       ],
     },
