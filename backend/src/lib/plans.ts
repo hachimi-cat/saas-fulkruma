@@ -48,6 +48,17 @@ export const PLAN_PRICES_IDR = {
   SCALE: 1_999_000,
 } as const;
 
+/** USD prices in cents. International (non-Indonesia) merchants are
+ *  billed in USD via PayPal through Plugipay-self's shared adapter
+ *  ("all forjio using 1 plugipay paypal" — bang 2026-05-19). Conversion
+ *  ~Rp 16k/USD, rounded to clean dollars. */
+export const PLAN_PRICES_USD_CENTS = {
+  FREE: 0,
+  STARTER: 1900,   // $19
+  GROWTH: 4900,    // $49
+  SCALE: 12900,    // $129
+} as const;
+
 export type PlanKey = keyof typeof PLAN_LIMITS;
 
 const UNLIMITED = {

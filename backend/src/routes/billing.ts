@@ -62,8 +62,17 @@ router.post('/checkout', requireAuth, async (req, res) => {
   const email = parsed.data.email ?? (req.auth as { email?: string })?.email;
   if (!email) return res.status(400).json(err('VALIDATION', 'email required (set in JWT claim or request body)', reqId(req)));
 
+  // Geo-route currency. ID → IDR (Midtrans/Xendit on plugipay-self).
+  // Anything else → USD (PayPal on plugipay-self). Caller may force via
+  // body.currency. CF-IPCountry comes from Cloudflare's edge ingest.
+  const cfCountry = String(req.headers['cf-ipcountry'] ?? '').toUpperCase();
+  const bodyCur = String((req.body as { currency?: string }).currency ?? '').toUpperCase();
+  const currency: 'IDR' | 'USD' = bodyCur === 'USD' ? 'USD'
+    : bodyCur === 'IDR' ? 'IDR'
+    : cfCountry && cfCountry !== 'ID' && cfCountry !== 'XX' && cfCountry !== 'T1' ? 'USD'
+    : 'IDR';
   try {
-    const result = await plugipayBilling.startSubscription(accountId, email, parsed.data.plan as PlanKey, parsed.data.name);
+    const result = await plugipayBilling.startSubscription(accountId, email, parsed.data.plan as PlanKey, parsed.data.name, currency);
     res.json(ok(result, reqId(req)));
   } catch (e) {
     const msg = (e as Error).message;

@@ -1,7 +1,7 @@
 import { PlugipayClient } from '@forjio/plugipay-node';
 import { prisma } from '../lib/db.js';
 import type { FulkrumaPlan } from '@prisma/client';
-import { PLAN_LIMITS, PLAN_PRICES_IDR, type PlanKey } from '../lib/plans.js';
+import { PLAN_LIMITS, PLAN_PRICES_IDR, PLAN_PRICES_USD_CENTS, type PlanKey } from '../lib/plans.js';
 
 // ─────────────────────────────────────────────────────────────
 // Fulkruma × Plugipay billing glue.
@@ -92,12 +92,15 @@ export interface StartSubscriptionResult {
   checkoutUrl: string;
 }
 
+export type BillingCurrency = 'IDR' | 'USD';
+
 /** Upgrade an account to a paid fulkruma tier via Plugipay. */
 export async function startSubscription(
   accountId: string,
   email: string,
   targetTier: PlanKey,
   name?: string,
+  currency: BillingCurrency = 'IDR',
 ): Promise<StartSubscriptionResult> {
   if (targetTier === 'FREE') {
     throw new Error('Cannot subscribe to the FREE tier. Use cancelSubscription() instead.');
@@ -105,6 +108,10 @@ export async function startSubscription(
   const planId = plugipayPlanIdForTier(targetTier);
   if (!planId) {
     throw new Error(`Plugipay planId not configured for tier ${targetTier}`);
+  }
+  const usdCents: number = PLAN_PRICES_USD_CENTS[targetTier as keyof typeof PLAN_PRICES_USD_CENTS] ?? 0;
+  if (currency === 'USD' && usdCents <= 0) {
+    throw new Error(`Tier ${targetTier} has no USD price; cannot bill in USD`);
   }
 
   const client = getPlatformClient();
@@ -132,11 +139,25 @@ export async function startSubscription(
     }
   }
 
-  // Resolve active price on the plan.
+  // Resolve the Price matching `currency`. Lazy-attach a USD Price
+  // via plans.addPrice() the first time an international merchant
+  // subscribes — subsequent renewals reuse it so auto-issued invoices
+  // stay in the right currency.
   const plan = await client.plans.get(planId);
-  const priceId = (plan as unknown as { prices?: { id: string; active: boolean }[] }).prices
-    ?.find((p) => p.active)?.id;
-  if (!priceId) throw new Error(`Plugipay plan ${planId} has no active price`);
+  const planPrices = (plan as unknown as {
+    prices?: { id: string; active: boolean; currency: string }[];
+  }).prices ?? [];
+  let priceId = planPrices.find((p) => p.active && p.currency === currency)?.id;
+  if (!priceId && currency === 'USD') {
+    const created = await client.plans.addPrice(planId, {
+      currency: 'USD',
+      model: 'flat',
+      unitAmount: usdCents ?? 0,
+      taxMode: 'inclusive',
+    });
+    priceId = created.id;
+  }
+  if (!priceId) throw new Error(`Plugipay plan ${planId} has no active ${currency} price`);
 
   const subscription = await client.subscriptions.create({
     customerId,
@@ -144,7 +165,7 @@ export async function startSubscription(
     priceId,
     collectionMethod: 'send_invoice',
     initialDiscount: initialDiscount > 0 ? initialDiscount : undefined,
-    metadata: { fulkrumaAccountId: accountId, fulkrumaTier: targetTier },
+    metadata: { fulkrumaAccountId: accountId, fulkrumaTier: targetTier, fulkrumaBillingCurrency: currency },
   });
 
   const invoices = await client.invoices.list({ customerId, limit: 10 });
@@ -155,10 +176,12 @@ export async function startSubscription(
 
   const chargeAmount = Math.max(0, firstInvoice.total);
   const tierName = targetTier.charAt(0) + targetTier.slice(1).toLowerCase();
+  const sessionMethods: ('qris' | 'va' | 'ewallet' | 'card' | 'paypal')[] =
+    currency === 'USD' ? ['paypal'] : ['qris', 'va', 'ewallet', 'card'];
   const session = await client.checkoutSessions.create({
     amount: chargeAmount,
-    currency: 'IDR',
-    methods: ['qris', 'va', 'ewallet', 'card'],
+    currency,
+    methods: sessionMethods,
     successUrl: `${APP_BASE_URL}/dashboard/billing?status=success`,
     cancelUrl: `${APP_BASE_URL}/dashboard/billing?status=canceled`,
     customerId,
@@ -172,6 +195,7 @@ export async function startSubscription(
     metadata: {
       fulkrumaAccountId: accountId,
       fulkrumaTier: targetTier,
+      fulkrumaBillingCurrency: currency,
       plugipayInvoiceId: firstInvoice.id,
       plugipaySubscriptionId: subscription.id,
     },
