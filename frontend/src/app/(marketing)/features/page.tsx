@@ -21,12 +21,12 @@ const features = [
     Icon: Warehouse,
     title: 'Multi-warehouse',
     body:
-      'Track stock across many locations. Allocate orders to the closest warehouse automatically — based on the buyer address.',
+      'Track stock across many locations with per-warehouse levels. Move inventory between locations with a full audit trail.',
     details: [
-      'Unlimited warehouses per workspace',
+      'Up to 10 warehouses on Growth (unlimited on Scale)',
       'Per-warehouse stock levels and ledgers',
-      'Nearest-warehouse routing for shipping',
-      'Transfers between locations with audit trail',
+      'Cross-warehouse transfers (transfer_in / transfer_out)',
+      'Per-merchant pickup origin configurable via API',
     ],
   },
   {

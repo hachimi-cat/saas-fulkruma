@@ -177,7 +177,7 @@ export default function HomePage() {
                 Icon: Warehouse,
                 title: 'Multi-warehouse',
                 body:
-                  'Track stock across many locations. Allocate orders to the closest warehouse automatically. Transfers between locations with full audit trail.',
+                  'Track stock across many locations with per-warehouse levels. Transfer inventory between locations with a full audit trail.',
               },
               {
                 Icon: Boxes,
@@ -394,7 +394,7 @@ export default function HomePage() {
                 {[
                   { cap: 'Lowest paid tier', s: 'Rp 299k/mo', sh: 'engineer time', m: '~Rp 800k/mo (€50)' },
                   { cap: 'IDR billing', s: true, sh: true, m: false },
-                  { cap: 'Multi-warehouse routing', s: true, sh: 'maybe', m: false },
+                  { cap: 'Multi-warehouse stock tracking', s: true, sh: 'maybe', m: false },
                   { cap: 'Reservations / no-oversell', s: true, sh: 'maybe', m: false },
                   { cap: 'Indonesian courier coverage', s: true, sh: false, m: false },
                   { cap: 'API + CLI + SDKs', s: true, sh: false, m: false },
@@ -583,8 +583,12 @@ export default function HomePage() {
                     <span className="text-[9px] text-muted-foreground leading-tight text-center">
                       {p.label}
                     </span>
-                    {p.current && (
+                    {p.current ? (
                       <span className="text-[9px] font-mono text-primary">you are here</span>
+                    ) : (
+                      /* Reserve the same vertical space as 'you are here' on
+                         the current cell so all grid cells match height. */
+                      <span aria-hidden className="text-[9px] font-mono invisible">.</span>
                     )}
                   </div>
                 ))}
