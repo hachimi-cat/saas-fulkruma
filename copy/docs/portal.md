@@ -4,6 +4,9 @@ title: Portal tour
 
 # Portal tour
 
+![Plugipay family portal: dashboard](/docs-img/portal/dashboard.png)
+
+
 The Fulkruma portal at [fulkruma.com/dashboard](https://fulkruma.com/dashboard) is your day-to-day workspace. This section walks through every page in the dashboard with common tasks and tips.
 
 If you're looking for a specific feature, jump straight to it from the sidebar. If you're new, read through this overview first.

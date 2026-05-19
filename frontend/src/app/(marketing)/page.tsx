@@ -233,12 +233,19 @@ export default function HomePage() {
               Priced in Rupiah. No per-shipment fees.
             </h2>
             <p className="mt-4 text-[15px] leading-relaxed text-muted-foreground max-w-[62ch] mx-auto">
-              Free is genuinely free, not a trial. Pay annually for two months free.
+              Free is genuinely free, not a trial. Pay annually for two months
+              free. International customers pay in USD via PayPal — Midtrans
+              doesn&apos;t process USD.
             </p>
           </div>
         </div>
         <div className="max-w-5xl mx-auto px-4 md:px-6 pt-12 pb-16">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+          {/* A7 (2026-05-18): 4-tier grid reconciled with
+              backend/src/lib/plans.ts (PLAN_LIMITS + PLAN_PRICES_IDR).
+              Free/Starter/Growth/Scale matches the Prisma FulkrumaPlan
+              enum and the standalone /pricing page. CTAs all point to
+              /login — no trial period is shipped yet. */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
             {[
               {
                 name: 'Free',
@@ -263,12 +270,11 @@ export default function HomePage() {
                 features: [
                   '500 fulfilled orders / month',
                   '3 warehouses',
-                  '3 team seats',
                   'Reservations + low-stock alerts',
-                  'License keys',
+                  '100 license keys',
                   'Full API access',
                 ],
-                cta: { label: 'Start 14-day trial', href: '/login?plan=starter' },
+                cta: { label: 'Start Starter', href: '/login' },
               },
               {
                 name: 'Growth',
@@ -279,10 +285,24 @@ export default function HomePage() {
                   '5,000 fulfilled orders / month',
                   '10 warehouses',
                   'Multi-region routing',
-                  'Higher API rate limit',
+                  '5,000 license keys',
                   'Priority support',
                 ],
-                cta: { label: 'Talk to sales', href: '/contact' },
+                cta: { label: 'Start Growth', href: '/login' },
+              },
+              {
+                name: 'Scale',
+                price: 'Rp 1.999k',
+                priceUnit: '/ month',
+                who: 'For high-volume operators.',
+                features: [
+                  'Unlimited orders + warehouses',
+                  'Unlimited license keys',
+                  'Custom courier rates',
+                  '5,000 req/min API',
+                  'SLA + dedicated infra',
+                ],
+                cta: { label: 'Start Scale', href: '/login' },
               },
             ].map((tier) => (
               <div

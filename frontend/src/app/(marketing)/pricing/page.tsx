@@ -5,9 +5,12 @@ import { Check, Minus } from 'lucide-react';
 export const metadata: Metadata = {
   title: 'Pricing',
   description:
-    'Transparent pricing for Fulkruma. Priced in Rupiah. No per-shipment fees. Start free, upgrade when you scale.',
+    'Transparent pricing for Fulkruma. Priced in Rupiah. No per-shipment fees. International billing via PayPal. Start free, upgrade when you scale.',
 };
 
+// A7 (2026-05-18): every row reconciled with backend/src/lib/plans.ts
+// (PLAN_LIMITS + PLAN_PRICES_IDR). Tier order matches Prisma
+// FulkrumaPlan enum: FREE / STARTER / GROWTH / SCALE.
 const tiers = [
   {
     name: 'Free',
@@ -35,27 +38,35 @@ const tiers = [
   },
   {
     name: 'Scale',
-    price: 'Rp 1.999K',
+    price: 'Rp 1,999K',
     period: '/mo',
     description: 'For high-volume operators.',
-    cta: 'Talk to sales',
+    cta: 'Start Scale',
     highlight: false,
   },
 ];
 
-const comparisonRows = [
-  { feature: 'Warehouses', free: '1', starter: '3', growth: '10', scale: 'Unlimited' },
-  { feature: 'Fulfilled orders / mo', free: '50', starter: '500', growth: '5,000', scale: '50,000' },
-  { feature: 'Biteship couriers', free: true, starter: true, growth: true, scale: true },
-  { feature: 'Multi-region routing', free: false, starter: false, growth: true, scale: true },
-  { feature: 'Reservations + low-stock alerts', free: false, starter: true, growth: true, scale: true },
-  { feature: 'License keys', free: false, starter: true, growth: true, scale: true },
-  { feature: 'Custom courier rates', free: false, starter: false, growth: false, scale: true },
-  { feature: 'API + CLI access', free: true, starter: true, growth: true, scale: true },
-  { feature: 'SDKs (Node / Python / Go)', free: true, starter: true, growth: true, scale: true },
-  { feature: 'Email support', free: true, starter: true, growth: true, scale: true },
-  { feature: 'Priority support', free: false, starter: false, growth: true, scale: true },
-  { feature: 'SLA', free: false, starter: false, growth: false, scale: true },
+const comparisonRows: Array<{
+  feature: string;
+  values: [string | boolean, string | boolean, string | boolean, string | boolean];
+}> = [
+  { feature: 'Fulfilled orders / month', values: ['50', '500', '5,000', 'Unlimited'] },
+  { feature: 'Warehouses', values: ['1', '3', '10', 'Unlimited'] },
+  { feature: 'License keys', values: ['—', '100', '5,000', 'Unlimited'] },
+  { feature: 'API keys', values: ['1', '5', '25', 'Unlimited'] },
+  { feature: 'Webhook endpoints', values: ['1', '5', '25', 'Unlimited'] },
+  { feature: 'API rate limit', values: ['60 req/min', '600 req/min', '2,000 req/min', '5,000 req/min'] },
+  { feature: 'Biteship shipments / month', values: ['50', '500', '5,000', 'Unlimited'] },
+  { feature: 'Biteship couriers', values: [true, true, true, true] },
+  { feature: 'Multi-region routing', values: [false, false, true, true] },
+  { feature: 'Reservations + low-stock alerts', values: [false, true, true, true] },
+  { feature: 'Custom courier rates', values: [false, false, false, true] },
+  { feature: 'API + CLI access', values: [true, true, true, true] },
+  { feature: 'SDKs (Node / Python / Go)', values: [true, true, true, true] },
+  { feature: 'Email support', values: [true, true, true, true] },
+  { feature: 'Priority support', values: [false, false, true, true] },
+  { feature: 'Payment methods (IDR)', values: ['—', 'QRIS · VA · e-wallet · card', 'QRIS · VA · e-wallet · card', 'QRIS · VA · e-wallet · card'] },
+  { feature: 'Payment methods (USD intl)', values: ['—', 'PayPal', 'PayPal', 'PayPal'] },
 ];
 
 function CellValue({ value }: { value: string | boolean }) {
@@ -118,7 +129,8 @@ export default function PricingPage() {
       </div>
 
       <p className="mt-6 text-center text-xs text-muted-foreground">
-        All plans IDR-primary. Annual billing = 2 months free.
+        All plans IDR-primary. Annual billing = 2 months free. International
+        customers pay in USD via PayPal — Midtrans doesn&apos;t process USD.
       </p>
 
       {/* Feature Comparison */}
@@ -143,18 +155,11 @@ export default function PricingPage() {
               {comparisonRows.map((row) => (
                 <tr key={row.feature} className="border-b border-border/50">
                   <td className="py-4 pr-6 text-sm">{row.feature}</td>
-                  <td className="py-4 text-center">
-                    <CellValue value={row.free} />
-                  </td>
-                  <td className="py-4 text-center">
-                    <CellValue value={row.starter} />
-                  </td>
-                  <td className="py-4 text-center">
-                    <CellValue value={row.growth} />
-                  </td>
-                  <td className="py-4 text-center">
-                    <CellValue value={row.scale} />
-                  </td>
+                  {row.values.map((v, i) => (
+                    <td key={i} className="py-4 text-center">
+                      <CellValue value={v} />
+                    </td>
+                  ))}
                 </tr>
               ))}
             </tbody>
