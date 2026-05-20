@@ -15,6 +15,11 @@ const issueSchema = z.object({
   expiresAt: z.string().datetime().optional(),
   externalSource: z.string().min(1).max(50).optional(),
   externalRef: z.string().min(1).max(255).optional(),
+  // Optional caller-supplied key. Lets an upstream product be the
+  // source of truth for the key (e.g. Storlaunch's merchant key pool)
+  // and have Fulkruma mirror it, so the buyer's key and Fulkruma's
+  // License Keys menu agree. Omitted → Fulkruma generates one.
+  key: z.string().min(8).max(120).optional(),
 });
 
 const activateSchema = z.object({
@@ -172,13 +177,25 @@ router.post('/', async (req, res) => {
   if (!parsed.success) {
     return res.status(400).json(err('VALIDATION', parsed.error.message, req.requestId ?? 'req_unknown'));
   }
+  // Caller-supplied key: be idempotent on webhook retries (return the
+  // existing license) and refuse to clobber another account's key
+  // rather than collide on the unique `key` column.
+  if (parsed.data.key) {
+    const existing = await prisma.license.findUnique({ where: { key: parsed.data.key } });
+    if (existing) {
+      if (existing.accountId === accountId) {
+        return res.status(200).json(ok({ license: existing }, req.requestId ?? 'req_unknown'));
+      }
+      return res.status(409).json(err('KEY_TAKEN', 'license key already in use', req.requestId ?? 'req_unknown'));
+    }
+  }
   const license = await prisma.$transaction(async (tx) => {
     const created = await tx.license.create({
       data: {
         accountId,
         productId: parsed.data.productId,
         customerId: parsed.data.customerId,
-        key: newLicenseKey(),
+        key: parsed.data.key ?? newLicenseKey(),
         maxActivations: parsed.data.maxActivations ?? 1,
         expiresAt: parsed.data.expiresAt ? new Date(parsed.data.expiresAt) : null,
         externalSource: parsed.data.externalSource ?? null,
