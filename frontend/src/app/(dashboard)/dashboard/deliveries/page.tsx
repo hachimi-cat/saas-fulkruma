@@ -20,6 +20,7 @@ export default function DeliveriesPage() {
   const [products, setProducts] = useState<ProductLite[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
+  const [busyId, setBusyId] = useState<string | null>(null);
 
   async function reload() {
     try {
@@ -34,6 +35,19 @@ export default function DeliveriesPage() {
   useEffect(() => { reload(); }, []);
 
   const productName = (id: string) => products.find((p) => p.id === id)?.name ?? id;
+
+  // F-013: per-delivery management action — POST then refresh the list.
+  async function deliveryAction(id: string, path: 'extend' | 'reset-downloads' | 'revoke') {
+    setBusyId(id);
+    try {
+      await api(`/deliveries/${id}/${path}`, { method: 'POST' });
+      await reload();
+    } catch (e) {
+      alert((e as Error).message);
+    } finally {
+      setBusyId(null);
+    }
+  }
 
   const columns: Column<Delivery>[] = [
     {
@@ -99,6 +113,46 @@ export default function DeliveriesPage() {
           </span>
         );
       },
+    },
+    {
+      key: 'actions',
+      header: 'Actions',
+      align: 'right',
+      cell: (d) => (
+        <div className="flex justify-end gap-1">
+          <button
+            type="button"
+            disabled={busyId !== null}
+            onClick={() => deliveryAction(d.id, 'extend')}
+            title="Extend expiry 30 days"
+            className="rounded border border-border px-1.5 py-0.5 text-[11px] hover:bg-secondary disabled:opacity-50"
+          >
+            +30d
+          </button>
+          <button
+            type="button"
+            disabled={busyId !== null}
+            onClick={() => deliveryAction(d.id, 'reset-downloads')}
+            title="Reset download count to 0"
+            className="rounded border border-border px-1.5 py-0.5 text-[11px] hover:bg-secondary disabled:opacity-50"
+          >
+            Reset
+          </button>
+          <button
+            type="button"
+            disabled={busyId !== null}
+            onClick={() => {
+              if (confirm('Revoke this delivery? The buyer can no longer download it.')) {
+                deliveryAction(d.id, 'revoke');
+              }
+            }}
+            title="Revoke — expire the delivery now"
+            className="rounded border border-destructive/40 px-1.5 py-0.5 text-[11px] font-medium text-destructive hover:bg-destructive/10 disabled:opacity-50"
+          >
+            Revoke
+          </button>
+        </div>
+      ),
     },
   ];
 

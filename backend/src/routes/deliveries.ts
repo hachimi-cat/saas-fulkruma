@@ -1,4 +1,5 @@
-import { Router } from 'express';
+import { Router, type Request, type Response } from 'express';
+import type { Delivery } from '@prisma/client';
 import { ok, err } from '@forjio/sdk/http';
 import { z } from 'zod';
 import { prisma } from '../lib/db.js';
@@ -93,5 +94,60 @@ router.post('/', async (req, res) => {
     throw e;
   }
 });
+
+// ─── F-013: per-delivery management actions (merchant support) ───────
+const EXTEND_MS = 30 * 24 * 3600 * 1000;
+
+async function applyDeliveryAction(
+  req: Request,
+  res: Response,
+  action: 'extend' | 'reset-downloads' | 'revoke',
+  patch: (d: Delivery) => { expiresAt?: Date; downloadCount?: number },
+) {
+  const accountId = req.auth?.accountId;
+  const rid = req.requestId ?? 'req_unknown';
+  if (!accountId) return res.status(403).json(err('NO_ACCOUNT', 'token missing accountId', rid));
+  try {
+    const row = await prisma.delivery.findFirst({ where: { id: String(req.params.id), accountId } });
+    if (!row) return res.status(404).json(err('NOT_FOUND', 'delivery not found', rid));
+    const updated = await prisma.$transaction(async (tx) => {
+      const d = await tx.delivery.update({ where: { id: row.id }, data: patch(row) });
+      await tx.outboxEvent.create({
+        data: buildEvent({
+          type: 'fulkruma.delivery.updated.v1',
+          accountId,
+          data: { deliveryId: d.id, action },
+        }),
+      });
+      return d;
+    });
+    await writeAuditLog(prisma, {
+      accountId, actorType: 'user', actorId: req.auth?.sub ?? null,
+      action: `delivery.${action}`,
+      targetType: 'Delivery', targetId: updated.id,
+      after: { expiresAt: updated.expiresAt.toISOString(), downloadCount: updated.downloadCount },
+    });
+    return res.json(ok({ delivery: updated }, rid));
+  } catch (e) {
+    return res.status(500).json(err('INTERNAL', (e as Error).message, rid));
+  }
+}
+
+// Extend the download window 30 days (from now, or the current expiry).
+router.post('/:id/extend', (req, res) =>
+  applyDeliveryAction(req, res, 'extend', (d) => ({
+    expiresAt: new Date(Math.max(Date.now(), d.expiresAt.getTime()) + EXTEND_MS),
+  })),
+);
+
+// Reset the download counter so the buyer can download again.
+router.post('/:id/reset-downloads', (req, res) =>
+  applyDeliveryAction(req, res, 'reset-downloads', () => ({ downloadCount: 0 })),
+);
+
+// Revoke: expire the delivery now.
+router.post('/:id/revoke', (req, res) =>
+  applyDeliveryAction(req, res, 'revoke', () => ({ expiresAt: new Date() })),
+);
 
 export default router;
