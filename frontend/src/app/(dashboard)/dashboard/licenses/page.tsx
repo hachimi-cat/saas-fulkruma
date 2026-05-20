@@ -15,6 +15,7 @@ export default function LicensesPage() {
   const [showForm, setShowForm] = useState(false);
   const [issued, setIssued] = useState<License | null>(null);
   const [copied, setCopied] = useState(false);
+  const [devicesFor, setDevicesFor] = useState<License | null>(null);
 
   async function reload() {
     try {
@@ -66,7 +67,14 @@ export default function LicensesPage() {
       sortable: true,
       sortValue: (l) => l.activations,
       cell: (l) => (
-        <span className="font-mono tabular-nums">{l.activations}/{l.maxActivations}</span>
+        <button
+          type="button"
+          onClick={() => setDevicesFor(l)}
+          className="font-mono tabular-nums underline decoration-dotted underline-offset-2 hover:text-foreground"
+          title="View activated devices"
+        >
+          {l.activations}/{l.maxActivations}
+        </button>
       ),
     },
     {
@@ -175,6 +183,10 @@ export default function LicensesPage() {
           </div>
         </Modal>
       )}
+
+      {devicesFor && (
+        <DeviceModal license={devicesFor} onClose={() => setDevicesFor(null)} onChanged={reload} />
+      )}
     </div>
   );
 }
@@ -236,6 +248,111 @@ function IssueForm({ products, onClose, onSaved }: { products: ProductLite[]; on
           <Button type="submit" loading={submitting} disabled={products.length === 0}>Issue</Button>
         </div>
       </form>
+    </Modal>
+  );
+}
+
+interface ActivationRow {
+  id: string;
+  instanceId: string;
+  activatedAt: string;
+  deactivatedAt: string | null;
+}
+
+// Per-device activation manager — the depth the licenses table can't
+// show. Reads GET /licenses/lookup (F-010) for the LicenseActivation
+// rows; lets the merchant free a seat by deactivating a device.
+function DeviceModal({
+  license,
+  onClose,
+  onChanged,
+}: {
+  license: License;
+  onClose: () => void;
+  onChanged: () => void;
+}) {
+  const [rows, setRows] = useState<ActivationRow[] | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  const [busy, setBusy] = useState<string | null>(null);
+
+  async function load() {
+    try {
+      const data = await api<{ license: { licenseActivations: ActivationRow[] } }>(
+        `/licenses/lookup?key=${encodeURIComponent(license.key)}`,
+      );
+      setRows(data.license.licenseActivations);
+    } catch (e) {
+      setErr((e as Error).message);
+    }
+  }
+  useEffect(() => {
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  async function deactivate(instanceId: string) {
+    setBusy(instanceId);
+    setErr(null);
+    try {
+      await api('/licenses/deactivate', {
+        method: 'POST',
+        body: JSON.stringify({ key: license.key, instanceId }),
+      });
+      await load();
+      onChanged();
+    } catch (e) {
+      setErr((e as Error).message);
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  const live = (rows ?? []).filter((r) => !r.deactivatedAt);
+
+  return (
+    <Modal title="Activated devices" onClose={onClose}>
+      <div className="space-y-3">
+        <div className="flex items-center gap-2 rounded-lg border border-border bg-background p-3">
+          <code className="flex-1 truncate font-mono text-xs">{license.key}</code>
+          <StatusPill status={license.status} />
+        </div>
+        {err && <ErrorBox>{err}</ErrorBox>}
+        {!rows ? (
+          <div className="flex h-24 items-center justify-center">
+            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+          </div>
+        ) : live.length === 0 ? (
+          <p className="py-4 text-center text-sm text-muted-foreground">No devices activated.</p>
+        ) : (
+          <ul className="space-y-2">
+            {live.map((r) => (
+              <li
+                key={r.id}
+                className="flex items-center justify-between gap-3 rounded-lg border border-border bg-card p-3"
+              >
+                <div className="min-w-0">
+                  <code className="block truncate font-mono text-xs">{r.instanceId}</code>
+                  <span className="text-[11px] text-muted-foreground">
+                    Activated {new Date(r.activatedAt).toLocaleString()}
+                  </span>
+                </div>
+                {license.status === 'active' && (
+                  <Button
+                    variant="secondary"
+                    loading={busy === r.instanceId}
+                    onClick={() => deactivate(r.instanceId)}
+                  >
+                    Deactivate
+                  </Button>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+        <p className="text-xs text-muted-foreground">
+          {live.length} of {license.maxActivations} activation{license.maxActivations === 1 ? '' : 's'} in use.
+        </p>
+      </div>
     </Modal>
   );
 }
