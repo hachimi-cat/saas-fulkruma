@@ -37,6 +37,10 @@ const validateSchema = z.object({
   productId: z.string().optional(),
 });
 
+const lookupSchema = z.object({
+  key: z.string().min(1),
+});
+
 function newLicenseKey() {
   // 5 × 5 base32 groups: e.g. 7K3PH-9X2RM-...
   const raw = crypto.randomBytes(15).toString('base64')
@@ -168,6 +172,28 @@ router.get('/', async (req, res) => {
     take: 100,
   });
   res.json(ok({ licenses: rows }, req.requestId ?? 'req_unknown'));
+});
+
+// GET /licenses/lookup?key=<key> — full license + its activation rows,
+// resolved by key within the merchant's account. Backs partner order-
+// detail UIs (e.g. Storlaunch's License panel): they hold the key and
+// need the license id (for revoke) plus the per-device activation list
+// that `validate` (counts only) doesn't carry.
+router.get('/lookup', async (req, res) => {
+  const accountId = req.auth?.accountId;
+  if (!accountId) return res.status(403).json(err('NO_ACCOUNT', 'token missing accountId', req.requestId ?? 'req_unknown'));
+  const parsed = lookupSchema.safeParse(req.query);
+  if (!parsed.success) {
+    return res.status(400).json(err('VALIDATION', parsed.error.message, req.requestId ?? 'req_unknown'));
+  }
+  const license = await prisma.license.findFirst({
+    where: { key: parsed.data.key, accountId },
+    include: { licenseActivations: { orderBy: { activatedAt: 'desc' } } },
+  });
+  if (!license) {
+    return res.status(404).json(err('NOT_FOUND', 'license not found', req.requestId ?? 'req_unknown'));
+  }
+  res.json(ok({ license }, req.requestId ?? 'req_unknown'));
 });
 
 router.post('/', async (req, res) => {
