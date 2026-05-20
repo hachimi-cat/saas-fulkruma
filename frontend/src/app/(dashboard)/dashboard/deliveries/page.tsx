@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { Loader2, PackageCheck, Plus } from 'lucide-react';
 import { api, type Delivery } from '@/lib/api';
@@ -50,7 +51,9 @@ export default function DeliveriesPage() {
       searchValue: (d) => `${productName(d.productId)} ${d.productId} ${d.customerId} ${d.checkoutSessionId}`,
       cell: (d) => (
         <div className="text-xs">
-          <p className="font-medium">{productName(d.productId)}</p>
+          <Link href="/dashboard/products" className="font-medium text-primary hover:underline">
+            {productName(d.productId)}
+          </Link>
           <p className="font-mono text-[10px] text-muted-foreground">{d.productId}</p>
         </div>
       ),
