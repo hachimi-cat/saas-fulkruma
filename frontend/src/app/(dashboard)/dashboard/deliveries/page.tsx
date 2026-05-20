@@ -65,7 +65,7 @@ export default function DeliveriesPage() {
       searchValue: (d) => `${productName(d.productId)} ${d.productId} ${d.customerId} ${d.checkoutSessionId}`,
       cell: (d) => (
         <div className="text-xs">
-          <Link href="/dashboard/products" className="font-medium text-primary hover:underline">
+          <Link href={`/dashboard/products/${d.productId}`} className="font-medium text-primary hover:underline">
             {productName(d.productId)}
           </Link>
           <p className="font-mono text-[10px] text-muted-foreground">{d.productId}</p>
