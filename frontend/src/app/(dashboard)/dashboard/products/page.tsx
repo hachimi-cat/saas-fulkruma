@@ -80,7 +80,9 @@ export default function ProductsPage() {
       searchValue: (p) => `${p.name} ${p.sku ?? ''} ${p.description ?? ''}`,
       cell: (p) => (
         <div>
-          <p className="font-medium">{p.name}</p>
+          <a href={`/dashboard/products/${p.id}`} className="font-medium text-primary hover:underline">
+            {p.name}
+          </a>
           {p.description && <p className="mt-0.5 max-w-md truncate text-xs text-muted-foreground">{p.description}</p>}
         </div>
       ),

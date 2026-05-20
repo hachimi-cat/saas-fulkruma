@@ -51,8 +51,11 @@ router.get('/', async (req, res) => {
 router.get('/:id', async (req, res) => {
   const accountId = req.auth?.accountId;
   if (!accountId) return res.status(403).json(err('NO_ACCOUNT', 'token missing accountId', req.requestId ?? 'req_unknown'));
+  // F-016: match by our own id OR externalRef (the Storlaunch product
+  // id) — Delivery.productId carries the Storlaunch id, so detail links
+  // from the Deliveries page arrive with the external id.
   const row = await prisma.product.findFirst({
-    where: { id: req.params.id, accountId },
+    where: { accountId, OR: [{ id: req.params.id }, { externalRef: req.params.id }] },
     include: { variants: { orderBy: [{ isDefault: 'desc' }, { name: 'asc' }] } },
   });
   if (!row) return res.status(404).json(err('NOT_FOUND', 'product not found', req.requestId ?? 'req_unknown'));

@@ -23,6 +23,8 @@ interface FProduct {
   length: number | null;
   width: number | null;
   height: number | null;
+  createdAt: string;
+  variants: { id: string; name: string; sku: string | null; isDefault: boolean; archived: boolean }[];
 }
 
 export default function ProductDetailPage() {
@@ -107,6 +109,10 @@ export default function ProductDetailPage() {
                   {product.externalRef ? ` · ${product.externalRef}` : ''}
                 </dd>
               </div>
+              <div>
+                <dt className="text-xs text-muted-foreground">Created</dt>
+                <dd>{new Date(product.createdAt).toLocaleDateString()}</dd>
+              </div>
               {product.type === 'physical' && (
                 <div className="col-span-2">
                   <dt className="text-xs text-muted-foreground">Shipping dimensions</dt>
@@ -118,6 +124,33 @@ export default function ProductDetailPage() {
               )}
             </dl>
           </section>
+
+          {product.variants.length > 0 && (
+            <section className="rounded-lg border border-border bg-card p-5">
+              <h2 className="mb-3 text-sm font-semibold">Variants ({product.variants.length})</h2>
+              <ul className="space-y-1.5">
+                {product.variants.map((v) => (
+                  <li
+                    key={v.id}
+                    className="flex items-center justify-between gap-2 rounded bg-muted/40 px-2.5 py-1.5 text-sm"
+                  >
+                    <span className="min-w-0 truncate">
+                      {v.name}
+                      {v.isDefault && (
+                        <span className="ml-2 rounded bg-secondary px-1.5 py-0.5 text-[10px]">Default</span>
+                      )}
+                      {v.archived && (
+                        <span className="ml-2 rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                          Archived
+                        </span>
+                      )}
+                    </span>
+                    <span className="shrink-0 font-mono text-xs text-muted-foreground">{v.sku || '—'}</span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
         </>
       )}
     </div>
