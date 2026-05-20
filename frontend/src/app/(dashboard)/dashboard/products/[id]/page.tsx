@@ -39,7 +39,7 @@ export default function ProductDetailPage() {
   }, [id]);
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
+    <div className="mx-auto max-w-5xl space-y-6">
       <Link
         href="/dashboard/products"
         className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
