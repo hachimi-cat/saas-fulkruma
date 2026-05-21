@@ -3,9 +3,9 @@
 // F-014: portal product detail page. The Deliveries page links a
 // product here instead of the products list.
 import { useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Loader2, Package } from 'lucide-react';
+import { Archive, ArrowLeft, Loader2, Package, Pencil } from 'lucide-react';
 import { api } from '@/lib/api';
 
 interface FProduct {
@@ -29,8 +29,10 @@ interface FProduct {
 
 export default function ProductDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const router = useRouter();
   const [product, setProduct] = useState<FProduct | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [archiving, setArchiving] = useState(false);
 
   useEffect(() => {
     api<{ product: FProduct }>(`/products/${id}`)
@@ -38,14 +40,35 @@ export default function ProductDetailPage() {
       .catch((e) => setError((e as Error).message));
   }, [id]);
 
+  async function handleArchive() {
+    if (!product) return;
+    if (!confirm(`Archive "${product.name}"? Stock + history are kept.`)) return;
+    setArchiving(true);
+    try {
+      await api(`/products/${product.id}`, { method: 'DELETE' });
+      router.push('/dashboard/products');
+    } catch (e) {
+      setError((e as Error).message);
+      setArchiving(false);
+    }
+  }
+
   return (
     <div className="mx-auto max-w-5xl space-y-6">
-      <Link
-        href="/dashboard/products"
-        className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-      >
-        <ArrowLeft size={16} /> Products
-      </Link>
+      <nav className="text-xs text-muted-foreground">
+        <Link
+          href="/dashboard/products"
+          className="inline-flex items-center gap-1 hover:text-foreground"
+        >
+          <ArrowLeft className="h-3 w-3" /> Products
+        </Link>
+        {product && (
+          <>
+            <span className="mx-1.5 text-muted-foreground/50">/</span>
+            <span className="text-foreground">{product.name}</span>
+          </>
+        )}
+      </nav>
 
       {!product && !error && (
         <div className="flex h-48 items-center justify-center">
@@ -60,6 +83,24 @@ export default function ProductDetailPage() {
 
       {product && (
         <>
+          <div className="flex justify-end gap-2">
+            <Link
+              href={`/dashboard/products?edit=${product.id}`}
+              className="inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-3 py-1.5 text-sm hover:bg-secondary"
+            >
+              <Pencil className="h-3.5 w-3.5" /> Edit
+            </Link>
+            <button
+              type="button"
+              onClick={handleArchive}
+              disabled={archiving || product.archived}
+              className="inline-flex items-center gap-1.5 rounded-md border border-destructive/40 px-3 py-1.5 text-sm font-medium text-destructive hover:bg-destructive/10 disabled:opacity-50"
+            >
+              {archiving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Archive className="h-3.5 w-3.5" />}
+              {product.archived ? 'Archived' : 'Archive'}
+            </button>
+          </div>
+
           <div className="flex items-start gap-4 rounded-lg border border-border bg-card p-5">
             <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-md border border-border bg-muted">
               <Package className="h-6 w-6 text-muted-foreground" />

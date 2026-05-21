@@ -65,6 +65,20 @@ export default function ProductsPage() {
   }
   useEffect(() => { reload(); }, []);
 
+  // F-018: the product detail page's "Edit" button links here with
+  // ?edit=<id> — open the editor for that product once, then strip the
+  // param so later reloads don't reopen it.
+  useEffect(() => {
+    if (!rows) return;
+    const editId = new URLSearchParams(window.location.search).get('edit');
+    if (!editId) return;
+    const found = rows.find((p) => p.id === editId);
+    if (found) {
+      setShowProduct(found);
+      window.history.replaceState(null, '', '/dashboard/products');
+    }
+  }, [rows]);
+
   async function archive(p: Product) {
     if (!confirm(`Archive "${p.name}"? Stock + history kept.`)) return;
     try { await api(`/products/${p.id}`, { method: 'DELETE' }); reload(); }
