@@ -4,7 +4,8 @@ import { err } from '@forjio/sdk/http';
 import { ulid } from 'ulid';
 import crypto from 'node:crypto';
 import { hmacAuth } from './hmac-auth.js';
-import { lookupSession, SESSION_COOKIE } from '../services/auth-store.js';
+import { resolveSessionForRequest, parseCookie } from '@forjio/sdk/auth-server';
+import { authConfig } from '../auth-config.js';
 
 declare module 'express-serve-static-core' {
   interface Request {
@@ -30,42 +31,29 @@ const audience = process.env.HUUDIS_AUDIENCE ?? process.env.FORJIO_SERVICE ?? 'f
  *     comes from the JWT's accountId claim, falling back to the
  *     subject (single-user fulkruma uses sub as accountId).
  */
-function parseCookie(header: string | undefined, name: string): string | undefined {
-  if (!header) return undefined;
-  for (const part of header.split(';')) {
-    const [k, ...rest] = part.trim().split('=');
-    if (k === name) return rest.join('=');
-  }
-  return undefined;
-}
-
 export async function requireAuth(req: Request, res: Response, next: NextFunction) {
-  // ─ Path 0: browser session cookie (fulkruma_session) — the BFF path.
-  //   The Fulkruma backend is itself the Huudis OAuth client now
-  //   (routes/auth.ts); the browser carries an HMAC-signed session
-  //   cookie and we resolve it via auth-store. Honors the
-  //   membership-checked `fulkruma_active_workspace` override cookie.
-  const sessionToken = parseCookie(req.headers.cookie, SESSION_COOKIE);
-  if (sessionToken) {
-    const sess = lookupSession(sessionToken);
-    if (sess) {
-      const override = parseCookie(req.headers.cookie, 'fulkruma_active_workspace');
-      const allowed = sess.accountIds ?? [sess.accountId];
-      const accountId =
-        override && /^acc_/.test(override) && allowed.includes(override)
-          ? override
-          : sess.accountId;
-      req.auth = {
-        sub: sess.huudisSub,
-        accountId,
-        scope: '',
-        iss: issuer,
-        aud: audience,
-        exp: Math.floor(Date.now() / 1000) + 900,
-        iat: Math.floor(Date.now() / 1000),
-      } as unknown as ForjioClaims;
-      return next();
-    }
+  // ─ Path 0: browser session cookie — the BFF path. The Fulkruma
+  //   backend is the Huudis OAuth client (@forjio/sdk/auth-server +
+  //   ../auth-config); resolve the role session cookie here. Honors
+  //   the membership-checked `fulkruma_active_workspace` override.
+  const bffSession = resolveSessionForRequest(authConfig, req);
+  if (bffSession) {
+    const override = parseCookie(req.headers.cookie, 'fulkruma_active_workspace');
+    const allowed = bffSession.accountIds ?? [bffSession.accountId];
+    const accountId =
+      override && /^acc_/.test(override) && allowed.includes(override)
+        ? override
+        : bffSession.accountId;
+    req.auth = {
+      sub: bffSession.huudisSub,
+      accountId,
+      scope: '',
+      iss: issuer,
+      aud: audience,
+      exp: Math.floor(Date.now() / 1000) + 900,
+      iat: Math.floor(Date.now() / 1000),
+    } as unknown as ForjioClaims;
+    return next();
   }
 
   // ─ Path 1: portal proxy
