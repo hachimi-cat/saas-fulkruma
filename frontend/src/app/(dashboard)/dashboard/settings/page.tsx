@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, type FormEvent } from 'react';
-import { Settings as SettingsIcon, Shield, Save } from 'lucide-react';
+import { Settings as SettingsIcon, Shield, Save, AlertTriangle } from 'lucide-react';
 import { PageHeader } from '@/components/dashboard/page-header';
 import { Field, ErrorBox, Loading, Button } from '@/components/dashboard/ui';
 import { useAuth } from '@/lib/auth';
@@ -154,8 +154,11 @@ export default function SettingsPage() {
   async function deleteAccount(e: FormEvent) {
     e.preventDefault();
     setDeleteMsg(null);
-    if (deleteConfirm !== 'DELETE') {
-      setDeleteMsg({ kind: 'err', text: 'Type DELETE to confirm.' });
+    if (
+      !account ||
+      deleteConfirm.trim().toLowerCase() !== account.email.toLowerCase()
+    ) {
+      setDeleteMsg({ kind: 'err', text: 'Type your email address to confirm.' });
       return;
     }
     setDeleting(true);
@@ -310,27 +313,35 @@ export default function SettingsPage() {
             </div>
             <form onSubmit={deleteAccount} className="space-y-4 px-5 py-4">
               <p className="text-sm font-medium">Delete your account</p>
-              <p className="text-xs text-muted-foreground">
-                Permanently deletes your Huudis identity and removes access to
-                every Forjio product. This cannot be undone. If you solely own a
-                workspace, transfer or delete it first.
-              </p>
-              <Field label="Confirm with your password">
-                <input
-                  type="password"
-                  required
-                  value={deletePw}
-                  onChange={(e) => setDeletePw(e.target.value)}
-                  className="input"
-                />
-              </Field>
-              <Field label="Type DELETE to confirm">
+              <div className="flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/5 p-3">
+                <AlertTriangle size={16} className="mt-0.5 shrink-0 text-destructive" />
+                <p className="text-xs text-destructive">
+                  Deleting your account permanently removes your Forjio identity.
+                  You will lose access to <strong>every Forjio product</strong> you
+                  use it with — Plugipay, Storlaunch, LinkSnap, Fulkruma, Ripllo and
+                  any others — and they will all disappear. This cannot be undone. If
+                  you solely own a workspace, transfer or delete it first.
+                </p>
+              </div>
+              {account.hasPassword && (
+                <Field label="Confirm with your password">
+                  <input
+                    type="password"
+                    required
+                    value={deletePw}
+                    onChange={(e) => setDeletePw(e.target.value)}
+                    className="input"
+                  />
+                </Field>
+              )}
+              <Field label={`Type ${account.email} to confirm`}>
                 <input
                   type="text"
+                  autoComplete="off"
                   value={deleteConfirm}
                   onChange={(e) => setDeleteConfirm(e.target.value)}
                   className="input"
-                  placeholder="DELETE"
+                  placeholder={account.email}
                 />
               </Field>
               {deleteMsg && (
@@ -347,7 +358,11 @@ export default function SettingsPage() {
                 type="submit"
                 variant="destructive"
                 loading={deleting}
-                disabled={!deletePw || deleteConfirm !== 'DELETE'}
+                disabled={
+                  deleting ||
+                  (account.hasPassword && !deletePw) ||
+                  deleteConfirm.trim().toLowerCase() !== account.email.toLowerCase()
+                }
               >
                 Delete account
               </Button>
