@@ -1,28 +1,44 @@
-import type { ReactNode } from 'react';
-import { redirect } from 'next/navigation';
+'use client';
+
+// BFF migration (F-AUTH): the dashboard gate is now a thin client
+// check via useAuth → /api/v1/auth/me.
+//
+// The old layout was a server component that called Huudis /account on
+// every navigation with the raw cookie token and redirect('/login')'d
+// on ANY failure — so a stale 15-minute access token forced a logout.
+// The backend BFF now holds + refreshes the Huudis tokens; this layout
+// just reflects the session state and never hard-bounces on a
+// transient upstream hiccup.
+
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { Loader2 } from 'lucide-react';
+import { useAuth } from '@/lib/auth';
 import { DashboardShell } from '@/components/layout/shell';
-import { readSession } from '@/lib/server/session';
-import { fetchAccount } from '@/lib/server/huudis';
 
-export default async function DashboardLayout({ children }: { children: ReactNode }) {
-  const session = await readSession();
-  if (!session) {
-    redirect('/login');
+export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+  const { user, isAuthenticated, loading } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!loading && !isAuthenticated) {
+      router.push('/login');
+    }
+  }, [loading, isAuthenticated, router]);
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    );
   }
 
-  let user: { name: string; email: string } | null = null;
-  try {
-    const account = await fetchAccount(session.huudisAccessToken);
-    user = {
-      name: account.name ?? account.email,
-      email: account.email,
-    };
-  } catch {
-    // Token may have expired between layout render and account fetch.
-    // The /api/v1/session endpoint refreshes proactively; if even that
-    // fails, send the user back to login.
-    redirect('/login');
+  if (!isAuthenticated || !user) {
+    return null;
   }
 
-  return <DashboardShell user={user}>{children}</DashboardShell>;
+  return (
+    <DashboardShell user={{ name: user.name, email: user.email }}>{children}</DashboardShell>
+  );
 }
