@@ -31,13 +31,19 @@ const STATE_SECRET =
   process.env.HUUDIS_CLIENT_SECRET ??
   'dev-only-fallback-oidc-secret';
 
-// Single-user gate (optional): if HUUDIS_ALLOWED_USER_IDS is set
-// (comma-separated Huudis subs), only those may sign in — preserves
-// Fulkruma's current allowlist. Empty/unset = open (multi-tenant).
-const ALLOWED_USER_IDS = (process.env.HUUDIS_ALLOWED_USER_IDS ?? '')
+// Single-user gate (optional): if HUUDIS_ALLOWED_USER_IDS (plural,
+// comma-separated) or HUUDIS_ALLOWED_USER_ID (singular) is set, only
+// those Huudis subs may sign in — preserves Fulkruma's current
+// allowlist (the old frontend config read both env names). Empty/unset
+// = open (multi-tenant).
+const ALLOWED_USER_IDS = [
+  process.env.HUUDIS_ALLOWED_USER_IDS ?? '',
+  process.env.HUUDIS_ALLOWED_USER_ID ?? '',
+]
+  .join(',')
   .split(',')
   .map((s) => s.trim())
-  .filter(Boolean);
+  .filter((s) => s && !s.startsWith('REPLACE_ME'));
 function gateUser(sub: string): boolean {
   return ALLOWED_USER_IDS.length === 0 || ALLOWED_USER_IDS.includes(sub);
 }
