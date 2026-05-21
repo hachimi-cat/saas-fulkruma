@@ -17,6 +17,8 @@ import admin from './admin.js';
 import integrations from './integrations.js';
 import billing from './billing.js';
 import plugipayWebhooks from './plugipay-webhooks.js';
+import auth from './auth.js';
+import huudisProxy from './huudis-proxy.js';
 
 const router = Router();
 
@@ -33,6 +35,8 @@ router.get('/health', (req, res) => {
   );
 });
 
+router.use('/auth', auth);
+router.use('/huudis', huudisProxy);
 router.use('/warehouses', warehouses);
 router.use('/addresses', addresses);
 router.use('/products', products);
