@@ -23,6 +23,7 @@ import {
   readActiveWorkspaceId,
   type NavSection,
   type PortalWorkspace,
+  type PortalLink,
   type SessionUser,
 } from '@forjio/portal-ui';
 import { LogoMark } from '@/components/brand/logo';
@@ -104,6 +105,18 @@ async function logout() {
   }
 }
 
+/**
+ * Cross-portal switcher (portal-ui >=0.5.0) — Fulkruma has the merchant
+ * portal and the in-product admin console. The admin entry is included
+ * so staff can hop in/out; the backend `gate` still enforces who may
+ * actually open the admin session, so a non-admin who clicks it just
+ * lands on /admin/login.
+ */
+const PORTALS: PortalLink[] = [
+  { label: 'Merchant', href: '/dashboard', current: true },
+  { label: 'Admin', href: '/admin/dashboard' },
+];
+
 export function DashboardShell({
   user,
   children,
@@ -155,6 +168,7 @@ export function DashboardShell({
         workspaces={workspaces}
         activeWorkspaceId={activeWorkspaceId}
         sections={SECTIONS}
+        portals={PORTALS}
         user={user as SessionUser}
         onLogout={logout}
         open={open}

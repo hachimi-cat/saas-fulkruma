@@ -5,8 +5,16 @@ import {
 } from '@forjio/sdk/auth-server';
 
 // BFF auth — Fulkruma's binding of the shared @forjio/sdk/auth-server
-// kit. Single-role product: the Huudis sub IS the accountId (see
-// middleware/auth.ts). Single-user gate via HUUDIS_ALLOWED_USER_ID(S).
+// kit. Two roles:
+//
+//   - merchant: the main product portal. The Huudis sub IS the
+//     accountId (see middleware/auth.ts). Single-user gate via
+//     HUUDIS_ALLOWED_USER_ID(S); empty allowlist ⇒ open.
+//   - admin: the in-fulkruma staff console (partner-billing review).
+//     The accountId is `adm_`-prefixed. Restricted to owner/admin
+//     members of Fulkruma's own Huudis workspace — Huudis emits the
+//     user's workspace role as the `workspace_role` claim, so admins
+//     are managed by Fulkruma-workspace membership, not an allowlist.
 
 const ALLOWED_USER_IDS = [
   process.env.HUUDIS_ALLOWED_USER_IDS ?? '',
@@ -31,9 +39,28 @@ export const authConfig: AuthServerConfig = {
   }),
   roles: {
     merchant: { cookie: 'fulkruma_session', accountId: (sub) => sub, returnTo: '/dashboard' },
+    admin: {
+      cookie: 'fulkruma_admin_session',
+      accountId: (sub) => `adm_${sub}`,
+      returnTo: '/admin/dashboard',
+      loginPath: '/admin/login',
+    },
   },
-  // Single-user gate — empty allowlist ⇒ open (multi-tenant).
-  gate: ALLOWED_USER_IDS.length === 0 ? undefined : (sub) => ALLOWED_USER_IDS.includes(sub),
+  // Sign-in gate. The `merchant` role keeps the single-user allowlist
+  // (empty allowlist ⇒ open / multi-tenant). The `admin` role is gated
+  // ONLY on Fulkruma-workspace membership: Huudis emits `workspace_role`
+  // for the user in the fulkruma OIDC client's workspace; a non
+  // owner/admin member can never mint an `admin` session.
+  gate: (sub, role, ctx) => {
+    if (role === 'admin') {
+      return (
+        ctx?.claims?.workspace_role === 'owner' ||
+        ctx?.claims?.workspace_role === 'admin'
+      );
+    }
+    // merchant
+    return ALLOWED_USER_IDS.length === 0 || ALLOWED_USER_IDS.includes(sub);
+  },
   stateCookie: 'fulkruma_oidc_state',
   stateSecret:
     process.env.OIDC_SIGNING_SECRET ?? CLIENT_SECRET ?? 'dev-only-fallback-oidc-secret',

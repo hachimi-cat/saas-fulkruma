@@ -1,8 +1,14 @@
 /**
  * Pattern-2 partner-billing admin endpoints.
  *
- * Mounted at `/api/v1/admin`. The auth middleware enforces HMAC + the
- * `fulkruma:platform:admin` scope before any handler runs.
+ * Mounted at `/api/v1/admin`. Gated by `adminGuard`, which accepts
+ * THREE credentials (see ../middleware/admin-guard.ts):
+ *   - an `admin`-role BFF session  (the in-fulkruma admin portal)
+ *   - the `X-Forjio-Admin-Secret`  (cross-product admin proxy)
+ *   - an HMAC key with the `fulkruma:platform:admin` scope (partners)
+ *
+ * `requireAuth` still runs first so the HMAC path is resolved into
+ * `req.auth` before `adminGuard` inspects its scope.
  *
  * Mirrors plugipay's admin surface (`project_forjio_plugipay_storlaunch_
  * integration.md`):
@@ -15,13 +21,13 @@ import { ok, err } from '@forjio/sdk/http';
 import { z } from 'zod';
 import { prisma } from '../lib/db.js';
 import { requireAuth } from './../middleware/auth.js';
-import { requirePlatformAdmin } from '../middleware/hmac-auth.js';
+import { adminGuard } from '../middleware/admin-guard.js';
 import { writeAuditLog } from '../lib/audit.js';
 
 const router = Router();
 
 router.use(requireAuth);
-router.use(requirePlatformAdmin);
+router.use(adminGuard);
 
 const KNOWN_PARTNERS = ['storlaunch', 'ripllo'] as const;
 
