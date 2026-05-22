@@ -38,4 +38,8 @@ export const authConfig: AuthServerConfig = {
   stateSecret:
     process.env.OIDC_SIGNING_SECRET ?? CLIENT_SECRET ?? 'dev-only-fallback-oidc-secret',
   roleHeader: 'x-fulkruma-role',
+  // Forward `?provider=` as an OIDC idp_hint so "Continue with Google /
+  // Apple" skips the Huudis login page and lands straight on the social
+  // provider.
+  allowIdpHint: true,
 };
