@@ -7,6 +7,10 @@ const config: Config = {
     // (used inside MarketingNav / Footer / docs scaffold) get extracted
     // into our CSS bundle. Required by every consumer of @forjio/website-ui.
     './node_modules/@forjio/website-ui/dist/**/*.{js,cjs}',
+    // Same for the shared portal + auth chrome packages, so the dashboard
+    // Sidebar / auth-ui Tailwind classes get extracted into our CSS bundle.
+    './node_modules/@forjio/portal-ui/dist/**/*.{js,cjs}',
+    './node_modules/@forjio/auth-ui/dist/**/*.{js,cjs}',
   ],
   theme: {
     extend: {
