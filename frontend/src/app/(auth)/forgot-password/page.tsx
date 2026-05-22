@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { LogoMark } from '@/components/brand/logo';
-import { ForgotPasswordForm } from '@/components/auth/forgot-password-form';
+import { ForgotPasswordForm } from '@forjio/auth-ui';
 
 export default function ForgotPasswordPage() {
   return (

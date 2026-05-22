@@ -1,7 +1,7 @@
 import { Suspense } from 'react';
 import Link from 'next/link';
 import { LogoMark } from '@/components/brand/logo';
-import { ResetPasswordForm } from '@/components/auth/reset-password-form';
+import { ResetPasswordForm } from '@forjio/auth-ui';
 
 export default function ResetPasswordPage() {
   return (

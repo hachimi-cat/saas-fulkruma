@@ -1,9 +1,15 @@
 import { Suspense } from 'react';
 import Link from 'next/link';
+import { AuthForm, fetchSocialProviders } from '@forjio/auth-ui';
 import { LogoMark } from '@/components/brand/logo';
-import { NativeAuthForm } from '@/components/auth/native-auth-form';
 
-export default function SignupPage() {
+// Server Component: resolve which social providers Huudis has configured
+// at render time, so the SSR HTML ships with the correct button set —
+// no client-fetch flash of disabled providers.
+export default async function SignupPage() {
+  const providers = await fetchSocialProviders(
+    process.env.NEXT_PUBLIC_HUUDIS_ISSUER || 'https://huudis.com',
+  );
   return (
     <div className="w-full max-w-sm">
       <div className="mb-8 text-center">
@@ -17,7 +23,7 @@ export default function SignupPage() {
       </div>
       <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
         <Suspense fallback={null}>
-          <NativeAuthForm mode="signup" />
+          <AuthForm mode="signup" brand="Fulkruma" providers={providers} />
         </Suspense>
       </div>
       <p className="mt-6 text-center text-xs text-muted-foreground">
