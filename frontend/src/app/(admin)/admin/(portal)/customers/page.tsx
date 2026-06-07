@@ -71,7 +71,7 @@ export default function AdminCustomersPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch('/api/v1/console/customers?limit=200', {
+      const res = await fetch('/api/v1/console/admin/customers?limit=200', {
         credentials: 'include',
       });
       const body = await res.json();
