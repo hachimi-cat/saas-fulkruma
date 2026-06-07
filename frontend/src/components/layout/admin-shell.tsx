@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Menu, LayoutDashboard, Building2, FileText, Shield } from 'lucide-react';
+import { Menu, LayoutDashboard, Building2, FileText, Shield, Users } from 'lucide-react';
 import {
   Sidebar,
   type NavSection,
@@ -39,6 +39,10 @@ const SECTIONS: NavSection[] = [
   {
     label: 'Overview',
     items: [{ href: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard }],
+  },
+  {
+    label: 'Customers',
+    items: [{ href: '/admin/customers', label: 'Customers', icon: Users }],
   },
   {
     label: 'Partner billing',
