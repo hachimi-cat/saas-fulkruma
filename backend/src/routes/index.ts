@@ -14,6 +14,7 @@ import auditLog from './audit-log.js';
 import shipping from './shipping.js';
 import stats from './stats.js';
 import admin from './admin.js';
+import adminCrm from './admin-crm.js';
 import adminCustomersRouter from './admin-customers.js';
 import { adminGuard } from '../middleware/admin-guard.js';
 import integrations from './integrations.js';
@@ -52,6 +53,11 @@ router.use('/webhooks', webhooksRouter);
 router.use('/audit-log', auditLog);
 router.use('/shipping', shipping);
 router.use('/stats', stats);
+// CRM connector for the central Forjio admin portal. Mounted BEFORE
+// the partner-billing /admin router: that one runs requireAuth first,
+// which would 401 the portal's secret-only (X-Forjio-Admin-Secret)
+// requests before adminGuard could accept them.
+router.use('/admin/crm', adminGuard, adminCrm);
 router.use('/admin', admin);
 router.use('/admin/customers', adminGuard, adminCustomersRouter);
 router.use('/integrations', integrations);
