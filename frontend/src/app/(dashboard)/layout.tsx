@@ -12,6 +12,7 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Script from 'next/script';
 import { Loader2 } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { DashboardShell } from '@/components/layout/shell';
@@ -39,6 +40,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }
 
   return (
-    <DashboardShell user={{ name: user.name, email: user.email }}>{children}</DashboardShell>
+    <DashboardShell user={{ name: user.name, email: user.email }}>
+      {children}
+      <Script
+        src="https://suppuo.com/widget.js"
+        data-suppuo-account="acc_01KPHFWPES4T3T0XSM9MT6ZJYV"
+        strategy="afterInteractive"
+      />
+    </DashboardShell>
   );
 }

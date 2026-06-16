@@ -1,10 +1,13 @@
 import type { Metadata } from 'next';
-import { Mail, Phone, MapPin } from 'lucide-react';
+import { Mail, Phone, MapPin, MessageCircle } from 'lucide-react';
 
 export const metadata: Metadata = {
   title: 'Contact — Fulkruma',
   description: 'Get in touch with the Fulkruma team. Support, sales, partnerships, legal, privacy.',
 };
+
+// Suppuo hosted support page (live chat + help form) for Fulkruma.
+const SUPPUO_SUPPORT_URL = 'https://suppuo.com/support/acc_01KPHFWPES4T3T0XSM9MT6ZJYV';
 
 export default function ContactPage() {
   return (
@@ -15,6 +18,26 @@ export default function ContactPage() {
           Support, sales, partnerships, legal, privacy — all routed to one mailbox so nothing slips
           through.
         </p>
+
+        <div className="mt-8 rounded-lg border border-primary/30 bg-primary/5 p-6">
+          <div className="flex items-center gap-2 text-sm font-semibold">
+            <MessageCircle size={18} className="text-primary" />
+            Need help now?
+          </div>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Start a live chat or open a support ticket in our help center — the fastest way to reach
+            us.
+          </p>
+          <a
+            href={SUPPUO_SUPPORT_URL}
+            target="_blank"
+            rel="noopener"
+            className="mt-4 inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+          >
+            <MessageCircle size={16} />
+            Open live chat &amp; help center
+          </a>
+        </div>
 
         <div className="mt-10 grid gap-4 sm:grid-cols-3">
           <ContactCard
