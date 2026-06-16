@@ -22,7 +22,7 @@ const FOOTER_COLUMNS = [
     title: 'Company',
     links: [
       { href: '/about', label: 'About' },
-      { href: SUPPUO_SUPPORT_URL, label: 'Help & live chat' },
+      { href: SUPPUO_SUPPORT_URL, label: 'Help center' },
       { href: '/contact', label: 'Contact' },
     ],
   },

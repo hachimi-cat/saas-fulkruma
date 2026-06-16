@@ -35,7 +35,7 @@ export default function ContactPage() {
             className="mt-4 inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
           >
             <MessageCircle size={16} />
-            Open live chat &amp; help center
+            Visit the help center
           </a>
         </div>
 
