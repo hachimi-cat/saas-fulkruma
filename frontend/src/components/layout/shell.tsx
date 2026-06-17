@@ -16,6 +16,7 @@ import {
   Webhook,
   ScrollText,
   Package,
+  LifeBuoy,
   Menu,
 } from 'lucide-react';
 import {
@@ -46,6 +47,10 @@ import { LogoMark } from '@/components/brand/logo';
 
 const BRAND = 'Fulkruma';
 const BRAND_SLUG = 'fulkruma';
+// Hosted Suppuo support portal for the Fulkruma workspace. Opened in a
+// new tab from the dashboard Account nav so logged-in merchants can
+// reach support without leaving the portal.
+const SUPPORT_PORTAL_URL = 'https://suppuo.com/portal/acc_01KPHFWPES4T3T0XSM9MT6ZJYV';
 // Fulkruma Twilio-red accent — theme-following. `--primary` is an HSL
 // triplet in globals.css; portal-ui's `brandColorSoft` prop lets the
 // soft accent track it too, so neither value has to be a static hex.
@@ -93,6 +98,11 @@ const SECTIONS: NavSection[] = [
       { href: '/dashboard/billing', label: 'Billing', icon: Wallet },
       { href: '/dashboard/integrations', label: 'Integrations', icon: Plug },
       { href: '/dashboard/settings', label: 'Settings', icon: Settings },
+      {
+        label: 'Support',
+        icon: LifeBuoy,
+        onClick: () => window.open(SUPPORT_PORTAL_URL, '_blank', 'noopener'),
+      },
     ],
   },
 ];
