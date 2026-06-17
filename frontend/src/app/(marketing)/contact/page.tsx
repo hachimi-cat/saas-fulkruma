@@ -7,7 +7,7 @@ export const metadata: Metadata = {
 };
 
 // Suppuo hosted support page (live chat + help form) for Fulkruma.
-const SUPPUO_SUPPORT_URL = 'https://suppuo.com/support/acc_01KPHFWPES4T3T0XSM9MT6ZJYV';
+const SUPPUO_SUPPORT_URL = 'https://suppuo.com/support/fulkruma';
 
 export default function ContactPage() {
   return (

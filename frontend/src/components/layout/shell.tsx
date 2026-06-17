@@ -50,7 +50,7 @@ const BRAND_SLUG = 'fulkruma';
 // Hosted Suppuo support portal for the Fulkruma workspace. Opened in a
 // new tab from the dashboard Account nav so logged-in merchants can
 // reach support without leaving the portal.
-const SUPPORT_PORTAL_URL = 'https://suppuo.com/portal/acc_01KPHFWPES4T3T0XSM9MT6ZJYV';
+const SUPPORT_PORTAL_URL = 'https://suppuo.com/portal/fulkruma';
 // Fulkruma Twilio-red accent — theme-following. `--primary` is an HSL
 // triplet in globals.css; portal-ui's `brandColorSoft` prop lets the
 // soft accent track it too, so neither value has to be a static hex.

@@ -4,7 +4,7 @@ import { MarketingShell, MarketingNav, MarketingFooter } from '@forjio/website-u
 import { LogoMark } from '@/components/brand/logo';
 
 // Suppuo hosted support page (live chat + help form) for Fulkruma.
-const SUPPUO_SUPPORT_URL = 'https://suppuo.com/support/acc_01KPHFWPES4T3T0XSM9MT6ZJYV';
+const SUPPUO_SUPPORT_URL = 'https://suppuo.com/support/fulkruma';
 
 // Override the default footer columns to add a dedicated "Help & live chat"
 // entry pointing at the hosted Suppuo support page (kept alongside Contact).
