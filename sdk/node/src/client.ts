@@ -467,7 +467,7 @@ export class FulkrumaClient {
     /** Idempotent — refuses to re-route a workspace already provisioned by a different partner. */
     provisionWorkspace: (input: {
       accountId: string;
-      partner: 'storlaunch' | 'ripllo' | string;
+      partner: 'storlaunch' | 'ripllo' | 'malapos' | string;
       discountRate: number;
       brandName?: string;
       businessEmail?: string;

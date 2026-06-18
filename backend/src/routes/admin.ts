@@ -29,7 +29,7 @@ const router = Router();
 router.use(requireAuth);
 router.use(adminGuard);
 
-const KNOWN_PARTNERS = ['storlaunch', 'ripllo'] as const;
+const KNOWN_PARTNERS = ['storlaunch', 'ripllo', 'malapos'] as const;
 
 const provisionSchema = z.object({
   accountId: z.string().min(1),
