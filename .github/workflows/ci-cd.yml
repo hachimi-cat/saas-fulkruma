@@ -242,12 +242,36 @@ jobs:
             STATUS=$(curl -so /dev/null -w '%{http_code}' https://staging-fulkruma.forjio.com/ 2>/dev/null || echo "000")
             if [ "$STATUS" = "200" ] || [ "$STATUS" = "307" ]; then
               echo "Staging frontend serving ($STATUS)"
-              exit 0
+              break
             fi
             sleep 6
           done
-          echo "Staging frontend not serving"
-          exit 1
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - name: Install Playwright
+        run: cd e2e && npm ci && npx playwright install chromium --with-deps
+      - name: Run functional E2E (auth flow)
+        # Login/signup → dashboard, incl. the post-login client-side
+        # router.push('/dashboard') bounce-regression guard (a stale client
+        # auth singleton would bounce to /login). Hits public staging.
+        run: |
+          cd e2e
+          FRONTEND_URL=https://staging-fulkruma.forjio.com \
+          BACKEND_URL=https://staging-fulkruma.forjio.com/api/v1 \
+          E2E_BYPASS_SECRET=${{ secrets.E2E_BYPASS_SECRET }} \
+            npx playwright test auth.spec.ts --reporter=list
+      - name: Upload E2E artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@v6
+        with:
+          name: e2e-auth-results
+          path: |
+            e2e/test-results/
+            e2e/playwright-report/
+          retention-days: 14
+          if-no-files-found: ignore
 
   visual-regression:
     name: Visual Regression (Staging)
