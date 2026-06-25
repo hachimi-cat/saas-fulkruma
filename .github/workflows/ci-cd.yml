@@ -212,7 +212,9 @@ jobs:
           ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=30 root@100.123.65.113 'bash -se' <<'SCRIPT'
           set -e
           cd /opt/fulkruma/backend
-          grep -q '^TURNSTILE_SECRET_KEY=' .env 2>/dev/null || echo 'TURNSTILE_SECRET_KEY=${{ secrets.TURNSTILE_SECRET_KEY }}' >> .env
+          # Turnstile is enforced on PROD only (see deploy-production). Staging
+          # stays unenforced so the e2e auth flow (which can't solve a captcha)
+          # passes; the widget still renders on staging for visual checks.
           # --omit=dev — runtime deps only. dist/ + prisma client are
           # already in the artifact from the Build job, so we just need
           # the production node_modules tree here.
