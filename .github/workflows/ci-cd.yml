@@ -111,6 +111,9 @@ jobs:
           # they have to be present in the build runner's environment
           # (not just on the droplet's .env). Source from GH secret.
           NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: ${{ secrets.GOOGLE_MAPS_API_KEY }}
+          # Cloudflare Turnstile — inlined at build so @forjio/auth-ui renders
+          # the widget on every (auth)/ + (admin)/ form. Empty => widget hidden.
+          NEXT_PUBLIC_TURNSTILE_SITE_KEY: ${{ secrets.TURNSTILE_SITE_KEY }}
         run: cd frontend && npm ci && npm run build
       - name: Upload backend dist
         uses: actions/upload-artifact@v6
@@ -209,6 +212,7 @@ jobs:
           ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=30 root@100.123.65.113 'bash -se' <<'SCRIPT'
           set -e
           cd /opt/fulkruma/backend
+          grep -q '^TURNSTILE_SECRET_KEY=' .env 2>/dev/null || echo 'TURNSTILE_SECRET_KEY=${{ secrets.TURNSTILE_SECRET_KEY }}' >> .env
           # --omit=dev — runtime deps only. dist/ + prisma client are
           # already in the artifact from the Build job, so we just need
           # the production node_modules tree here.
@@ -427,6 +431,7 @@ jobs:
           script: |
             set -e
             cd /opt/fulkruma/backend
+            grep -q '^TURNSTILE_SECRET_KEY=' .env 2>/dev/null || echo 'TURNSTILE_SECRET_KEY=${{ secrets.TURNSTILE_SECRET_KEY }}' >> .env
             npm ci --omit=dev
             npx prisma migrate deploy
             # Delete+restart (not just restart) so --node-args change
