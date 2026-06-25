@@ -433,8 +433,10 @@ jobs:
           script: |
             set -e
             cd /opt/fulkruma/backend
-            grep -q '^TURNSTILE_SECRET_KEY=' .env 2>/dev/null || echo 'TURNSTILE_SECRET_KEY=${{ secrets.TURNSTILE_SECRET_KEY }}' >> .env
-            grep -q '^TURNSTILE_ALLOWED_HOSTNAMES=' .env 2>/dev/null || echo 'TURNSTILE_ALLOWED_HOSTNAMES=${{ secrets.TURNSTILE_ALLOWED_HOSTNAMES }}' >> .env
+            sed -i '/^TURNSTILE_SECRET_KEY=/d' .env 2>/dev/null || true
+            echo 'TURNSTILE_SECRET_KEY=${{ secrets.TURNSTILE_SECRET_KEY }}' >> .env
+            sed -i '/^TURNSTILE_ALLOWED_HOSTNAMES=/d' .env 2>/dev/null || true
+            echo 'TURNSTILE_ALLOWED_HOSTNAMES=${{ secrets.TURNSTILE_ALLOWED_HOSTNAMES }}' >> .env
             npm ci --omit=dev
             npx prisma migrate deploy
             # Delete+restart (not just restart) so --node-args change
