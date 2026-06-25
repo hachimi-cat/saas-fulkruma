@@ -157,6 +157,15 @@ jobs:
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
     steps:
+      # Staging lives on the SHARED box reached only over the tailnet
+      # (taila71a7b.ts.net). Join as an ephemeral CI node so rsync/SSH below
+      # can reach 100.123.65.113. Ephemeral key → the node auto-removes when
+      # the job ends.
+      - name: Connect to tailnet (ephemeral CI node)
+        uses: tailscale/github-action@v2
+        with:
+          authkey: ${{ secrets.TS_AUTHKEY }}
+          hostname: fulkruma-deploy-ci
       - uses: actions/checkout@v5
       - uses: actions/download-artifact@v7
         with:
@@ -174,53 +183,55 @@ jobs:
         with:
           name: docs-copy
           path: copy/
-      - name: Deploy via rsync
-        uses: burnett01/rsync-deployments@7.0.1
-        with:
-          # node_modules excluded — droplet installs runtime deps with
-          # --omit=dev. .next/cache excluded — only the build output is
-          # needed for `next start`, the cache is webpack's incremental
-          # store and bloats the artifact.
-          # copy/ INCLUDED — see "Upload docs copy" step in build job.
-          switches: -avz --delete --exclude node_modules --exclude .git --exclude .env --exclude .env.production.local --exclude .npmrc --exclude frontend/.next/cache
-          path: ./
-          remote_path: /opt/fulkruma/
-          remote_host: ${{ secrets.STAGING_HOST }}
-          remote_user: root
-          remote_key: ${{ secrets.SSH_PRIVATE_KEY }}
-      - name: Restart services
-        uses: appleboy/ssh-action@v1
-        with:
-          host: ${{ secrets.STAGING_HOST }}
-          username: root
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          timeout: 600s
-          command_timeout: 30m
-          script: |
-            set -e
-            cd /opt/fulkruma/backend
-            # --omit=dev — runtime deps only. dist/ + prisma client are
-            # already in the artifact from the Build job, so we just need
-            # the production node_modules tree here.
-            npm ci --omit=dev
-            npx prisma migrate deploy
-            # Delete+restart (not just restart) so --node-args change
-            # actually takes effect — pm2 restart preserves the original
-            # launch args. --env-file makes node read .env at startup
-            # since the app code doesn't import dotenv.
-            pm2 delete fulkruma-backend 2>/dev/null || true
-            pm2 start dist/index.js --name fulkruma-backend --node-args="--env-file=.env"
-            cd /opt/fulkruma/frontend
-            # .next/ is pre-built in the artifact — no `next build` here.
-            # Runtime deps only; next start needs them.
-            npm ci --omit=dev
-            pm2 restart fulkruma-frontend || pm2 start npm --name fulkruma-frontend -- start
-            pm2 save
-            # nginx site link is idempotent — covers first-deploy when bootstrap
-            # ran before deploy/nginx/ existed.
-            ln -sf /opt/fulkruma/deploy/nginx/staging-fulkruma.forjio.com.conf /etc/nginx/sites-enabled/staging-fulkruma.forjio.com 2>/dev/null || true
-            rm -f /etc/nginx/sites-enabled/default
-            nginx -t && systemctl reload nginx
+      - name: Set up deploy SSH key
+        run: |
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+      # De-containerized rsync/ssh. The burnett01/appleboy actions run inside
+      # Docker WITHOUT the runner host's tailnet route, so they time out
+      # reaching 100.123.65.113 (the box's tailnet IP — private, only routable
+      # over the tailnet joined above). Plain rsync/ssh run on the host, so
+      # they route over tailscale0. node_modules/.next/cache excluded — the
+      # box installs runtime deps via `npm ci --omit=dev` per the script below.
+      # copy/ INCLUDED — see "Upload docs copy" step in build job.
+      - name: Deploy via rsync (over tailnet)
+        run: |
+          rsync -avz --delete \
+            --exclude node_modules --exclude .git --exclude .env --exclude .env.production.local --exclude .npmrc --exclude frontend/.next/cache \
+            -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=30" \
+            ./ root@100.123.65.113:/opt/fulkruma/
+      # bash -se: -e aborts (and fails the job, blocking prod) if
+      # `prisma migrate deploy` fails — replacing appleboy's silent
+      # script-continue. -s reads the script from the heredoc on stdin.
+      - name: Restart services (over tailnet)
+        run: |
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=30 root@100.123.65.113 'bash -se' <<'SCRIPT'
+          set -e
+          cd /opt/fulkruma/backend
+          # --omit=dev — runtime deps only. dist/ + prisma client are
+          # already in the artifact from the Build job, so we just need
+          # the production node_modules tree here.
+          npm ci --omit=dev
+          npx prisma migrate deploy
+          # Delete+restart (not just restart) so --node-args change
+          # actually takes effect — pm2 restart preserves the original
+          # launch args. --env-file makes node read .env at startup
+          # since the app code doesn't import dotenv.
+          pm2 delete fulkruma-backend 2>/dev/null || true
+          pm2 start dist/index.js --name fulkruma-backend --node-args="--env-file=.env"
+          cd /opt/fulkruma/frontend
+          # .next/ is pre-built in the artifact — no `next build` here.
+          # Runtime deps only; next start needs them.
+          npm ci --omit=dev
+          pm2 restart fulkruma-frontend || pm2 start npm --name fulkruma-frontend -- start
+          pm2 save
+          # nginx site link is idempotent — covers first-deploy when bootstrap
+          # ran before deploy/nginx/ existed.
+          ln -sf /opt/fulkruma/deploy/nginx/staging-fulkruma.forjio.com.conf /etc/nginx/sites-enabled/staging-fulkruma.forjio.com 2>/dev/null || true
+          rm -f /etc/nginx/sites-enabled/default
+          nginx -t && systemctl reload nginx
+          SCRIPT
 
   e2e-staging:
     name: E2E (Staging)
@@ -228,6 +239,21 @@ jobs:
     needs: deploy-staging
     if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
     steps:
+      # Staging is reachable ONLY over the tailnet — join + map the staging
+      # hostname(s) to the box's tailnet IP BEFORE any step contacts staging
+      # (the smoke-checks below curl staging directly). nginx routes the ~10
+      # products' vhosts by Host header, so we keep the hostname and only
+      # override its IP via /etc/hosts. Map both the STAGING_HOST secret and
+      # the literal staging-fulkruma.forjio.com the smoke-checks use.
+      - name: Connect to tailnet (ephemeral CI node)
+        uses: tailscale/github-action@v2
+        with:
+          authkey: ${{ secrets.TS_AUTHKEY }}
+          hostname: fulkruma-e2e-ci
+      - name: Route staging host over the tailnet
+        run: |
+          echo "100.123.65.113 ${{ secrets.STAGING_HOST }}" | sudo tee -a /etc/hosts
+          echo "100.123.65.113 staging-fulkruma.forjio.com" | sudo tee -a /etc/hosts
       - name: Smoke-check staging health (backend)
         run: |
           for i in 1 2 3 4 5 6; do
