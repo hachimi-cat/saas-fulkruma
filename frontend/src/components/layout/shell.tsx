@@ -17,6 +17,9 @@ import {
   ScrollText,
   Package,
   LifeBuoy,
+  BookOpen,
+  FileText,
+  Shield,
   Menu,
 } from 'lucide-react';
 import {
@@ -98,13 +101,18 @@ const SECTIONS: NavSection[] = [
       { href: '/dashboard/billing', label: 'Billing', icon: Wallet },
       { href: '/dashboard/integrations', label: 'Integrations', icon: Plug },
       { href: '/dashboard/settings', label: 'Settings', icon: Settings },
-      {
-        label: 'Support',
-        icon: LifeBuoy,
-        onClick: () => window.open(SUPPORT_PORTAL_URL, '_blank', 'noopener'),
-      },
     ],
   },
+];
+
+// Profile-dropdown footer links (portal-ui Sidebar `dropdownLinks`). Support
+// lives here — in the profile dropdown — alongside the docs/legal links,
+// rather than as a main-nav item.
+const DROPDOWN_LINKS = [
+  { href: '/docs', label: 'Documentation', icon: BookOpen },
+  { href: SUPPORT_PORTAL_URL, label: 'Support', icon: LifeBuoy },
+  { href: '/terms', label: 'Terms of Service', icon: FileText },
+  { href: '/privacy', label: 'Privacy Policy', icon: Shield },
 ];
 
 async function logout() {
@@ -179,6 +187,7 @@ export function DashboardShell({
         activeWorkspaceId={activeWorkspaceId}
         sections={SECTIONS}
         portals={PORTALS}
+        dropdownLinks={DROPDOWN_LINKS}
         user={user as SessionUser}
         onLogout={logout}
         open={open}
