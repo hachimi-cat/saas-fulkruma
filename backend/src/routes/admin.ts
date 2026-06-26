@@ -23,6 +23,7 @@ import { prisma } from '../lib/db.js';
 import { requireAuth } from './../middleware/auth.js';
 import { adminGuard } from '../middleware/admin-guard.js';
 import { writeAuditLog } from '../lib/audit.js';
+import { ensurePartnerPaidTier } from '../services/billing.js';
 
 const router = Router();
 
@@ -67,6 +68,10 @@ router.post('/workspaces', async (req, res) => {
           businessEmail: body.businessEmail ?? null,
         },
       });
+  // Floor the workspace at the first PAID plan — it's billed through the
+  // partner, so paid Fulkruma features must be unlocked. Idempotent + safe on
+  // both the fresh-create and the same-partner re-call path; never downgrades.
+  await ensurePartnerPaidTier(body.accountId);
   if (!existing) {
     await writeAuditLog(prisma, {
       accountId: body.accountId,

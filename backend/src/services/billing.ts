@@ -54,6 +54,25 @@ export function listPlans() {
   ];
 }
 
+// Partner-provisioned merchants are PAYING for the Fulfillment module through
+// the host product (Storlaunch/Malapos/Serront/…), so their Fulkruma workspace
+// is entitled to the first PAID plan (STARTER) — not the free FREE plan that the
+// gates fall back to when there's no Subscription row. This is a FLOOR: it
+// creates a STARTER Subscription when absent and lifts FREE → STARTER, but never
+// downgrades a merchant who has since moved up to GROWTH/SCALE.
+const FIRST_PAID_PLAN: PlanKey = 'STARTER';
+export async function ensurePartnerPaidTier(accountId: string): Promise<void> {
+  const sub = await prisma.subscription.findUnique({
+    where: { accountId },
+    select: { plan: true },
+  });
+  if (!sub) {
+    await prisma.subscription.create({ data: { accountId, plan: FIRST_PAID_PLAN } });
+  } else if (sub.plan === 'FREE') {
+    await prisma.subscription.update({ where: { accountId }, data: { plan: FIRST_PAID_PLAN } });
+  }
+}
+
 export async function getEffectivePlan(accountId: string): Promise<PlanKey> {
   const sub = await prisma.subscription.findUnique({ where: { accountId } });
   if (!sub) return 'FREE';
