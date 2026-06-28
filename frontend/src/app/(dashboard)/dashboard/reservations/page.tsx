@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { ClipboardList, Loader2 } from 'lucide-react';
 import { ErrorBox, StatusPill } from '@/components/dashboard/ui';
 import { DataTable, type Column, type FilterDef } from '@/components/data-table';
+import { PageHeader } from '@/components/dashboard/page-header';
 
 interface Reservation {
   id: string;
@@ -100,12 +101,10 @@ export default function ReservationsPage() {
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
-      <div>
-        <h1 className="text-xl font-bold sm:text-2xl">Stock reservations</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Soft-holds placed at checkout and released on payment success or expiry. Prevents oversell.
-        </p>
-      </div>
+      <PageHeader
+        title="Stock reservations"
+        description="Soft-holds placed at checkout and released on payment success or expiry. Prevents oversell."
+      />
 
       {error && <ErrorBox>{error}</ErrorBox>}
 

@@ -180,7 +180,6 @@ export default function ShippingCreditsPage() {
   return (
     <div>
       <PageHeader
-        icon={Wallet}
         title="Shipping Credits"
         description="Prepaid balance used to dispatch couriers via Biteship. Each confirmed pickup debits this balance based on the courier rate at booking time."
       />

@@ -10,6 +10,13 @@ import {
   ChevronsUpDown,
   Search,
 } from 'lucide-react';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 export type Column<T> = {
   key: string;
@@ -175,21 +182,25 @@ export function DataTable<T>({
           {filters?.map((f) => (
             <label key={f.key} className="flex items-center gap-1.5 text-muted-foreground">
               {f.label}
-              <select
-                value={filterValues[f.key] ?? ''}
-                onChange={(e) => {
-                  setFilterValues((prev) => ({ ...prev, [f.key]: e.target.value }));
+              <Select
+                value={filterValues[f.key] || 'all'}
+                onValueChange={(v) => {
+                  setFilterValues((prev) => ({ ...prev, [f.key]: v === 'all' ? '' : v }));
                   setPage(0);
                 }}
-                className="rounded-md border border-border bg-background px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
               >
-                <option value="">All</option>
-                {filterOptions[f.key]?.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
+                <SelectTrigger className="h-7 w-auto gap-1.5 px-2 text-xs">
+                  <SelectValue placeholder="All" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All</SelectItem>
+                  {filterOptions[f.key]?.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </label>
           ))}
           {hasAnyFilter && (
@@ -411,20 +422,24 @@ export function DataTable<T>({
             </span>
             <label className="flex items-center gap-1.5">
               Rows
-              <select
-                value={pageSize}
-                onChange={(e) => {
-                  setPageSize(Number(e.target.value));
+              <Select
+                value={String(pageSize)}
+                onValueChange={(v) => {
+                  setPageSize(Number(v));
                   setPage(0);
                 }}
-                className="rounded-md border border-border bg-background px-1.5 py-0.5 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
               >
-                {PAGE_SIZE_OPTIONS.map((n) => (
-                  <option key={n} value={n}>
-                    {n}
-                  </option>
-                ))}
-              </select>
+                <SelectTrigger className="h-7 w-auto gap-1.5 px-2 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {PAGE_SIZE_OPTIONS.map((n) => (
+                    <SelectItem key={n} value={String(n)}>
+                      {n}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </label>
           </div>
           <div className="flex items-center gap-1">

@@ -184,7 +184,6 @@ export default function SettingsPage() {
   return (
     <div className="">
       <PageHeader
-        icon={SettingsIcon}
         title="Settings"
         description="Manage your account identity and security. Identity is stored in Huudis; Fulkruma calls Huudis APIs on your behalf, so everything here stays in the portal."
       />

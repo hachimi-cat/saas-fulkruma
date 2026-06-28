@@ -5,6 +5,7 @@ import { AlertTriangle, Check, CreditCard, Loader2, Zap } from 'lucide-react';
 import { api } from '@/lib/api';
 import { Button, ErrorBox } from '@/components/dashboard/ui';
 import { DataTable, type Column, type FilterDef } from '@/components/data-table';
+import { PageHeader } from '@/components/dashboard/page-header';
 
 interface Plan {
   id: string;
@@ -190,10 +191,10 @@ export default function BillingPage() {
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
-      <div>
-        <h1 className="text-xl font-bold sm:text-2xl">Billing</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Plan, usage, and invoices. Billing is processed by Plugipay.</p>
-      </div>
+      <PageHeader
+        title="Billing"
+        description="Plan, usage, and invoices. Billing is processed by Plugipay."
+      />
 
       {error && <ErrorBox>{error}</ErrorBox>}
       {notice && (

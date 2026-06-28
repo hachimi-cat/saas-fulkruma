@@ -5,6 +5,7 @@ import { Loader2, MapPin, Plus, Trash2 } from 'lucide-react';
 import { api, type CustomerAddress } from '@/lib/api';
 import { Modal, Field, ErrorBox, Button } from '@/components/dashboard/ui';
 import { DataTable, type Column, type FilterDef } from '@/components/data-table';
+import { PageHeader } from '@/components/dashboard/page-header';
 
 export default function AddressesPage() {
   const [rows, setRows] = useState<CustomerAddress[] | null>(null);
@@ -97,15 +98,11 @@ export default function AddressesPage() {
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-bold sm:text-2xl">Customer addresses</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Buyer address book per merchant. Saved at checkout, reused on subsequent orders.
-          </p>
-        </div>
-        <Button onClick={() => setShowForm(true)}><Plus size={14} /> New address</Button>
-      </div>
+      <PageHeader
+        title="Customer addresses"
+        description="Buyer address book per merchant. Saved at checkout, reused on subsequent orders."
+        action={<Button onClick={() => setShowForm(true)}><Plus size={14} /> New address</Button>}
+      />
 
       {error && <ErrorBox>{error}</ErrorBox>}
 

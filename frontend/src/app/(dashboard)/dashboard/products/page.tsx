@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react';
 import { Archive, ExternalLink, Layers, Loader2, Package, Plus } from 'lucide-react';
 import { Modal, Field, ErrorBox, EmptyState, Button } from '@/components/dashboard/ui';
+import { PageHeader } from '@/components/dashboard/page-header';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DataTable, type Column, type FilterDef } from '@/components/data-table';
 
 interface Variant {
@@ -186,15 +188,11 @@ export default function ProductsPage() {
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-bold sm:text-2xl">Products</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Your product catalogue. When fulkruma runs as a Storlaunch module, products sync via webhook; standalone, manage them here directly.
-          </p>
-        </div>
-        <Button onClick={() => setShowProduct('new')}><Plus size={14} /> New product</Button>
-      </div>
+      <PageHeader
+        title="Products"
+        description="Your product catalogue. When fulkruma runs as a Storlaunch module, products sync via webhook; standalone, manage them here directly."
+        action={<Button onClick={() => setShowProduct('new')}><Plus size={14} /> New product</Button>}
+      />
 
       {error && <ErrorBox>{error}</ErrorBox>}
 
@@ -278,11 +276,14 @@ function ProductForm({ initial, onClose, onSaved }: { initial?: Product; onClose
         </div>
         <Field label="Description"><textarea value={description} onChange={(e) => setDescription(e.target.value)} className="input" rows={2} /></Field>
         <Field label="Type *">
-          <select value={type} onChange={(e) => setType(e.target.value as Product['type'])} className="input">
-            <option value="physical">Physical (ships)</option>
-            <option value="digital">Digital (downloadable)</option>
-            <option value="license">License key</option>
-          </select>
+          <Select value={type} onValueChange={(v) => setType(v as Product['type'])}>
+            <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="physical">Physical (ships)</SelectItem>
+              <SelectItem value="digital">Digital (downloadable)</SelectItem>
+              <SelectItem value="license">License key</SelectItem>
+            </SelectContent>
+          </Select>
         </Field>
         {type === 'physical' && (
           <div className="rounded-lg border border-border bg-secondary/30 p-3">

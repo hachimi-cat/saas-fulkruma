@@ -5,6 +5,7 @@ import { Check, Copy, KeyRound, Loader2, Plus } from 'lucide-react';
 import { api, type ApiKey } from '@/lib/api';
 import { Modal, Field, ErrorBox, Button } from '@/components/dashboard/ui';
 import { DataTable, type Column, type FilterDef } from '@/components/data-table';
+import { PageHeader } from '@/components/dashboard/page-header';
 
 export default function ApiKeysPage() {
   const [rows, setRows] = useState<ApiKey[] | null>(null);
@@ -97,15 +98,11 @@ export default function ApiKeysPage() {
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-bold sm:text-2xl">API Keys</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            HMAC keys to call the Fulkruma API server-to-server. Scoped per workspace, rotatable, audit-logged.
-          </p>
-        </div>
-        <Button onClick={() => setShowForm(true)}><Plus size={14} /> New key</Button>
-      </div>
+      <PageHeader
+        title="API Keys"
+        description="HMAC keys to call the Fulkruma API server-to-server. Scoped per workspace, rotatable, audit-logged."
+        action={<Button onClick={() => setShowForm(true)}><Plus size={14} /> New key</Button>}
+      />
 
       {error && <ErrorBox>{error}</ErrorBox>}
 

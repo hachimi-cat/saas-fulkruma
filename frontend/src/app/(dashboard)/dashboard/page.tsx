@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { api, type OverviewStats } from '@/lib/api';
 import { StatusPill } from '@/components/dashboard/ui';
+import { PageHeader } from '@/components/dashboard/page-header';
 
 export default function DashboardHome() {
   const [stats, setStats] = useState<OverviewStats | null>(null);
@@ -39,12 +40,10 @@ export default function DashboardHome() {
 
   return (
     <div className="">
-      <header className="mb-8">
-        <h1 className="text-2xl font-semibold tracking-tight">Overview</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Stock, shipping, and fulfilment for your storefront.
-        </p>
-      </header>
+      <PageHeader
+        title="Overview"
+        description="Stock, shipping, and fulfilment for your storefront."
+      />
 
       {error && (
         <div className="mb-6 rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">

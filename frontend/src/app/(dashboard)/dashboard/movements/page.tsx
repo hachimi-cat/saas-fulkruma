@@ -5,6 +5,7 @@ import { ArrowLeftRight, Loader2 } from 'lucide-react';
 import { api, type StockMovement, type Warehouse } from '@/lib/api';
 import { ErrorBox } from '@/components/dashboard/ui';
 import { DataTable, type Column, type FilterDef } from '@/components/data-table';
+import { PageHeader } from '@/components/dashboard/page-header';
 
 export default function MovementsPage() {
   const [rows, setRows] = useState<StockMovement[] | null>(null);
@@ -91,12 +92,10 @@ export default function MovementsPage() {
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
-      <div>
-        <h1 className="text-xl font-bold sm:text-2xl">Stock movements</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Append-only ledger of every receipt, transfer, adjustment, and shipment-out. Source of truth for on-hand.
-        </p>
-      </div>
+      <PageHeader
+        title="Stock movements"
+        description="Append-only ledger of every receipt, transfer, adjustment, and shipment-out. Source of truth for on-hand."
+      />
 
       {error && <ErrorBox>{error}</ErrorBox>}
 

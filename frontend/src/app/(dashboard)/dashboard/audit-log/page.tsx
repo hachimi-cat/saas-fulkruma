@@ -5,6 +5,7 @@ import { Loader2, ScrollText } from 'lucide-react';
 import { api, type AuditEntry } from '@/lib/api';
 import { ErrorBox } from '@/components/dashboard/ui';
 import { DataTable, type Column, type FilterDef } from '@/components/data-table';
+import { PageHeader } from '@/components/dashboard/page-header';
 
 export default function AuditLogPage() {
   const [rows, setRows] = useState<AuditEntry[] | null>(null);
@@ -78,12 +79,10 @@ export default function AuditLogPage() {
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
-      <div>
-        <h1 className="text-xl font-bold sm:text-2xl">Audit Log</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Every state-changing action across warehouses, stock, shipments, licenses, deliveries — actor, IP, timestamp, before/after.
-        </p>
-      </div>
+      <PageHeader
+        title="Audit Log"
+        description="Every state-changing action across warehouses, stock, shipments, licenses, deliveries — actor, IP, timestamp, before/after."
+      />
 
       {error && <ErrorBox>{error}</ErrorBox>}
 

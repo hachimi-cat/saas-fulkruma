@@ -14,6 +14,13 @@ import {
 } from 'lucide-react';
 import { PageHeader } from '@/components/dashboard/page-header';
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
   Modal,
   Field,
   ErrorBox,
@@ -202,7 +209,6 @@ export default function WorkspacesPage() {
   return (
     <div className="">
       <PageHeader
-        icon={Building2}
         title="Workspaces"
         description="Manage your workspaces and team members. Identity is stored in Huudis; Fulkruma calls Huudis APIs on your behalf."
         action={
@@ -582,20 +588,21 @@ function MembersModal({
                     </div>
                     <div className="flex items-center gap-2">
                       {isOwnerOrAdmin && !m.isYou ? (
-                        <select
+                        <Select
                           value={m.role}
-                          onChange={(e) =>
-                            changeRole(
-                              m,
-                              e.target.value as 'owner' | 'admin' | 'member',
-                            )
+                          onValueChange={(v) =>
+                            changeRole(m, v as 'owner' | 'admin' | 'member')
                           }
-                          className="rounded-md border border-border bg-background px-2 py-1 text-xs"
                         >
-                          <option value="owner">Owner</option>
-                          <option value="admin">Admin</option>
-                          <option value="member">Member</option>
-                        </select>
+                          <SelectTrigger className="h-7 w-auto gap-1.5 px-2 text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="owner">Owner</SelectItem>
+                            <SelectItem value="admin">Admin</SelectItem>
+                            <SelectItem value="member">Member</SelectItem>
+                          </SelectContent>
+                        </Select>
                       ) : (
                         <span
                           className={cn(
@@ -735,17 +742,16 @@ function InviteForm({
           />
         </Field>
         <Field label="Role *">
-          <select
-            value={role}
-            onChange={(e) =>
-              setRole(e.target.value as 'owner' | 'admin' | 'member')
-            }
-            className="input"
-          >
-            <option value="member">Member — read &amp; act on assigned data</option>
-            <option value="admin">Admin — manage members + settings</option>
-            <option value="owner">Owner — full control</option>
-          </select>
+          <Select value={role} onValueChange={(v) => setRole(v as 'owner' | 'admin' | 'member')}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="member">Member — read &amp; act on assigned data</SelectItem>
+              <SelectItem value="admin">Admin — manage members + settings</SelectItem>
+              <SelectItem value="owner">Owner — full control</SelectItem>
+            </SelectContent>
+          </Select>
         </Field>
         <div className="flex justify-end gap-2 pt-2">
           <Button type="button" variant="secondary" onClick={onClose}>

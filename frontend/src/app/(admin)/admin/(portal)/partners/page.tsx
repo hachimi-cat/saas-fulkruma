@@ -3,6 +3,8 @@
 import { Suspense, useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Loader2, Building2 } from 'lucide-react';
+import { PageHeader } from '@/components/dashboard/page-header';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 // Admin partner-usage viewer. Surfaces the backend's
 // `GET /api/v1/admin/partner/usage` rollup through the admin data
@@ -94,26 +96,26 @@ function PartnerUsageView() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold tracking-tight">Partner usage</h1>
-      <p className="mt-1 text-sm text-muted-foreground">
-        Pattern-2 billing rollup — chargeable events per merchant for the selected partner and
-        window.
-      </p>
+      <PageHeader
+        title="Partner usage"
+        description="Pattern-2 billing rollup — chargeable events per merchant for the selected partner and window."
+      />
 
       <div className="mt-6 flex flex-wrap items-end gap-3">
         <label className="flex flex-col gap-1 text-xs font-medium">
           Partner
-          <select
-            value={partner}
-            onChange={(e) => setPartner(e.target.value)}
-            className="rounded-md border border-border bg-card px-3 py-2 text-sm"
-          >
-            {KNOWN_PARTNERS.map((p) => (
-              <option key={p} value={p}>
-                {p}
-              </option>
-            ))}
-          </select>
+          <Select value={partner} onValueChange={setPartner}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Select a partner" />
+            </SelectTrigger>
+            <SelectContent>
+              {KNOWN_PARTNERS.map((p) => (
+                <SelectItem key={p} value={p}>
+                  {p}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </label>
         <label className="flex flex-col gap-1 text-xs font-medium">
           From

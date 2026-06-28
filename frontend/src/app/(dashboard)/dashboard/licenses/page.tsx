@@ -5,6 +5,9 @@ import { Plus, Copy, Check, Loader2, KeyRound } from 'lucide-react';
 import { api, type License } from '@/lib/api';
 import { Modal, Field, ErrorBox, Button, StatusPill } from '@/components/dashboard/ui';
 import { DataTable, type Column, type FilterDef } from '@/components/data-table';
+import { PageHeader } from '@/components/dashboard/page-header';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { DateTimePicker } from '@/components/ui/date-time-picker';
 
 interface ProductLite { id: string; name: string; type: string; licenseEnabled: boolean; maxActivations: number; }
 
@@ -117,15 +120,11 @@ export default function LicensesPage() {
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-bold sm:text-2xl">Licenses</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Digital fulfilment — license keys minted on payment, activations tracked, revocation supported.
-          </p>
-        </div>
-        <Button onClick={() => setShowForm(true)}><Plus size={14} /> Issue license</Button>
-      </div>
+      <PageHeader
+        title="Licenses"
+        description="Digital fulfilment — license keys minted on payment, activations tracked, revocation supported."
+        action={<Button onClick={() => setShowForm(true)}><Plus size={14} /> Issue license</Button>}
+      />
 
       {error && <ErrorBox>{error}</ErrorBox>}
 
@@ -226,11 +225,14 @@ function IssueForm({ products, onClose, onSaved }: { products: ProductLite[]; on
           </div>
         )}
         <Field label="Product *">
-          <select required value={productId} onChange={(e) => setProductId(e.target.value)} className="input" disabled={products.length === 0}>
-            {products.length === 0
-              ? <option>— no license products —</option>
-              : products.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-          </select>
+          <Select value={productId} onValueChange={setProductId} disabled={products.length === 0}>
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder={products.length === 0 ? '— no license products —' : 'Select a product'} />
+            </SelectTrigger>
+            <SelectContent>
+              {products.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+            </SelectContent>
+          </Select>
         </Field>
         <Field label="Customer ID *" hint="Buyer id (Storlaunch Customer or Huudis user).">
           <input required value={customerId} onChange={(e) => setCustomerId(e.target.value)} className="input font-mono" placeholder="cust_..." />
@@ -240,7 +242,7 @@ function IssueForm({ products, onClose, onSaved }: { products: ProductLite[]; on
             <input required type="number" min={1} value={maxActivations} onChange={(e) => setMaxActivations(Number(e.target.value))} className="input" />
           </Field>
           <Field label="Expires at">
-            <input type="datetime-local" value={expiresAt} onChange={(e) => setExpiresAt(e.target.value)} className="input" />
+            <DateTimePicker value={expiresAt} onChange={setExpiresAt} placeholder="Pick a date & time" />
           </Field>
         </div>
         <div className="flex justify-end gap-2 pt-2">

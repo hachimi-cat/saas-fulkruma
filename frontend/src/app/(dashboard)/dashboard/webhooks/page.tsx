@@ -5,6 +5,7 @@ import { Check, Copy, Loader2, Plus, Power, PowerOff, Trash2, Webhook } from 'lu
 import { api, type WebhookEndpoint, type WebhookEventRow } from '@/lib/api';
 import { Modal, Field, ErrorBox, Button, StatusPill } from '@/components/dashboard/ui';
 import { DataTable, type Column, type FilterDef } from '@/components/data-table';
+import { PageHeader } from '@/components/dashboard/page-header';
 
 const EVENT_TYPES = [
   '*',
@@ -174,15 +175,11 @@ export default function WebhooksPage() {
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-bold sm:text-2xl">Webhooks</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Outbound webhook endpoints. HMAC-SHA256-signed, retried with exponential backoff.
-          </p>
-        </div>
-        <Button onClick={() => setShowForm(true)}><Plus size={14} /> New endpoint</Button>
-      </div>
+      <PageHeader
+        title="Webhooks"
+        description="Outbound webhook endpoints. HMAC-SHA256-signed, retried with exponential backoff."
+        action={<Button onClick={() => setShowForm(true)}><Plus size={14} /> New endpoint</Button>}
+      />
 
       <div className="flex items-center gap-1 rounded-lg border border-border bg-card p-1">
         {(['endpoints', 'events'] as const).map((t) => (

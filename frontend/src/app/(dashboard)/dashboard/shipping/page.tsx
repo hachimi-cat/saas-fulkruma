@@ -4,6 +4,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { api, type BiteshipCourier } from '@/lib/api';
 import { Loader2, Save, MapPin, CheckCircle2, AlertCircle, Zap } from 'lucide-react';
 import { LocationForm, type LocationValue } from '@/components/shipping/location-form';
+import { PageHeader } from '@/components/dashboard/page-header';
 
 interface CourierSummary {
   code: string;
@@ -160,12 +161,10 @@ export default function ShippingSettingsPage() {
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
-      <header>
-        <h1 className="text-2xl font-bold">Shipping Settings</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Configure pickup origin and enabled couriers. Powered by Biteship (16 Indonesian couriers).
-        </p>
-      </header>
+      <PageHeader
+        title="Shipping Settings"
+        description="Configure pickup origin and enabled couriers. Powered by Biteship (16 Indonesian couriers)."
+      />
 
       {error && (
         <div className="flex items-start gap-2 rounded border border-red-300 bg-red-50 p-3 text-sm text-red-700">

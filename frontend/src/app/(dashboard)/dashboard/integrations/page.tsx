@@ -149,7 +149,6 @@ export default function IntegrationsPage() {
   return (
     <div className="">
       <PageHeader
-        icon={Plug}
         title="Integrations"
         description="External services Fulkruma talks to. Each card surfaces real connection status + a configure link."
       />

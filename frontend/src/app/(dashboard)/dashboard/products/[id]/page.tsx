@@ -7,6 +7,7 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Archive, ArrowLeft, Loader2, Package, Pencil } from 'lucide-react';
 import { api } from '@/lib/api';
+import { PageHeader } from '@/components/dashboard/page-header';
 
 interface FProduct {
   id: string;
@@ -83,31 +84,35 @@ export default function ProductDetailPage() {
 
       {product && (
         <>
-          <div className="flex justify-end gap-2">
-            <Link
-              href={`/dashboard/products?edit=${product.id}`}
-              className="inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-3 py-1.5 text-sm hover:bg-secondary"
-            >
-              <Pencil className="h-3.5 w-3.5" /> Edit
-            </Link>
-            <button
-              type="button"
-              onClick={handleArchive}
-              disabled={archiving || product.archived}
-              className="inline-flex items-center gap-1.5 rounded-md border border-destructive/40 px-3 py-1.5 text-sm font-medium text-destructive hover:bg-destructive/10 disabled:opacity-50"
-            >
-              {archiving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Archive className="h-3.5 w-3.5" />}
-              {product.archived ? 'Archived' : 'Archive'}
-            </button>
-          </div>
+          <PageHeader
+            title={product.name}
+            action={
+              <>
+                <Link
+                  href={`/dashboard/products?edit=${product.id}`}
+                  className="inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-3 py-1.5 text-sm hover:bg-secondary"
+                >
+                  <Pencil className="h-3.5 w-3.5" /> Edit
+                </Link>
+                <button
+                  type="button"
+                  onClick={handleArchive}
+                  disabled={archiving || product.archived}
+                  className="inline-flex items-center gap-1.5 rounded-md border border-destructive/40 px-3 py-1.5 text-sm font-medium text-destructive hover:bg-destructive/10 disabled:opacity-50"
+                >
+                  {archiving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Archive className="h-3.5 w-3.5" />}
+                  {product.archived ? 'Archived' : 'Archive'}
+                </button>
+              </>
+            }
+          />
 
           <div className="flex items-start gap-4 rounded-lg border border-border bg-card p-5">
             <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-md border border-border bg-muted">
               <Package className="h-6 w-6 text-muted-foreground" />
             </div>
             <div className="min-w-0 flex-1">
-              <h1 className="text-xl font-bold break-words">{product.name}</h1>
-              <div className="mt-2 flex flex-wrap gap-1.5">
+              <div className="flex flex-wrap gap-1.5">
                 <span className="rounded-full bg-secondary px-2 py-0.5 text-xs capitalize">{product.type}</span>
                 {product.archived && (
                   <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">Archived</span>

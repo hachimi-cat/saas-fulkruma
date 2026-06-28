@@ -5,6 +5,7 @@ import { ExternalLink, Loader2, Truck } from 'lucide-react';
 import { api, type Shipment, type ShipmentEvent } from '@/lib/api';
 import { ErrorBox, StatusPill } from '@/components/dashboard/ui';
 import { DataTable, type Column, type FilterDef } from '@/components/data-table';
+import { PageHeader } from '@/components/dashboard/page-header';
 
 export default function ShipmentsPage() {
   const [rows, setRows] = useState<Shipment[] | null>(null);
@@ -90,12 +91,10 @@ export default function ShipmentsPage() {
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
-      <div>
-        <h1 className="text-xl font-bold sm:text-2xl">Shipments</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Outbound parcels, courier, tracking number, and event timeline. Backed by Biteship.
-        </p>
-      </div>
+      <PageHeader
+        title="Shipments"
+        description="Outbound parcels, courier, tracking number, and event timeline. Backed by Biteship."
+      />
 
       {error && <ErrorBox>{error}</ErrorBox>}
 

@@ -6,6 +6,8 @@ import { Loader2, PackageCheck, Plus } from 'lucide-react';
 import { api, type Delivery } from '@/lib/api';
 import { Modal, Field, ErrorBox, Button } from '@/components/dashboard/ui';
 import { DataTable, type Column, type FilterDef } from '@/components/data-table';
+import { PageHeader } from '@/components/dashboard/page-header';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 interface ProductLite { id: string; name: string; type: string; }
 
@@ -177,15 +179,11 @@ export default function DeliveriesPage() {
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-bold sm:text-2xl">Digital Deliveries</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Per-order download tracking. Buyers get a unique download URL after Plugipay confirms payment.
-          </p>
-        </div>
-        <Button onClick={() => setShowForm(true)}><Plus size={14} /> New delivery</Button>
-      </div>
+      <PageHeader
+        title="Digital Deliveries"
+        description="Per-order download tracking. Buyers get a unique download URL after Plugipay confirms payment."
+        action={<Button onClick={() => setShowForm(true)}><Plus size={14} /> New delivery</Button>}
+      />
 
       {error && <ErrorBox>{error}</ErrorBox>}
 
@@ -251,9 +249,14 @@ function CreateForm({ products, onClose, onSaved }: { products: ProductLite[]; o
           </div>
         )}
         <Field label="Product *">
-          <select required value={productId} onChange={(e) => setProductId(e.target.value)} className="input" disabled={products.length === 0}>
-            {products.length === 0 ? <option>— no digital products —</option> : products.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-          </select>
+          <Select value={productId} onValueChange={setProductId} disabled={products.length === 0}>
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder={products.length === 0 ? '— no digital products —' : 'Select a product'} />
+            </SelectTrigger>
+            <SelectContent>
+              {products.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+            </SelectContent>
+          </Select>
         </Field>
         <Field label="Customer ID *" hint="Buyer id (Storlaunch Customer or Huudis user).">
           <input required value={customerId} onChange={(e) => setCustomerId(e.target.value)} className="input font-mono" placeholder="cust_..." />

@@ -5,6 +5,7 @@ import { Archive, Loader2, Plus, Warehouse as WarehouseIcon } from 'lucide-react
 import { api, type Warehouse as Wh } from '@/lib/api';
 import { Modal, Field, ErrorBox, Button } from '@/components/dashboard/ui';
 import { DataTable, type Column, type FilterDef } from '@/components/data-table';
+import { PageHeader } from '@/components/dashboard/page-header';
 
 export default function WarehousesPage() {
   const [rows, setRows] = useState<Wh[] | null>(null);
@@ -86,13 +87,11 @@ export default function WarehousesPage() {
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-bold sm:text-2xl">Warehouses</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Each physical or virtual location that holds stock.</p>
-        </div>
-        <Button onClick={() => { setEditing(null); setShowForm(true); }}><Plus size={14} /> New warehouse</Button>
-      </div>
+      <PageHeader
+        title="Warehouses"
+        description="Each physical or virtual location that holds stock."
+        action={<Button onClick={() => { setEditing(null); setShowForm(true); }}><Plus size={14} /> New warehouse</Button>}
+      />
 
       {error && <ErrorBox>{error}</ErrorBox>}
 

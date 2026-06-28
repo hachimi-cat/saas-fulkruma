@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react';
 import { Boxes, Loader2, Plus } from 'lucide-react';
 import { api, type VariantStock, type Warehouse, type StockMovement } from '@/lib/api';
 import { Modal, Field, ErrorBox, Button } from '@/components/dashboard/ui';
+import { PageHeader } from '@/components/dashboard/page-header';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DataTable, type Column, type FilterDef } from '@/components/data-table';
 
 const REASONS = [
@@ -170,17 +172,15 @@ export default function StockPage() {
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-bold sm:text-2xl">Inventory</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            On-hand quantity per (variant × warehouse) and the audit trail of every movement.
-          </p>
-        </div>
-        <Button onClick={() => setShowForm(true)} disabled={warehouses.length === 0}>
-          <Plus size={14} /> Adjust stock
-        </Button>
-      </div>
+      <PageHeader
+        title="Inventory"
+        description="On-hand quantity per (variant × warehouse) and the audit trail of every movement."
+        action={
+          <Button onClick={() => setShowForm(true)} disabled={warehouses.length === 0}>
+            <Plus size={14} /> Adjust stock
+          </Button>
+        }
+      />
 
       <div className="flex items-center gap-1 rounded-lg border border-border bg-card p-1">
         {(['levels', 'movements'] as const).map((t) => (
@@ -307,18 +307,24 @@ function AdjustForm({
           </datalist>
         </Field>
         <Field label="Warehouse *">
-          <select required value={warehouseId} onChange={(e) => setWarehouseId(e.target.value)} className="input">
-            {warehouses.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}
-          </select>
+          <Select value={warehouseId} onValueChange={setWarehouseId}>
+            <SelectTrigger className="w-full"><SelectValue placeholder="Select warehouse" /></SelectTrigger>
+            <SelectContent>
+              {warehouses.map((w) => <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>)}
+            </SelectContent>
+          </Select>
         </Field>
         <div className="grid grid-cols-2 gap-3">
           <Field label="Delta *" hint="Positive = receive, negative = remove.">
             <input required type="number" value={delta} onChange={(e) => setDelta(Number(e.target.value))} className="input" />
           </Field>
           <Field label="Reason *">
-            <select required value={reason} onChange={(e) => setReason(e.target.value as typeof REASONS[number])} className="input">
-              {REASONS.map((r) => <option key={r} value={r}>{r.replace(/_/g, ' ')}</option>)}
-            </select>
+            <Select value={reason} onValueChange={(v) => setReason(v as typeof REASONS[number])}>
+              <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {REASONS.map((r) => <SelectItem key={r} value={r}>{r.replace(/_/g, ' ')}</SelectItem>)}
+              </SelectContent>
+            </Select>
           </Field>
         </div>
         <Field label="Note"><input value={note} onChange={(e) => setNote(e.target.value)} className="input" /></Field>

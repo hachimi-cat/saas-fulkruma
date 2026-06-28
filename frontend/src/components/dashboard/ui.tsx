@@ -1,7 +1,14 @@
 'use client';
 
-import { Loader2, X } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import type { ReactNode } from 'react';
+import { cn } from '@/lib/utils';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 
 export function Modal({
   title,
@@ -14,24 +21,20 @@ export function Modal({
   children: ReactNode;
   wide?: boolean;
 }) {
+  // Callers render this conditionally (`{open && <Modal …/>}`), so it's
+  // always "open"; closing (overlay/Esc/X) routes through onOpenChange.
+  // DialogContent ships its own close button + focus trap + animation.
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 py-8"
-      onClick={onClose}
-    >
-      <div
-        onClick={(e) => e.stopPropagation()}
-        className={`w-full ${wide ? 'max-w-2xl' : 'max-w-md'} rounded-xl border border-border bg-card p-6 shadow-lg max-h-[90vh] overflow-y-auto`}
+    <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
+      <DialogContent
+        className={cn('max-h-[90vh] overflow-y-auto', wide ? 'max-w-2xl' : 'max-w-md')}
       >
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-base font-semibold">{title}</h2>
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground" aria-label="Close">
-            <X size={16} />
-          </button>
-        </div>
+        <DialogHeader>
+          <DialogTitle className="font-display text-base">{title}</DialogTitle>
+        </DialogHeader>
         {children}
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
