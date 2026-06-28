@@ -8,7 +8,6 @@ import {
   Truck,
   PackageCheck,
   KeyRound,
-  Plug,
   Settings,
   Building2,
   Send,
@@ -99,7 +98,6 @@ const SECTIONS: NavSection[] = [
     items: [
       { href: '/dashboard/workspaces', label: 'Workspaces', icon: Building2 },
       { href: '/dashboard/billing', label: 'Billing', icon: Wallet },
-      { href: '/dashboard/integrations', label: 'Integrations', icon: Plug },
       { href: '/dashboard/settings', label: 'Settings', icon: Settings },
     ],
   },
