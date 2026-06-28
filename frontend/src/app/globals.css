@@ -8,6 +8,10 @@
   * {
     border-color: hsl(var(--border));
   }
+  /* Gellix display face on titles (incl. bare admin headings). */
+  h1, h2, h3 {
+    font-family: var(--font-display), system-ui, sans-serif;
+  }
 }
 
 :root {
