@@ -1,6 +1,7 @@
 import type { Config } from 'tailwindcss';
 
 const config: Config = {
+  darkMode: ['class'],
   content: [
     './src/**/*.{ts,tsx}',
     // Scan the shared marketing-chrome package so its Tailwind classes
@@ -69,8 +70,9 @@ const config: Config = {
         },
       },
       fontFamily: {
-        sans: ['Inter', 'system-ui', '-apple-system', 'Segoe UI', 'Roboto', 'sans-serif'],
-        mono: ['"JetBrains Mono"', 'ui-monospace', 'SFMono-Regular', 'monospace'],
+        sans: ['var(--font-sans)', 'Inter', 'system-ui', 'sans-serif'],
+        mono: ['var(--font-mono)', '"JetBrains Mono"', 'ui-monospace', 'monospace'],
+        display: ['var(--font-display)', 'Gellix', 'var(--font-sans)', 'sans-serif'],
       },
       borderRadius: { none: '0', sm: '4px', md: '6px', lg: '8px', xl: '12px', full: '9999px' },
       boxShadow: {
@@ -81,6 +83,14 @@ const config: Config = {
         focus: '0 0 0 2px hsl(var(--ring)), 0 0 0 4px rgba(242, 47, 70, 0.15)',
       },
       spacing: { sidebar: '256px', header: '64px' },
+      keyframes: {
+        'accordion-down': { from: { height: '0' }, to: { height: 'var(--radix-accordion-content-height)' } },
+        'accordion-up': { from: { height: 'var(--radix-accordion-content-height)' }, to: { height: '0' } },
+      },
+      animation: {
+        'accordion-down': 'accordion-down 0.2s ease-out',
+        'accordion-up': 'accordion-up 0.2s ease-out',
+      },
     },
   },
   plugins: [require('tailwindcss-animate')],
