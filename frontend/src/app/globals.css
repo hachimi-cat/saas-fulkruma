@@ -2,6 +2,14 @@
 @tailwind components;
 @tailwind utilities;
 
+/* shadcn base layer — pin every element's border-color to the token so
+   `border` (no explicit color) doesn't fall back to currentColor. */
+@layer base {
+  * {
+    border-color: hsl(var(--border));
+  }
+}
+
 :root {
   /* Warm off-white canvas. Twilio red primary (#F22F46 ≈ HSL 351 88% 57%). */
   --background:              20 28% 97%;   /* #FAF7F5 paper */
