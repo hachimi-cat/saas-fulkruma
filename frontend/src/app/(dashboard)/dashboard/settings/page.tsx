@@ -1,10 +1,9 @@
 'use client';
 
 import { useEffect, useState, type FormEvent } from 'react';
-import { Settings as SettingsIcon, Shield, Save, AlertTriangle } from 'lucide-react';
+import { Shield, Save } from 'lucide-react';
 import { PageHeader } from '@/components/dashboard/page-header';
 import { Field, ErrorBox, Loading, Button } from '@/components/dashboard/ui';
-import { useAuth } from '@/lib/auth';
 import { APP_VERSION, BUILD_SHA, BUILD_DATE } from '@/lib/version';
 
 // ───────────────────────────────────────────────────────────────────
@@ -73,7 +72,6 @@ function cn(...p: (string | false | null | undefined)[]) {
 // ───────────────────────────────────────────────────────────────────
 
 export default function SettingsPage() {
-  const { logout } = useAuth();
   const [account, setAccount] = useState<Account | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -89,12 +87,6 @@ export default function SettingsPage() {
   const [confirmPw, setConfirmPw] = useState('');
   const [savingPw, setSavingPw] = useState(false);
   const [pwMsg, setPwMsg] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
-
-  // Delete account
-  const [deletePw, setDeletePw] = useState('');
-  const [deleteConfirm, setDeleteConfirm] = useState('');
-  const [deleting, setDeleting] = useState(false);
-  const [deleteMsg, setDeleteMsg] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
 
   useEffect(() => {
     huudis<Account>('/account')
@@ -149,36 +141,6 @@ export default function SettingsPage() {
       setPwMsg({ kind: 'err', text: (err as Error)?.message ?? 'Failed to update password' });
     } finally {
       setSavingPw(false);
-    }
-  }
-
-  async function deleteAccount(e: FormEvent) {
-    e.preventDefault();
-    setDeleteMsg(null);
-    if (
-      !account ||
-      deleteConfirm.trim().toLowerCase() !== account.email.toLowerCase()
-    ) {
-      setDeleteMsg({ kind: 'err', text: 'Type your email address to confirm.' });
-      return;
-    }
-    setDeleting(true);
-    try {
-      await huudis('/account', {
-        method: 'DELETE',
-        body: JSON.stringify({ password: deletePw }),
-      });
-      setDeleteMsg({ kind: 'ok', text: 'Account deleted. Signing you out…' });
-      // Identity is gone — drop the Fulkruma session and return to login.
-      await logout();
-    } catch (err) {
-      const code = (err as HuudisError)?.code;
-      const text =
-        code === 'OWNS_WORKSPACES'
-          ? 'You solely own one or more workspaces. Transfer ownership or delete those workspaces first, then try again.'
-          : (err as Error)?.message ?? 'Failed to delete account';
-      setDeleteMsg({ kind: 'err', text });
-      setDeleting(false);
     }
   }
 
@@ -305,68 +267,28 @@ export default function SettingsPage() {
             </form>
           </section>
 
-          {/* Danger zone */}
+          {/* Delete account — managed centrally in Huudis */}
           <section className="rounded-xl border border-destructive/40 bg-card">
             <div className="flex items-center gap-2 border-b border-destructive/40 px-5 py-4">
               <Shield size={16} className="text-destructive" />
-              <h2 className="text-base font-semibold text-destructive">Danger zone</h2>
+              <h2 className="text-base font-semibold text-destructive">Delete account</h2>
             </div>
-            <form onSubmit={deleteAccount} className="space-y-4 px-5 py-4">
-              <p className="text-sm font-medium">Delete your account</p>
-              <div className="flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/5 p-3">
-                <AlertTriangle size={16} className="mt-0.5 shrink-0 text-destructive" />
-                <p className="text-xs text-destructive">
-                  Deleting your account permanently removes your Forjio identity.
-                  You will lose access to <strong>every Forjio product</strong> you
-                  use it with — Plugipay, Storlaunch, LinkSnap, Fulkruma, Ripllo and
-                  any others — and they will all disappear. This cannot be undone. If
-                  you solely own a workspace, transfer or delete it first.
-                </p>
-              </div>
-              {account.hasPassword && (
-                <Field label="Confirm with your password">
-                  <input
-                    type="password"
-                    required
-                    value={deletePw}
-                    onChange={(e) => setDeletePw(e.target.value)}
-                    className="input"
-                  />
-                </Field>
-              )}
-              <Field label={`Type ${account.email} to confirm`}>
-                <input
-                  type="text"
-                  autoComplete="off"
-                  value={deleteConfirm}
-                  onChange={(e) => setDeleteConfirm(e.target.value)}
-                  className="input"
-                  placeholder={account.email}
-                />
-              </Field>
-              {deleteMsg && (
-                <p
-                  className={cn(
-                    'text-xs',
-                    deleteMsg.kind === 'ok' ? 'text-primary' : 'text-destructive',
-                  )}
-                >
-                  {deleteMsg.text}
-                </p>
-              )}
-              <Button
-                type="submit"
-                variant="destructive"
-                loading={deleting}
-                disabled={
-                  deleting ||
-                  (account.hasPassword && !deletePw) ||
-                  deleteConfirm.trim().toLowerCase() !== account.email.toLowerCase()
-                }
+            <div className="space-y-4 px-5 py-4">
+              <p className="text-sm text-muted-foreground">
+                Your account is your <strong className="text-foreground">Huudis identity</strong> — the
+                single sign-on behind every Forjio product, not just Fulkruma. Account deletion is
+                managed centrally in Huudis: it schedules a 30-day grace period and removes your access
+                across all Forjio products.
+              </p>
+              <a
+                href="https://huudis.com/dashboard/account"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 rounded-md border border-border bg-secondary/50 px-4 py-2 text-sm font-medium transition-colors hover:bg-secondary"
               >
-                Delete account
-              </Button>
-            </form>
+                Manage account in Huudis →
+              </a>
+            </div>
           </section>
         </div>
       )}
