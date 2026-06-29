@@ -105,16 +105,57 @@ jobs:
             frontend/package-lock.json
       - name: Build backend
         run: cd backend && npm ci && npx prisma generate && npm run build
-      - name: Build frontend
+      - name: Install frontend deps
+        run: cd frontend && npm ci
+      # Staging + prod differ ONLY in Turnstile: staging is tailnet-locked
+      # (no public bots) so the captcha widget is pure friction for E2E +
+      # authed screenshots, and NEXT_PUBLIC_* values are inlined at build
+      # time — so we build the frontend twice and upload two artifacts.
+      # Backend dist is env-independent and shared by both deploys.
+      - name: Build frontend (staging)
         env:
           # NEXT_PUBLIC_* vars are inlined by Next.js at build time, so
           # they have to be present in the build runner's environment
           # (not just on the droplet's .env). Source from GH secret.
           NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: ${{ secrets.GOOGLE_MAPS_API_KEY }}
+          # Turnstile is DISABLED on staging — no NEXT_PUBLIC_TURNSTILE_SITE_KEY,
+          # so @forjio/auth-ui hides the widget. Backend enforcement is also
+          # withheld on staging — see the deploy-staging step.
+        run: cd frontend && npm run build
+      - name: Upload frontend build (staging)
+        uses: actions/upload-artifact@v6
+        with:
+          name: frontend-build-staging
+          # include-hidden-files: .next/ is a dot-prefixed dir; v4 excludes
+          # hidden files by default and the artifact would otherwise be
+          # ~17 KB (metadata only) instead of the actual build output.
+          include-hidden-files: true
+          path: |
+            frontend/.next/
+            frontend/public/
+            frontend/package.json
+            frontend/package-lock.json
+            frontend/next.config.*
+      - name: Clean frontend .next for prod rebuild
+        run: rm -rf frontend/.next
+      - name: Build frontend (production)
+        env:
+          NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: ${{ secrets.GOOGLE_MAPS_API_KEY }}
           # Cloudflare Turnstile — inlined at build so @forjio/auth-ui renders
           # the widget on every (auth)/ + (admin)/ form. Empty => widget hidden.
           NEXT_PUBLIC_TURNSTILE_SITE_KEY: ${{ secrets.TURNSTILE_SITE_KEY }}
-        run: cd frontend && npm ci && npm run build
+        run: cd frontend && npm run build
+      - name: Upload frontend build (production)
+        uses: actions/upload-artifact@v6
+        with:
+          name: frontend-build-production
+          include-hidden-files: true
+          path: |
+            frontend/.next/
+            frontend/public/
+            frontend/package.json
+            frontend/package-lock.json
+            frontend/next.config.*
       - name: Upload backend dist
         uses: actions/upload-artifact@v6
         with:
@@ -129,20 +170,6 @@ jobs:
         with:
           name: deploy-configs
           path: deploy/
-      - name: Upload frontend build
-        uses: actions/upload-artifact@v6
-        with:
-          name: frontend-build
-          # include-hidden-files: .next/ is a dot-prefixed dir; v4 excludes
-          # hidden files by default and the artifact would otherwise be
-          # ~17 KB (metadata only) instead of the actual build output.
-          include-hidden-files: true
-          path: |
-            frontend/.next/
-            frontend/public/
-            frontend/package.json
-            frontend/package-lock.json
-            frontend/next.config.*
       # frontend/src/lib/markdown.tsx resolves `process.cwd()/../copy/docs`
       # at request time, so the docs markdown source must be deployed to
       # the same parent dir as frontend/. Without this artifact every
@@ -176,7 +203,7 @@ jobs:
           path: backend/
       - uses: actions/download-artifact@v7
         with:
-          name: frontend-build
+          name: frontend-build-staging
           path: frontend/
       - uses: actions/download-artifact@v7
         with:
@@ -212,9 +239,11 @@ jobs:
           ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=30 root@100.123.65.113 'bash -se' <<'SCRIPT'
           set -e
           cd /opt/fulkruma/backend
-          # Turnstile is enforced on PROD only (see deploy-production). Staging
-          # stays unenforced so the e2e auth flow (which can't solve a captcha)
-          # passes; the widget still renders on staging for visual checks.
+          # Turnstile enforcement is PROD-ONLY — staging is tailnet-locked, so we
+          # deliberately do NOT inject the secret here (verifyTurnstile no-ops
+          # without it). Strip any stale value so staging stays captcha-free,
+          # and the staging frontend build omits the site key so no widget renders.
+          sed -i '/^TURNSTILE_SECRET_KEY=/d; /^TURNSTILE_ALLOWED_HOSTNAMES=/d' .env 2>/dev/null || true
           # --omit=dev — runtime deps only. dist/ + prisma client are
           # already in the artifact from the Build job, so we just need
           # the production node_modules tree here.
@@ -393,16 +422,16 @@ jobs:
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
     steps:
-      # Reuses the artifact from the Build job — no re-checkout, no rebuild.
-      # The staging artifact IS the production artifact since all NEXT_PUBLIC_*
-      # values are identical across envs.
+      # Reuses artifacts from the Build job — no re-checkout, no rebuild.
+      # Backend dist is identical to staging; frontend uses the prod artifact
+      # (Turnstile site key baked in — staging's build omits it).
       - uses: actions/download-artifact@v7
         with:
           name: backend-dist
           path: backend/
       - uses: actions/download-artifact@v7
         with:
-          name: frontend-build
+          name: frontend-build-production
           path: frontend/
       - uses: actions/download-artifact@v7
         with:
