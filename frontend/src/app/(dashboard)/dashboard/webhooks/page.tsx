@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Check, Copy, Loader2, Plus, Power, PowerOff, Trash2, Webhook } from 'lucide-react';
+import { Check, Copy, Download, Loader2, Plus, Power, PowerOff, Trash2, Webhook } from 'lucide-react';
 import { api, type WebhookEndpoint, type WebhookEventRow } from '@/lib/api';
 import { Modal, Field, ErrorBox, Button, StatusPill } from '@/components/dashboard/ui';
 import { DataTable, type Column, type FilterDef } from '@/components/data-table';
@@ -319,6 +319,17 @@ function CreatedSecret({ data, onClose }: { data: { endpoint: WebhookEndpoint; s
           <code className="flex-1 font-mono text-xs break-all">{data.secret}</code>
           <button onClick={() => { navigator.clipboard.writeText(data.secret); setCopied(true); setTimeout(() => setCopied(false), 1500); }} className="inline-flex items-center gap-1 rounded-md border border-border bg-card px-2 py-1 text-xs hover:bg-secondary">
             {copied ? <><Check size={12} /> Copied</> : <><Copy size={12} /> Copy</>}
+          </button>
+          <button onClick={() => {
+            const blob = new Blob(['WEBHOOK_SIGNING_SECRET=' + data.secret + '\n'], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'webhook-signing-secret.env';
+            a.click();
+            URL.revokeObjectURL(url);
+          }} className="inline-flex items-center gap-1 rounded-md border border-border bg-card px-2 py-1 text-xs hover:bg-secondary">
+            <Download size={12} /> Download
           </button>
         </div>
         <div className="flex justify-end pt-2">
