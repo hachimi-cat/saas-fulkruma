@@ -5,6 +5,7 @@ import { Settings as SettingsIcon, Shield, Save, AlertTriangle } from 'lucide-re
 import { PageHeader } from '@/components/dashboard/page-header';
 import { Field, ErrorBox, Loading, Button } from '@/components/dashboard/ui';
 import { useAuth } from '@/lib/auth';
+import { APP_VERSION, BUILD_SHA, BUILD_DATE } from '@/lib/version';
 
 // ───────────────────────────────────────────────────────────────────
 // Types
@@ -369,6 +370,28 @@ export default function SettingsPage() {
           </section>
         </div>
       )}
+
+      {/* Portal — build-time version (Forjio family mechanism) */}
+      <section className="mt-6 rounded-xl border border-border bg-card">
+        <div className="border-b border-border px-5 py-4">
+          <h2 className="text-base font-semibold">Portal</h2>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            The build of the fulkruma portal you&rsquo;re currently running.
+          </p>
+        </div>
+        <dl className="divide-y divide-border">
+          <div className="flex items-center justify-between px-5 py-3">
+            <dt className="text-sm text-muted-foreground">Version</dt>
+            <dd className="font-mono text-sm">{APP_VERSION}</dd>
+          </div>
+          <div className="flex items-center justify-between px-5 py-3">
+            <dt className="text-sm text-muted-foreground">Build</dt>
+            <dd className="font-mono text-sm">
+              {BUILD_SHA} · {BUILD_DATE.slice(0, 10)}
+            </dd>
+          </div>
+        </dl>
+      </section>
     </div>
   );
 }
