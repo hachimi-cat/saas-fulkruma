@@ -40,7 +40,7 @@ function git(args) {
 
 // version: prefer `git describe` (tag-aware, marks dirty trees), fall back to
 // short SHA, then env, then 'dev'.
-const describe = git('describe --tags --always --dirty');
+const describe = git('describe --tags --match 'v[0-9]*' --always --dirty');
 const shortSha = git('rev-parse --short HEAD');
 const version =
   describe || shortSha || process.env.NEXT_PUBLIC_APP_VERSION || 'dev';
