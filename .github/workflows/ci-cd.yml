@@ -189,7 +189,7 @@ jobs:
     steps:
       # Staging lives on the SHARED box reached only over the tailnet
       # (taila71a7b.ts.net). Join as an ephemeral CI node so rsync/SSH below
-      # can reach 100.123.65.113. Ephemeral key → the node auto-removes when
+      # can reach 100.66.19.22. Ephemeral key → the node auto-removes when
       # the job ends.
       - name: Connect to tailnet (ephemeral CI node)
         uses: tailscale/github-action@v2
@@ -220,7 +220,7 @@ jobs:
           chmod 600 ~/.ssh/deploy_key
       # De-containerized rsync/ssh. The burnett01/appleboy actions run inside
       # Docker WITHOUT the runner host's tailnet route, so they time out
-      # reaching 100.123.65.113 (the box's tailnet IP — private, only routable
+      # reaching 100.66.19.22 (the box's tailnet IP — private, only routable
       # over the tailnet joined above). Plain rsync/ssh run on the host, so
       # they route over tailscale0. node_modules/.next/cache excluded — the
       # box installs runtime deps via `npm ci --omit=dev` per the script below.
@@ -230,13 +230,13 @@ jobs:
           rsync -avz --delete \
             --exclude node_modules --exclude .git --exclude .env --exclude .env.production.local --exclude .npmrc --exclude frontend/.next/cache \
             -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=30" \
-            ./ root@100.123.65.113:/opt/fulkruma/
+            ./ root@100.66.19.22:/opt/fulkruma/
       # bash -se: -e aborts (and fails the job, blocking prod) if
       # `prisma migrate deploy` fails — replacing appleboy's silent
       # script-continue. -s reads the script from the heredoc on stdin.
       - name: Restart services (over tailnet)
         run: |
-          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=30 root@100.123.65.113 'bash -se' <<'SCRIPT'
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=30 root@100.66.19.22 'bash -se' <<'SCRIPT'
           set -e
           cd /opt/fulkruma/backend
           # Turnstile enforcement is PROD-ONLY — staging is tailnet-locked, so we
@@ -287,8 +287,8 @@ jobs:
           hostname: fulkruma-e2e-ci
       - name: Route staging host over the tailnet
         run: |
-          echo "100.123.65.113 ${{ secrets.STAGING_HOST }}" | sudo tee -a /etc/hosts
-          echo "100.123.65.113 staging-fulkruma.forjio.com" | sudo tee -a /etc/hosts
+          echo "100.66.19.22 ${{ secrets.STAGING_HOST }}" | sudo tee -a /etc/hosts
+          echo "100.66.19.22 staging-fulkruma.forjio.com" | sudo tee -a /etc/hosts
       - name: Smoke-check staging health (backend)
         run: |
           for i in 1 2 3 4 5 6; do
@@ -361,8 +361,8 @@ jobs:
           hostname: fulkruma-visual-ci
       - name: Route staging host over the tailnet
         run: |
-          echo "100.123.65.113 ${{ secrets.STAGING_HOST }}" | sudo tee -a /etc/hosts
-          echo "100.123.65.113 staging-fulkruma.forjio.com" | sudo tee -a /etc/hosts
+          echo "100.66.19.22 ${{ secrets.STAGING_HOST }}" | sudo tee -a /etc/hosts
+          echo "100.66.19.22 staging-fulkruma.forjio.com" | sudo tee -a /etc/hosts
       - uses: actions/checkout@v5
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
