@@ -322,7 +322,11 @@ jobs:
           FRONTEND_URL=https://staging-fulkruma.forjio.com \
           BACKEND_URL=https://staging-fulkruma.forjio.com/api/v1 \
           E2E_BYPASS_SECRET=${{ secrets.E2E_BYPASS_SECRET }} \
-            npx playwright test auth.spec.ts --reporter=list
+            # dashboard.spec.ts is the AUTHENTICATED GATE: it drives the real
+            # logged-in dashboard and asserts on data the backend had to
+            # genuinely produce. auth.spec.ts alone only asserts the URL is
+            # /dashboard -- which a completely broken dashboard also satisfies.
+            npx playwright test auth.spec.ts dashboard.spec.ts --reporter=list
       - name: Upload E2E artifacts on failure
         if: failure()
         uses: actions/upload-artifact@v6
