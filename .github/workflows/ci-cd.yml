@@ -319,13 +319,19 @@ jobs:
         # auth singleton would bounce to /login). Hits public staging.
         run: |
           cd e2e
+          # dashboard.spec.ts is the AUTHENTICATED GATE: it drives the real
+          # logged-in dashboard and asserts on data the backend had to genuinely
+          # produce. auth.spec.ts alone only asserts the URL is /dashboard --
+          # which a completely broken dashboard also satisfies.
+          #
+          # KEEP THESE COMMENTS ABOVE THE ENV BLOCK. A comment placed between a
+          # backslash-continued env assignment and the command it prefixes ENDS
+          # the assignment: npx then runs as its own command with no env, falls
+          # back to baseURL http://localhost:3000, and every test dies with
+          # ERR_CONNECTION_REFUSED. That is exactly what happened here.
           FRONTEND_URL=https://staging-fulkruma.forjio.com \
           BACKEND_URL=https://staging-fulkruma.forjio.com/api/v1 \
           E2E_BYPASS_SECRET=${{ secrets.E2E_BYPASS_SECRET }} \
-            # dashboard.spec.ts is the AUTHENTICATED GATE: it drives the real
-            # logged-in dashboard and asserts on data the backend had to
-            # genuinely produce. auth.spec.ts alone only asserts the URL is
-            # /dashboard -- which a completely broken dashboard also satisfies.
             npx playwright test auth.spec.ts dashboard.spec.ts --reporter=list
       - name: Upload E2E artifacts on failure
         if: failure()
