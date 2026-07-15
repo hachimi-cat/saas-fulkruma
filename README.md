@@ -1,5 +1,7 @@
 # Fulkruma
 
+[![pipeline status](https://depllo.forjio.com/api/v1/public/badges/54a1512e236058de16b497a286e76299/pipeline.svg)](https://depllo.forjio.com/dashboard/projects/proj_01kxjh5zm6rm8sr3r0hyywrfev)
+
 Stock + warehouses + shipping for the Forjio commerce family.
 M5 in the [Forjio micro-SaaS roadmap](https://github.com/hachimi-cat/forjio-architecture/blob/master/ROADMAP.md).
 
