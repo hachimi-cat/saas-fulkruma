@@ -8,7 +8,7 @@ log, billing, integrations status, stats, webhooks. Mirrors the Node
 ## Install
 
 ```bash
-go get github.com/hachimi-cat/saas-fulkruma/sdk/go
+go get github.com/hachimi-cat/fulkruma-go
 ```
 
 Requires Go 1.22+. No third-party dependencies — pure stdlib.
@@ -33,7 +33,7 @@ import (
     "context"
     "fmt"
 
-    fulkruma "github.com/hachimi-cat/saas-fulkruma/sdk/go"
+    fulkruma "github.com/hachimi-cat/fulkruma-go"
 )
 
 func main() {
@@ -124,7 +124,7 @@ Node SDK's `JSON.stringify` and the Python SDK's
 ## Docs
 
 - Full docs: <https://fulkruma.com/docs>
-- Source: <https://github.com/hachimi-cat/saas-fulkruma/tree/master/sdk/go>
+- Source: <https://github.com/hachimi-cat/fulkruma-go>
 
 ## License
 

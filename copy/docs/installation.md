@@ -103,13 +103,13 @@ print(warehouses)
 The Go SDK lives in the same repo as Fulkruma itself:
 
 ```bash
-go get github.com/hachimi-cat/saas-fulkruma/sdk/go
+go get github.com/hachimi-cat/fulkruma-go
 ```
 
 Import it as `fulkruma`:
 
 ```go
-import fulkruma "github.com/hachimi-cat/saas-fulkruma/sdk/go"
+import fulkruma "github.com/hachimi-cat/fulkruma-go"
 ```
 
 It uses only the Go standard library &mdash; no external dependencies. Requires Go 1.22+.
@@ -124,7 +124,7 @@ import (
     "fmt"
     "os"
 
-    fulkruma "github.com/hachimi-cat/saas-fulkruma/sdk/go"
+    fulkruma "github.com/hachimi-cat/fulkruma-go"
 )
 
 func main() {

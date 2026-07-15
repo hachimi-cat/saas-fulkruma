@@ -31,8 +31,8 @@ dev = [
 
 [project.urls]
 Homepage = "https://fulkruma.com"
-Source = "https://github.com/hachimi-cat/saas-fulkruma/tree/master/sdk/python"
-Issues = "https://github.com/hachimi-cat/saas-fulkruma/issues"
+Source = "https://github.com/hachimi-cat/fulkruma-python"
+Issues = "https://github.com/hachimi-cat/fulkruma-python/issues"
 
 [tool.hatch.build.targets.wheel]
 packages = ["fulkruma"]

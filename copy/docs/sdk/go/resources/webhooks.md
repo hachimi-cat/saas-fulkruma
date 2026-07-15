@@ -183,7 +183,7 @@ import (
     "os"
     "io"
 
-    "github.com/hachimi-cat/saas-fulkruma/sdk/go"
+    "github.com/hachimi-cat/fulkruma-go"
 )
 
 func handleWebhook(w http.ResponseWriter, r *http.Request) {

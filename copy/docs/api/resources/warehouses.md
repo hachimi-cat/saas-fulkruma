@@ -77,7 +77,7 @@ warehouses = fk.warehouses.list()['warehouses']
 
 ```go
 // Go
-import fulkruma "github.com/hachimi-cat/saas-fulkruma/sdk/go"
+import fulkruma "github.com/hachimi-cat/fulkruma-go"
 client := fulkruma.New(os.Getenv("FULKRUMA_KEY_ID"), os.Getenv("FULKRUMA_KEY_SECRET"))
 res, err := client.Warehouses.List(ctx)
 ```

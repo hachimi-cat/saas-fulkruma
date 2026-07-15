@@ -153,7 +153,7 @@ print("Shipment:", shipment["id"])
 **Go:**
 
 ```go
-import fulkruma "github.com/hachimi-cat/saas-fulkruma/sdk/go"
+import fulkruma "github.com/hachimi-cat/fulkruma-go"
 
 client, _ := fulkruma.NewClient(fulkruma.ClientOptions{
     KeyID:  os.Getenv("FULKRUMA_KEY_ID"),

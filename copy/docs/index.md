@@ -23,7 +23,7 @@ The docs are organized by how you'll use the product over time:
 - **Authentication** &mdash; how sign-in and password resets work. We use Huudis as the identity provider so the flow is shared with every other Forjio product.
 - **Portal** &mdash; per-feature tours of what you can do in the dashboard at fulkruma.com.
 - **API reference** &mdash; the public REST API with HMAC signing.
-- **SDKs** &mdash; per-language guides for `@forjio/fulkruma-node`, `fulkruma` on PyPI, and `github.com/hachimi-cat/saas-fulkruma/sdk/go`.
+- **SDKs** &mdash; per-language guides for `@forjio/fulkruma-node`, `fulkruma` on PyPI, and `github.com/hachimi-cat/fulkruma-go`.
 
 ## Two ways to use Fulkruma
 
@@ -42,7 +42,7 @@ Each product owns its own bounded context. Fulkruma owns warehouses, stock, ship
 
 ## Reach us
 
-- **GitHub issues**: [hachimi-cat/saas-fulkruma](https://github.com/hachimi-cat/saas-fulkruma)
+- **GitHub issues**: [hachimi-cat/fulkruma-node](https://github.com/hachimi-cat/fulkruma-node/issues)
 - **Status page**: [status.fulkruma.com](https://status.fulkruma.com)
 - **Email**: hello@fulkruma.com
 

@@ -1,3 +1,3 @@
-module github.com/hachimi-cat/saas-fulkruma/sdk/go
+module github.com/hachimi-cat/fulkruma-go
 
 go 1.22

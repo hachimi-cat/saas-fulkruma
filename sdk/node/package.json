@@ -1,7 +1,7 @@
 {
   "name": "@forjio/fulkruma-node",
-  "version": "0.4.0",
-  "description": "Official Node.js SDK for Fulkruma — stock, warehouses, shipping (Biteship), licenses, deliveries, API keys, audit log, billing, integrations status, stats, webhooks. Platform-partner mode for Storlaunch.",
+  "version": "0.4.1",
+  "description": "Official Node.js SDK for Fulkruma \u2014 stock, warehouses, shipping (Biteship), licenses, deliveries, API keys, audit log, billing, integrations status, stats, webhooks. Platform-partner mode for Storlaunch.",
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
@@ -40,5 +40,13 @@
     "forjio",
     "indonesia"
   ],
-  "license": "MIT"
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hachimi-cat/fulkruma-node.git"
+  },
+  "bugs": {
+    "url": "https://github.com/hachimi-cat/fulkruma-node/issues"
+  },
+  "homepage": "https://github.com/hachimi-cat/fulkruma-node#readme"
 }

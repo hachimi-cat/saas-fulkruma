@@ -10,7 +10,7 @@ Fulkruma ships SDKs in three languages, with feature parity across all three. Pi
 |---|---|---|
 | Node.js | `@forjio/fulkruma-node` | `npm install @forjio/fulkruma-node` |
 | Python | `fulkruma` | `pip install fulkruma` |
-| Go | `github.com/hachimi-cat/saas-fulkruma/sdk/go` | `go get github.com/hachimi-cat/saas-fulkruma/sdk/go` |
+| Go | `github.com/hachimi-cat/fulkruma-go` | `go get github.com/hachimi-cat/fulkruma-go` |
 
 All three:
 
@@ -19,7 +19,7 @@ All three:
 - Provide a `verifyWebhook` helper for inbound events.
 - Support **Pattern 2 partner billing** &mdash; pass `onBehalfOf` to scope a platform-admin key to a merchant workspace.
 - Use only minimal dependencies (Node: stdlib + native fetch; Python: `httpx`; Go: stdlib).
-- Are open source: code is in the [saas-fulkruma](https://github.com/hachimi-cat/saas-fulkruma) repo under `sdk/<lang>/`.
+- Are open source: code is in the [fulkruma-node](https://github.com/hachimi-cat/fulkruma-node) repo under `sdk/<lang>/`.
 
 ## When to use which
 
@@ -69,7 +69,7 @@ warehouse = fulkruma.warehouses.create(
 **Go:**
 
 ```go
-import fulkruma "github.com/hachimi-cat/saas-fulkruma/sdk/go"
+import fulkruma "github.com/hachimi-cat/fulkruma-go"
 
 client, _ := fulkruma.NewClient(fulkruma.ClientOptions{
     KeyID:  os.Getenv("FULKRUMA_KEY_ID"),
@@ -148,11 +148,11 @@ Pre-1.0 means we may still make small breaking changes between minor versions. W
 
 The SDKs live in the same repo as Fulkruma itself:
 
-- Node: [saas-fulkruma/sdk/node](https://github.com/hachimi-cat/saas-fulkruma/tree/master/sdk/node)
-- Python: [saas-fulkruma/sdk/python](https://github.com/hachimi-cat/saas-fulkruma/tree/master/sdk/python)
-- Go: [saas-fulkruma/sdk/go](https://github.com/hachimi-cat/saas-fulkruma/tree/master/sdk/go)
+- Node: [fulkruma-node](https://github.com/hachimi-cat/fulkruma-node)
+- Python: [fulkruma-python](https://github.com/hachimi-cat/fulkruma-python)
+- Go: [fulkruma-go](https://github.com/hachimi-cat/fulkruma-go)
 
-Issues at [github.com/hachimi-cat/saas-fulkruma/issues](https://github.com/hachimi-cat/saas-fulkruma/issues).
+Issues at [github.com/hachimi-cat/fulkruma-node/issues](https://github.com/hachimi-cat/fulkruma-node/issues).
 
 ## Next
 
