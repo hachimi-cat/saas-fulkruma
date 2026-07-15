@@ -29,16 +29,19 @@ remote_url() {
 sdk_version() {
   local lang=$1 dir=$2
   case "$lang" in
-    node|js) node -p "require('$dir/package.json').version" ;;
-    python)  sed -n 's/^version *= *"\(.*\)"/\1/p' "$dir/pyproject.toml" | head -1 ;;
-    go)      cat "$dir/VERSION" ;;
+    node|js|cli) node -p "require('$dir/package.json').version" ;;
+    python)      sed -n 's/^version *= *"\(.*\)"/\1/p' "$dir/pyproject.toml" | head -1 ;;
+    go)          cat "$dir/VERSION" ;;
   esac
 }
 
 for lang in $LANGS; do
   mirror="${PRODUCT}-${lang}"
-  src="$REPO_ROOT/sdk/$lang"
-  [ -d "$src" ] || { echo "skip $lang: no sdk dir"; continue; }
+  case "$lang" in
+    cli) src="$REPO_ROOT/cli" ;;
+    *)   src="$REPO_ROOT/sdk/$lang" ;;
+  esac
+  [ -d "$src" ] || { echo "skip $lang: no source dir"; continue; }
 
   version=$(sdk_version "$lang" "$src")
   [ -n "$version" ] || { echo "FATAL: no version for $lang"; exit 1; }
