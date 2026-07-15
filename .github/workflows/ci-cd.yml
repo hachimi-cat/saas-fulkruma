@@ -7,11 +7,9 @@ name: CI/CD
 # CI never overwrites it (rsync excludes .env). New env vars: add to
 # the box manually first, then deploy.
 
+# CI/CD moved to Depllo (.depllo-ci.yml) 2026-07-15 — push/PR triggers
+# disabled; manual-dispatch fallback only.
 on:
-  push:
-    branches: [main, master]
-  pull_request:
-    branches: [main, master]
   workflow_dispatch:
     inputs:
       update_baselines:

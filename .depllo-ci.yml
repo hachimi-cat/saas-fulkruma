@@ -1,0 +1,220 @@
+# Depllo CI/CD for saas-fulkruma — full cutover (CI + staging/prod deploys
+# on Depllo; GHA ci-cd.yml + ci.yml are manual-dispatch fallbacks). Same
+# shape as the prior fleet cutovers: /opt/fulkruma paths, whole-checkout
+# rsync, e2e via public HTTPS with the bypass secret. Quirks: backend is
+# pm2 delete + start --node-args="--env-file=.env" (env changes must take
+# effect), staging strips Turnstile, Google Maps key inlined in both builds.
+stages:
+  - test
+  - build
+  - deploy
+workflow:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "push" && ($CI_COMMIT_BRANCH == "main" ||
+        $CI_COMMIT_BRANCH == "master")
+    - if: $CI_PIPELINE_SOURCE == "pull_request"
+    - if: $CI_PIPELINE_SOURCE == "manual"
+lint:
+  stage: test
+  image: node:22-bookworm
+  script:
+    - "# -- Workflow shell sanity"
+    - (
+    - "  python3 scripts/check-workflow-continuations.py"
+    - )
+    - "# -- Backend lint"
+    - (
+    - "  cd backend && npm ci && npm run lint"
+    - )
+    - "# -- Frontend lint"
+    - (
+    - "  cd frontend && npm ci && npm run lint"
+    - )
+test:
+  stage: test
+  image: node:22-bookworm
+  services:
+    - name: postgres:16
+      alias: postgres
+      variables:
+        POSTGRES_PASSWORD: test
+        POSTGRES_USER: postgres
+        POSTGRES_DB: fulkruma_test
+  script:
+    - "# wait for the postgres service to accept connections"
+    - for i in $(seq 1 30); do (echo > /dev/tcp/postgres/5432) >/dev/null 2>&1
+      && break; sleep 1; done
+    - "# -- Backend install + migrate + test"
+    - (
+    - "  cd backend && npm ci && npx prisma generate"
+    - )
+    - |-
+      cd backend
+      export DATABASE_URL=postgresql://postgres:test@postgres:5432/fulkruma_test
+      export FORJIO_SERVICE=fulkruma
+      export HUUDIS_ISSUER=http://localhost:4000
+      export HUUDIS_AUDIENCE=fulkruma
+      export NODE_ENV=test
+      export FULKRUMA_INTERNAL_API_SECRET=0000000000000000000000000000000000000000000000000000000000000000
+      npx prisma migrate deploy
+      npm test
+build-staging:
+  stage: build
+  image: node:22-bookworm
+  needs:
+    - lint
+    - test
+  timeout: 30m
+  artifacts:
+    paths:
+      - backend/dist/
+      - backend/package.json
+      - backend/package-lock.json
+      - backend/prisma/
+      - frontend/.next/
+      - frontend/public/
+      - frontend/package.json
+      - frontend/package-lock.json
+      - frontend/next.config.*
+  script:
+    - "# -- Build backend"
+    - (
+    - "  cd backend && npm ci && npx prisma generate && npm run build"
+    - )
+    - "# -- Build frontend (staging)"
+    - export NEXT_PUBLIC_GOOGLE_MAPS_API_KEY="$GOOGLE_MAPS_API_KEY"
+    - (
+    - "  cd frontend && npm ci && npm run build"
+    - )
+build-production:
+  stage: build
+  image: node:22-bookworm
+  needs:
+    - lint
+    - test
+  timeout: 30m
+  artifacts:
+    paths:
+      - backend/dist/
+      - backend/package.json
+      - backend/package-lock.json
+      - backend/prisma/
+      - frontend/.next/
+      - frontend/public/
+      - frontend/package.json
+      - frontend/package-lock.json
+      - frontend/next.config.*
+  script:
+    - "# -- Build backend"
+    - (
+    - "  cd backend && npm ci && npx prisma generate && npm run build"
+    - )
+    - "# -- Build frontend (production — Turnstile site key inlined)"
+    - export NEXT_PUBLIC_GOOGLE_MAPS_API_KEY="$GOOGLE_MAPS_API_KEY"
+    - export NEXT_PUBLIC_TURNSTILE_SITE_KEY="$TURNSTILE_SITE_KEY"
+    - (
+    - "  cd frontend && npm ci && npm run build"
+    - )
+deploy-staging:
+  stage: deploy
+  image: node:22-bookworm
+  needs:
+    - build-staging
+  dependencies:
+    - build-staging
+  timeout: 30m
+  rules:
+    - if: $CI_COMMIT_BRANCH == "master" && $CI_PIPELINE_SOURCE != "pull_request"
+  script:
+    - apt-get update -qq && apt-get install -y -qq --no-install-recommends
+      rsync openssh-client >/dev/null
+    - |-
+      # fulkruma ships the WHOLE checkout (deploy/ + copy/ ride from the clone,
+      # build artifacts overlaid) — parity with GHA's checkout + rsync ./.
+      rsync -az --delete \
+        --exclude node_modules --exclude .git --exclude .env --exclude .env.production.local --exclude .npmrc --exclude frontend/.next/cache \
+        -e "ssh -i $SSH_PRIVATE_KEY -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=30" \
+        ./ root@$STAGING_HOST:/opt/fulkruma/
+    - |-
+      ssh -i "$SSH_PRIVATE_KEY" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=30 root@$STAGING_HOST 'bash -se' <<'SCRIPT'
+      cd /opt/fulkruma/backend
+      sed -i '/^TURNSTILE_SECRET_KEY=/d; /^TURNSTILE_ALLOWED_HOSTNAMES=/d' .env 2>/dev/null || true
+      npm ci --omit=dev
+      npx prisma migrate deploy
+      pm2 delete fulkruma-backend 2>/dev/null || true
+      pm2 start dist/index.js --name fulkruma-backend --node-args="--env-file=.env"
+      cd /opt/fulkruma/frontend
+      npm ci --omit=dev
+      pm2 restart fulkruma-frontend || pm2 start npm --name fulkruma-frontend -- start
+      pm2 save
+      ln -sf /opt/fulkruma/deploy/nginx/staging-fulkruma.forjio.com.conf /etc/nginx/sites-enabled/staging-fulkruma.forjio.com 2>/dev/null || true
+      rm -f /etc/nginx/sites-enabled/default
+      nginx -t && systemctl reload nginx
+      SCRIPT
+e2e-staging:
+  stage: deploy
+  image: node:22-bookworm
+  needs:
+    - deploy-staging
+  dependencies: []
+  timeout: 45m
+  rules:
+    - if: $CI_COMMIT_BRANCH == "master" && $CI_PIPELINE_SOURCE != "pull_request"
+  script:
+    - |-
+      echo "Waiting for staging backend..."
+      ok=0
+      for i in $(seq 1 20); do
+        curl -sf "https://staging-fulkruma.forjio.com/api/v1/health" >/dev/null 2>&1 && { echo "backend healthy"; ok=1; break; }
+        sleep 6
+      done
+      [ "$ok" = "1" ] || { echo "Staging backend health check failed after retries"; exit 1; }
+      for i in 1 2 3 4 5; do
+        STATUS=$(curl -so /dev/null -w '%{http_code}' https://staging-fulkruma.forjio.com/ 2>/dev/null || echo 000)
+        { [ "$STATUS" = "200" ] || [ "$STATUS" = "307" ]; } && { echo "frontend serving ($STATUS)"; break; }
+        sleep 6
+      done
+    - (
+    - "  cd e2e && npm ci && npx playwright install chromium --with-deps"
+    - )
+    - |-
+      cd e2e
+      FRONTEND_URL=https://staging-fulkruma.forjio.com \
+      BACKEND_URL=https://staging-fulkruma.forjio.com/api/v1 \
+      E2E_BYPASS_SECRET="$E2E_BYPASS_SECRET" \
+      npx playwright test auth.spec.ts dashboard.spec.ts --reporter=list
+deploy-production:
+  stage: deploy
+  image: node:22-bookworm
+  needs:
+    - e2e-staging
+    - build-production
+  dependencies:
+    - build-production
+  timeout: 30m
+  rules:
+    - if: $CI_COMMIT_BRANCH == "master" && $CI_PIPELINE_SOURCE != "pull_request"
+  script:
+    - apt-get update -qq && apt-get install -y -qq --no-install-recommends
+      rsync openssh-client >/dev/null
+    - |-
+      rsync -az --delete \
+        --exclude node_modules --exclude .git --exclude .env --exclude .env.production.local --exclude .npmrc --exclude frontend/.next/cache \
+        -e "ssh -i $SSH_PRIVATE_KEY -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=30" \
+        ./ root@$PRODUCTION_HOST:/opt/fulkruma/
+    - |-
+      ssh -i "$SSH_PRIVATE_KEY" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=30 root@$PRODUCTION_HOST 'bash -se' <<SCRIPT
+      cd /opt/fulkruma/backend
+      sed -i '/^TURNSTILE_SECRET_KEY=/d' .env 2>/dev/null || true
+      echo 'TURNSTILE_SECRET_KEY=$TURNSTILE_SECRET_KEY' >> .env
+      sed -i '/^TURNSTILE_ALLOWED_HOSTNAMES=/d' .env 2>/dev/null || true
+      echo 'TURNSTILE_ALLOWED_HOSTNAMES=$TURNSTILE_ALLOWED_HOSTNAMES' >> .env
+      npm ci --omit=dev
+      npx prisma migrate deploy
+      pm2 delete fulkruma-backend 2>/dev/null || true
+      pm2 start dist/index.js --name fulkruma-backend --node-args="--env-file=.env"
+      cd /opt/fulkruma/frontend
+      npm ci --omit=dev
+      pm2 restart fulkruma-frontend || pm2 start npm --name fulkruma-frontend -- start
+      pm2 save
+      SCRIPT
