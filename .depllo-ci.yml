@@ -116,6 +116,7 @@ build-production:
     - "  cd frontend && npm ci && npm run build"
     - )
 deploy-staging:
+  resource_group: staging
   stage: deploy
   image: node:22-bookworm
   needs:
@@ -152,6 +153,7 @@ deploy-staging:
       nginx -t && systemctl reload nginx
       SCRIPT
 e2e-staging:
+  resource_group: staging
   stage: deploy
   image: node:22-bookworm
   needs:
@@ -184,6 +186,7 @@ e2e-staging:
       E2E_BYPASS_SECRET="$E2E_BYPASS_SECRET" \
       npx playwright test auth.spec.ts dashboard.spec.ts --reporter=list
 deploy-production:
+  resource_group: production
   stage: deploy
   image: node:22-bookworm
   needs:
