@@ -1,3 +1,4 @@
+import { registerFeatureFlags } from '../lib/feature-flag-registry.js';
 import { Router } from 'express';
 import { ok, err } from '@forjio/sdk/http';
 import {
@@ -25,6 +26,11 @@ const rid = (req: { requestId?: string }) => req.requestId ?? 'req_unknown';
 
 router.get('/', async (req, res) => {
   try {
+    // Registration is idempotent and lives here rather than at boot: the
+    // products' index.ts files differ too much to patch one hook into
+    // reliably, and the only path that needs the rows to exist is the one
+    // asking for them.
+    await registerFeatureFlags();
     return res.json(ok(await listFeatureFlags(), rid(req)));
   } catch (e) {
     return res
@@ -54,6 +60,24 @@ router.patch('/:key', async (req, res) => {
         .json(err('INVALID_ROLLOUT', '`rollout` must be null or an integer 0-100.', rid(req)));
     }
     patch.rollout = r as number | null;
+  }
+  if ('allowlist' in body) {
+    const a = body.allowlist;
+    if (!Array.isArray(a) || a.some((v) => typeof v !== 'string' || !v.trim())) {
+      return res.status(400).json(err('INVALID_LABEL', '`allowlist` must be an array of non-empty strings.', rid(req)));
+    }
+    // Trim and de-duplicate case-insensitively here rather than trusting
+    // the client: two entries differing only in case would both evaluate
+    // true and read as a duplicate the operator cannot remove.
+    const seen = new Set<string>();
+    patch.allowlist = (a as string[])
+      .map((v) => v.trim())
+      .filter((v) => {
+        const k = v.toLowerCase();
+        if (seen.has(k)) return false;
+        seen.add(k);
+        return true;
+      });
   }
   if ('label' in body) {
     if (typeof body.label !== 'string' || !body.label.trim()) {
