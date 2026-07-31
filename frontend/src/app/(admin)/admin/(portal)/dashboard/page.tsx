@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { Building2, ArrowRight } from 'lucide-react';
+import { AdminOverviewPanel } from '@forjio/admin-ui';
 
 // Admin dashboard — entry point to the Fulkruma staff console. The
 // only admin-data surface today is Pattern-2 partner billing
@@ -20,8 +21,28 @@ const KNOWN_PARTNERS = [
 export default function AdminDashboardHome() {
   return (
     <div>
-      <h1 className="text-2xl font-bold tracking-tight">Admin console</h1>
-      <p className="mt-1 text-sm text-muted-foreground">
+      {/* The MANDATORY standard first — business metrics, system health and
+          feature flags from the three shared contracts. Fulkruma's own
+          partner-usage view follows BELOW: on top of the standard, never
+          instead of it. */}
+      <AdminOverviewPanel
+        brand="Fulkruma"
+        quickLinks={[
+          {
+            href: '/admin/partners',
+            label: 'Partners',
+            description: 'Pattern-2 partner-billing usage per consuming product.',
+          },
+          {
+            href: '/admin/customers',
+            label: 'Customers',
+            description: 'Everyone signed into this product via Huudis SSO.',
+          },
+        ]}
+      />
+
+      <h2 className="mt-10 text-sm font-semibold tracking-tight">Fulkruma activity</h2>
+      <p className="text-xs text-muted-foreground">
         Review Pattern-2 partner-billing usage for the products that consume Fulkruma as a
         module.
       </p>

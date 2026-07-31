@@ -12,6 +12,9 @@ const config: Config = {
     // Sidebar / auth-ui Tailwind classes get extracted into our CSS bundle.
     './node_modules/@forjio/portal-ui/dist/**/*.{js,cjs}',
     './node_modules/@forjio/auth-ui/dist/**/*.{js,cjs}',
+    // admin-ui ships the four mandatory admin-portal pages. Without this
+    // glob their cards, health rows and flag table render unstyled.
+    './node_modules/@forjio/admin-ui/dist/**/*.{js,cjs}',
   ],
   theme: {
     extend: {

@@ -16,6 +16,9 @@ import stats from './stats.js';
 import admin from './admin.js';
 import adminCrm from './admin-crm.js';
 import adminCustomersRouter from './admin-customers.js';
+import adminMetricsRouter from './admin-metrics.js';
+import adminSystemHealthRouter from './admin-system-health.js';
+import adminFeatureFlagsRouter from './admin-feature-flags.js';
 import { adminGuard } from '../middleware/admin-guard.js';
 import integrations from './integrations.js';
 import billing from './billing.js';
@@ -60,6 +63,13 @@ router.use('/stats', stats);
 router.use('/admin/crm', adminGuard, adminCrm);
 router.use('/admin', admin);
 router.use('/admin/customers', adminGuard, adminCustomersRouter);
+
+// The three endpoints behind the MANDATORY admin-portal standard. Every
+// Forjio product serves these — see
+// forjio/documentation/2. Technical/13-Admin-Portal-Standard.md.
+router.use('/admin/metrics', adminGuard, adminMetricsRouter);
+router.use('/admin/system-health', adminGuard, adminSystemHealthRouter);
+router.use('/admin/feature-flags', adminGuard, adminFeatureFlagsRouter);
 router.use('/integrations', integrations);
 router.use('/billing', billing);
 router.use('/webhooks/plugipay', plugipayWebhooks);

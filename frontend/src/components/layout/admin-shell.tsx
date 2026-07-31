@@ -1,7 +1,11 @@
 'use client';
 
 import { useState } from 'react';
-import { Menu, LayoutDashboard, Building2, FileText, Shield, Users } from 'lucide-react';
+import { Menu, LayoutDashboard, Building2, FileText, Shield, Users,
+  Activity,
+  Flag,
+  LineChart,
+} from 'lucide-react';
 import {
   Sidebar,
   type NavSection,
@@ -47,6 +51,17 @@ const SECTIONS: NavSection[] = [
   {
     label: 'Partner billing',
     items: [{ href: '/admin/partners', label: 'Partner usage', icon: Building2 }],
+  },
+  // The MANDATORY admin-portal standard — every Forjio product ships
+  // these. See forjio/documentation/2. Technical/13-Admin-Portal-Standard.md.
+  // Product sections go alongside them, never in place of them.
+  {
+    label: 'Platform',
+    items: [
+      { href: '/admin/metrics', label: 'Business metrics', icon: LineChart },
+      { href: '/admin/system', label: 'System metrics', icon: Activity },
+      { href: '/admin/feature-flags', label: 'Feature flags', icon: Flag },
+    ],
   },
 ];
 
