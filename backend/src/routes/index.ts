@@ -17,6 +17,7 @@ import admin from './admin.js';
 import adminCrm from './admin-crm.js';
 import adminCustomersRouter from './admin-customers.js';
 import adminMetricsRouter from './admin-metrics.js';
+import adminTransactionsRouter from './admin-transactions.js';
 import adminSystemHealthRouter from './admin-system-health.js';
 import adminFeatureFlagsRouter from './admin-feature-flags.js';
 import { adminGuard } from '../middleware/admin-guard.js';
@@ -61,15 +62,25 @@ router.use('/stats', stats);
 // which would 401 the portal's secret-only (X-Forjio-Admin-Secret)
 // requests before adminGuard could accept them.
 router.use('/admin/crm', adminGuard, adminCrm);
-router.use('/admin', admin);
 router.use('/admin/customers', adminGuard, adminCustomersRouter);
 
-// The three endpoints behind the MANDATORY admin-portal standard. Every
-// Forjio product serves these — see
+// The endpoints behind the MANDATORY admin-portal standard. Every Forjio
+// product serves these — see
 // forjio/documentation/2. Technical/13-Admin-Portal-Standard.md.
 router.use('/admin/metrics', adminGuard, adminMetricsRouter);
+router.use('/admin/transactions', adminGuard, adminTransactionsRouter);
 router.use('/admin/system-health', adminGuard, adminSystemHealthRouter);
 router.use('/admin/feature-flags', adminGuard, adminFeatureFlagsRouter);
+
+// LAST, and it has to be. `router.use('/admin', …)` matches every path
+// under /admin, so mounted any earlier this router swallows all of the
+// specific mounts above: it runs requireAuth first and 401s with
+// "Missing Authorization header" before adminGuard is ever reached.
+// /admin/crm already had to be hoisted above it for that reason; the
+// admin-portal routes were added below it and inherited the bug, which
+// is why every page in fulkruma's admin portal returned 401 in
+// production while the routes themselves were perfectly fine.
+router.use('/admin', admin);
 router.use('/integrations', integrations);
 router.use('/billing', billing);
 router.use('/webhooks/plugipay', plugipayWebhooks);

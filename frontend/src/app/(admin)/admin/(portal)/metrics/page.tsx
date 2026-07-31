@@ -8,7 +8,8 @@
  */
 
 import { BusinessMetricsPanel } from '@forjio/admin-ui';
+import { FULKRUMA_ADMIN_ENDPOINTS } from '@/lib/admin-endpoints';
 
 export default function Page() {
-  return <BusinessMetricsPanel />;
+  return <BusinessMetricsPanel endpoint={FULKRUMA_ADMIN_ENDPOINTS.metrics} />;
 }

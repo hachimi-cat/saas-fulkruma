@@ -8,7 +8,8 @@
  */
 
 import { FeatureFlagsPanel } from '@forjio/admin-ui';
+import { FULKRUMA_ADMIN_ENDPOINTS } from '@/lib/admin-endpoints';
 
 export default function Page() {
-  return <FeatureFlagsPanel />;
+  return <FeatureFlagsPanel endpoint={FULKRUMA_ADMIN_ENDPOINTS.featureFlags} />;
 }

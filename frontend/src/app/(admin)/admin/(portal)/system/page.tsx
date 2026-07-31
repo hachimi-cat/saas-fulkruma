@@ -8,7 +8,8 @@
  */
 
 import { SystemHealthPanel } from '@forjio/admin-ui';
+import { FULKRUMA_ADMIN_ENDPOINTS } from '@/lib/admin-endpoints';
 
 export default function Page() {
-  return <SystemHealthPanel />;
+  return <SystemHealthPanel endpoint={FULKRUMA_ADMIN_ENDPOINTS.health} />;
 }

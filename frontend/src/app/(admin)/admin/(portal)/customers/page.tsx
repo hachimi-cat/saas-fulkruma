@@ -12,7 +12,8 @@
  */
 
 import { CustomersPanel } from '@forjio/admin-ui';
+import { FULKRUMA_ADMIN_ENDPOINTS } from '@/lib/admin-endpoints';
 
 export default function Page() {
-  return <CustomersPanel />;
+  return <CustomersPanel endpoint={FULKRUMA_ADMIN_ENDPOINTS.customers} />;
 }

@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { Building2, ArrowRight } from 'lucide-react';
 import { AdminOverviewPanel } from '@forjio/admin-ui';
+import { FULKRUMA_ADMIN_ENDPOINTS } from '@/lib/admin-endpoints';
 
 // Admin dashboard — entry point to the Fulkruma staff console. The
 // only admin-data surface today is Pattern-2 partner billing
@@ -26,6 +27,7 @@ export default function AdminDashboardHome() {
           partner-usage view follows BELOW: on top of the standard, never
           instead of it. */}
       <AdminOverviewPanel
+        endpoints={FULKRUMA_ADMIN_ENDPOINTS}
         brand="Fulkruma"
         quickLinks={[
           {

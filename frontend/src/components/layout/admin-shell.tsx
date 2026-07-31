@@ -5,6 +5,7 @@ import { Menu, LayoutDashboard, Building2, FileText, Shield, Users,
   Activity,
   Flag,
   LineChart,
+  Receipt,
 } from 'lucide-react';
 import {
   Sidebar,
@@ -46,7 +47,10 @@ const SECTIONS: NavSection[] = [
   },
   {
     label: 'Customers',
-    items: [{ href: '/admin/customers', label: 'Customers', icon: Users }],
+    items: [
+      { href: '/admin/customers', label: 'Customers', icon: Users },
+      { href: '/admin/transactions', label: 'Transactions', icon: Receipt },
+    ],
   },
   {
     label: 'Partner billing',
