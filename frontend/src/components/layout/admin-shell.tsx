@@ -41,6 +41,10 @@ const BRAND_COLOR = 'hsl(var(--primary))';
 const BRAND_COLOR_SOFT = 'hsl(var(--primary) / 0.15)';
 
 const SECTIONS: NavSection[] = [
+  // The FOUR GROUPS, in this order, in every Forjio admin portal:
+  // Overview / Customers / Platform / Operations. An operator who knows
+  // one portal knows all thirteen, so the names and the order are fixed
+  // even where a product has nothing to put in a group.
   {
     label: 'Overview',
     items: [{ href: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard }],
@@ -53,19 +57,20 @@ const SECTIONS: NavSection[] = [
     ],
   },
   {
-    label: 'Partner billing',
-    items: [{ href: '/admin/partners', label: 'Partner usage', icon: Building2 }],
-  },
-  // The MANDATORY admin-portal standard — every Forjio product ships
-  // these. See forjio/documentation/2. Technical/13-Admin-Portal-Standard.md.
-  // Product sections go alongside them, never in place of them.
-  {
+    // The MANDATORY admin-portal standard — these three, alone, in this
+    // group, in every product. See
+    // forjio/documentation/2. Technical/13-Admin-Portal-Standard.md.
+    // Product sections go alongside them, never in place of them.
     label: 'Platform',
     items: [
       { href: '/admin/metrics', label: 'Business metrics', icon: LineChart },
       { href: '/admin/system', label: 'System metrics', icon: Activity },
       { href: '/admin/feature-flags', label: 'Feature flags', icon: Flag },
     ],
+  },
+  {
+    label: 'Operations',
+    items: [{ href: '/admin/partners', label: 'Partner usage', icon: Building2 }],
   },
 ];
 
