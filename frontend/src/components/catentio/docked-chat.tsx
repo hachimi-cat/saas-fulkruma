@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useMemo, useState } from 'react';
-import { Warehouse } from 'lucide-react';
+import { LogoMark } from '@/components/brand/logo';
 import { DockedChat, createBffChatAdapters, type ChatAction } from '@forjio/agent-ui';
 import { catentioHttp } from '@/lib/catentio-http';
 import { applyChatAction } from '@/components/catentio/chat-actions';
@@ -58,7 +58,7 @@ export function CatentioDockedChat() {
         onOpenChange={setOpen}
         title="Fulkruma Assistant"
         avatarUrl="/apple-touch-icon.png"
-        brandIcon={<Warehouse />}
+        brandIcon={<LogoMark />}
         onApplyAction={onApplyAction}
       />
     </div>
