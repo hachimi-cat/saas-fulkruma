@@ -12,7 +12,7 @@ export function PageHeader({
   action,
 }: {
   title: string;
-  description?: string;
+  description?: ReactNode;
   action?: ReactNode;
 }) {
   return (
@@ -22,7 +22,7 @@ export function PageHeader({
       <div className="min-w-0 sm:flex-1">
         <h1 className="font-display text-2xl font-semibold tracking-tight">{title}</h1>
         {description && (
-          <p className="mt-1 text-sm text-muted-foreground">{description}</p>
+          <div className="mt-1 text-sm text-muted-foreground">{description}</div>
         )}
       </div>
       {action && (
