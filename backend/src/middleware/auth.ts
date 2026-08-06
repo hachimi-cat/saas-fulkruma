@@ -6,6 +6,48 @@ import crypto from 'node:crypto';
 import { hmacAuth } from './hmac-auth.js';
 import { resolveSessionForRequest, parseCookie } from '@forjio/sdk/auth-server';
 import { authConfig } from '../auth-config.js';
+import {
+  DELEGATION_DENIED_PATHS as EMBED_DENIED_PATHS,
+  getDelegationSecret,
+  verifyDelegationToken,
+} from '@forjio/catentio-embed';
+import { FULKRUMA_DELEGATION_PREFIX } from '../lib/catentio-profile.js';
+
+/**
+ * Allowlist-first: an embedded agent run may reach these prefixes and
+ * NOTHING else, whatever the method. These are exactly the resources in
+ * FULKRUMA_PROFILE — the setup surfaces. The inventory ledger, in-flight
+ * shipments, customer licenses and buyer addresses stay closed.
+ */
+const DELEGATION_ALLOWED_PATHS = ['/api/v1/warehouses', '/api/v1/products'];
+
+/**
+ * Denied BEFORE the allowlist is consulted, so a future allowlist entry
+ * can never re-open one of them. The package's floor is INHERITED
+ * rather than copied, so a later addition there lands here for free.
+ *
+ * The variants sub-path sits INSIDE an allowed prefix and needs a regex
+ * rather than a prefix: it carries priceCents, and the family has an
+ * unsettled inconsistency about whether that column is cents or whole
+ * rupiah.
+ */
+const DELEGATION_DENIED_PATHS = [
+  ...EMBED_DENIED_PATHS,
+  '/api/v1/stock',
+  '/api/v1/shipments',
+  '/api/v1/deliveries',
+  '/api/v1/licenses',
+  '/api/v1/shipping-credits',
+  '/api/v1/shipping',
+  '/api/v1/addresses',
+  '/api/v1/webhooks',
+  '/api/v1/audit-log',
+  '/api/v1/stats',
+  '/api/v1/admin',
+  '/api/v1/huudis',
+];
+
+const DELEGATION_DENIED_SUBPATHS = [/^\/api\/v1\/products\/[^/]+\/variants(\/|$)/];
 
 declare module 'express-serve-static-core' {
   interface Request {
@@ -47,6 +89,10 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
     req.auth = {
       sub: bffSession.huudisSub,
       accountId,
+      // email/name ride along for the catentio flag allowlist (which
+      // matches on either the usr_ id or the address) and for display.
+      email: bffSession.email,
+      name: bffSession.name,
       scope: '',
       iss: issuer,
       aud: audience,
@@ -80,6 +126,74 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
       } as unknown as ForjioClaims;
       return next();
     }
+  }
+
+  // ─ Path 1.5: catentio delegation (`Authorization: Delegation <token>`)
+  // an embedded agent run acting for a signed-in member (see
+  // routes/catentio.ts; token minted there via @forjio/catentio-embed).
+  // Ahead of the HMAC and Bearer paths because a delegation header is
+  // neither.
+  //
+  // Review mode mints the token WITHOUT the write bit, and refusing
+  // non-GET here is what makes the review step un-promptable: the agent
+  // cannot talk its way past an auth layer that never reads what it said.
+  const delegationHeader = req.headers.authorization;
+  if (delegationHeader?.startsWith('Delegation ')) {
+    // requireAuth runs inside mounted routers, where req.path alone is
+    // router-relative — match on baseUrl+path or every rule is a no-op.
+    const fullPath = `${req.baseUrl || ''}${req.path || ''}`;
+    const denied =
+      DELEGATION_DENIED_PATHS.some((pth) => fullPath === pth || fullPath.startsWith(`${pth}/`)) ||
+      DELEGATION_DENIED_SUBPATHS.some((re) => re.test(fullPath));
+    const allowed =
+      !denied &&
+      DELEGATION_ALLOWED_PATHS.some((pth) => fullPath === pth || fullPath.startsWith(`${pth}/`));
+    if (!allowed) {
+      return res
+        .status(403)
+        .json(err('FORBIDDEN', 'This resource is not available to delegated agents', req.requestId ?? ulid()));
+    }
+    let delegationSecret: string;
+    try {
+      delegationSecret = getDelegationSecret();
+    } catch {
+      return res
+        .status(401)
+        .json(err('INVALID_TOKEN', 'Invalid or expired delegation token', req.requestId ?? ulid()));
+    }
+    const dClaims = verifyDelegationToken(
+      delegationHeader.slice('Delegation '.length),
+      delegationSecret,
+      { prefix: FULKRUMA_DELEGATION_PREFIX },
+    );
+    if (!dClaims) {
+      return res
+        .status(401)
+        .json(err('INVALID_TOKEN', 'Invalid or expired delegation token', req.requestId ?? ulid()));
+    }
+    if (!dClaims.writes && req.method !== 'GET' && req.method !== 'HEAD') {
+      return res
+        .status(403)
+        .json(
+          err(
+            'FORBIDDEN',
+            'This assistant proposes changes for your approval — it cannot write directly',
+            req.requestId ?? ulid(),
+          ),
+        );
+    }
+    req.auth = {
+      sub: dClaims.sub,
+      accountId: dClaims.workspaceId,
+      email: dClaims.email,
+      name: dClaims.name,
+      scope: '',
+      iss: issuer,
+      aud: audience,
+      exp: dClaims.exp,
+      iat: dClaims.iat,
+    } as unknown as ForjioClaims;
+    return next();
   }
 
   // ─ Path 2: HMAC Authorization header (SDK / Storlaunch / partner)

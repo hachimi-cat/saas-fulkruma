@@ -1,5 +1,6 @@
 'use client';
 
+import { AssistantSection } from '@/components/catentio/assistant-section';
 import { useEffect, useState, type FormEvent } from 'react';
 import { Shield, Save } from 'lucide-react';
 import { PageHeader } from '@/components/dashboard/page-header';
@@ -150,6 +151,10 @@ export default function SettingsPage() {
         title="Settings"
         description="Manage your account identity and security. Identity is stored in Huudis; Fulkruma calls Huudis APIs on your behalf, so everything here stays in the portal."
       />
+
+      {/* Assistant — renders only when the catentio pilot flag is on for
+          this user, so the page is unchanged for everyone else. */}
+      <AssistantSection />
 
       {loading && <Loading />}
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   LayoutDashboard,
   Warehouse,
@@ -30,6 +30,12 @@ import {
   type SessionUser,
 } from '@forjio/portal-ui';
 import { LogoMark } from '@/components/brand/logo';
+import {
+  useAssistantActivity,
+  useCatentioCredits,
+  useCatentioStatus,
+} from '@/hooks/use-catentio';
+import { CatentioDockedChat } from '@/components/catentio/docked-chat';
 
 /*
  * Dashboard shell — the authenticated portal chrome. `@forjio/portal-ui`
@@ -141,6 +147,46 @@ export function DashboardShell({
   children: React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
+
+  // Embedded catentio assistant — flag-gated per user; flag off =
+  // sidebar + column unchanged. The chip math is linksnap's: fill =
+  // consumed share of the LARGER of the monthly grant and everything the
+  // wallet actually had this period.
+  const { enabled: assistantEnabled } = useCatentioStatus();
+  const { credits, refresh: refreshCredits } = useCatentioCredits(assistantEnabled);
+  useAssistantActivity(() => {
+    refreshCredits();
+    const timer = setTimeout(refreshCredits, 2500);
+    return () => clearTimeout(timer);
+  });
+  const chipCredits = useMemo(() => {
+    if (!credits) return null;
+    const balance = credits.balance.credits;
+    const period = new Date().toISOString().slice(0, 7);
+    const used =
+      credits.balance.used_this_period_credits ??
+      credits.ledger
+        .filter(
+          (r) =>
+            r.kind === 'embedded_agent_usage' &&
+            r.credits < 0 &&
+            (r.at ?? '').slice(0, 7) === period,
+        )
+        .reduce((a, r) => a + -r.credits, 0);
+    const grant = credits.balance.monthly_grant_credits ?? 0;
+    const limit = Math.max(grant, Math.max(balance, 0) + used);
+    const now = new Date();
+    const reset = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1));
+    const date = reset.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+    const time = reset.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+    return {
+      credits: balance,
+      grantCredits: limit,
+      usedFraction: limit > 0 ? Math.min(1, used / limit) : 0,
+      caption: `Resets ${date}, ${time}`,
+      href: '/dashboard/billing#credits',
+    };
+  }, [credits]);
   const [workspaces, setWorkspaces] = useState<PortalWorkspace[]>([]);
   const [activeWorkspaceId, setActiveWorkspaceId] = useState<string | null>(null);
 
@@ -173,7 +219,11 @@ export function DashboardShell({
   }, []);
 
   return (
-    <div className="flex min-h-screen bg-background">
+    // h-dvh + overflow-hidden, NOT min-h-screen: the docked assistant
+    // anchors to the content column, so the column has to be exactly
+    // viewport height or the dock lands below the fold on any page taller
+    // than the screen. Scrolling moves into <main>.
+    <div className="flex h-dvh overflow-hidden bg-background">
       <Sidebar
         brandSlug={BRAND_SLUG}
         brandName={BRAND}
@@ -184,6 +234,7 @@ export function DashboardShell({
         workspaces={workspaces}
         activeWorkspaceId={activeWorkspaceId}
         sections={SECTIONS}
+        credits={chipCredits}
         portals={PORTALS}
         dropdownLinks={DROPDOWN_LINKS}
         user={user as SessionUser}
@@ -191,7 +242,7 @@ export function DashboardShell({
         open={open}
         onClose={() => setOpen(false)}
       />
-      <div className="flex flex-1 flex-col min-w-0">
+      <div className="relative flex flex-1 flex-col min-w-0 overflow-hidden">
         <MobileHeader
           brandSlug={BRAND_SLUG}
           brandName={BRAND}
@@ -203,9 +254,20 @@ export function DashboardShell({
           activeWorkspaceId={activeWorkspaceId}
           onMenuOpen={() => setOpen(true)}
         />
-        <main className="min-w-0 flex-1 p-4 md:p-6 max-w-[1400px] w-full mx-auto">
+        {/* pb-52 reserves room for the docked composer so the last row of
+            content is never hidden under it. The md:pb-52 is NOT redundant:
+            md:p-6 sets padding-bottom too and emits after a bare pb-52. */}
+        <main
+          className={`min-w-0 flex-1 overflow-y-auto p-4 md:p-6 max-w-[1400px] w-full mx-auto ${
+            assistantEnabled ? 'pb-52 md:pb-52' : ''
+          }`}
+        >
           {children}
         </main>
+        {/* Embedded catentio agent — the docked chat. Lives inside the
+            content column so it centers on the CONTENT (sidebar
+            excluded). Renders nothing unless the pilot flag says so. */}
+        <CatentioDockedChat />
       </div>
     </div>
   );

@@ -19,6 +19,9 @@
   --background:              20 28% 97%;   /* #FAF7F5 paper */
   --foreground:              223 40% 7%;
   --card:                    0 0% 100%;
+  /* Docked assistant composer. Fulkruma's canvas is warm paper, so the
+     composer is a slightly deeper warm tint rather than a dark surface. */
+  --agent-composer-bg:       hsl(20 14% 95%);
   --card-foreground:         223 40% 7%;
   --popover:                 0 0% 100%;
   --popover-foreground:      223 40% 7%;

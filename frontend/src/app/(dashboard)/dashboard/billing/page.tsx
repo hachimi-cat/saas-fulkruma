@@ -1,5 +1,6 @@
 'use client';
 
+import { CreditsSection } from '@/components/catentio/credits-section';
 import { useEffect, useState } from 'react';
 import { AlertTriangle, Check, CreditCard, Loader2, Zap } from 'lucide-react';
 import { api } from '@/lib/api';
@@ -340,6 +341,9 @@ function UsageCell({ label, current, limit }: { label: string; current: number; 
           <div className="h-full bg-brand-500" style={{ width: `${pct}%` }} />
         </div>
       )}
+      {/* Agent credits — renders only when the catentio pilot flag is on
+          for this user, so the page is unchanged for everyone else. */}
+      <CreditsSection />
     </div>
   );
 }

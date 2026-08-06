@@ -26,6 +26,7 @@ import billing from './billing.js';
 import plugipayWebhooks from './plugipay-webhooks.js';
 import auth from './auth.js';
 import huudisProxy from './huudis-proxy.js';
+import catentioRouter from './catentio.js';
 
 const router = Router();
 
@@ -44,6 +45,10 @@ router.get('/health', (req, res) => {
 
 router.use('/auth', auth);
 router.use('/huudis', huudisProxy);
+// The embedded catentio assistant's BFF. Carries its own auth inside
+// the package router; delegated agent runs are refused here by name
+// (middleware/auth.ts) so a run cannot drive its own BFF recursively.
+router.use('/catentio', catentioRouter);
 router.use('/warehouses', warehouses);
 router.use('/addresses', addresses);
 router.use('/products', products);
