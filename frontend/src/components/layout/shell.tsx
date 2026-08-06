@@ -19,10 +19,10 @@ import {
   BookOpen,
   FileText,
   Shield,
-  Menu,
 } from 'lucide-react';
 import {
   Sidebar,
+  MobileHeader,
   readActiveWorkspaceId,
   type NavSection,
   type PortalWorkspace,
@@ -192,15 +192,17 @@ export function DashboardShell({
         onClose={() => setOpen(false)}
       />
       <div className="flex flex-1 flex-col min-w-0">
-        <div className="flex h-14 items-center border-b border-border bg-card px-4 lg:hidden">
-          <button
-            onClick={() => setOpen(true)}
-            aria-label="Open menu"
-            className="text-foreground"
-          >
-            <Menu className="h-5 w-5" />
-          </button>
-        </div>
+        <MobileHeader
+          brandSlug={BRAND_SLUG}
+          brandName={BRAND}
+          brandColor={BRAND_COLOR}
+          brandColorSoft={BRAND_COLOR_SOFT}
+          brandIcon={<LogoMark size={22} />}
+          workspacePersist="cookie"
+          workspaces={workspaces}
+          activeWorkspaceId={activeWorkspaceId}
+          onMenuOpen={() => setOpen(true)}
+        />
         <main className="min-w-0 flex-1 p-4 md:p-6 max-w-[1400px] w-full mx-auto">
           {children}
         </main>

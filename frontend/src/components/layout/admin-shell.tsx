@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Menu, LayoutDashboard, Building2, FileText, Shield, Users,
+import { LayoutDashboard, Building2, FileText, Shield, Users,
   Activity,
   Flag,
   LineChart,
@@ -9,6 +9,7 @@ import { Menu, LayoutDashboard, Building2, FileText, Shield, Users,
 } from 'lucide-react';
 import {
   Sidebar,
+  MobileHeader,
   type NavSection,
   type SessionUser,
   type LucideIcon,
@@ -132,15 +133,15 @@ export function AdminShell({
         onClose={() => setOpen(false)}
       />
       <div className="flex flex-1 flex-col min-w-0">
-        <div className="flex h-14 items-center border-b border-border bg-card px-4 lg:hidden">
-          <button
-            onClick={() => setOpen(true)}
-            aria-label="Open menu"
-            className="text-foreground"
-          >
-            <Menu className="h-5 w-5" />
-          </button>
-        </div>
+        <MobileHeader
+          brandSlug={BRAND_SLUG}
+          brandName={BRAND}
+          brandColor={BRAND_COLOR}
+          brandColorSoft={BRAND_COLOR_SOFT}
+          brandIcon={<LogoMark size={22} />}
+          brandHref="/admin/dashboard"
+          onMenuOpen={() => setOpen(true)}
+        />
         <main className="min-w-0 flex-1 p-4 md:p-6 max-w-5xl w-full mx-auto">{children}</main>
       </div>
     </div>
