@@ -77,7 +77,7 @@ function TopUpForm({ onError, onComplete }: { onError: (msg: string | null) => v
           onChange={(e) => setAmount(Math.max(10_000, Number(e.target.value) || 0))}
           className="w-full max-w-xs rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-mono tabular-nums focus:outline-none focus:ring-1 focus:ring-blue-500"
         />
-        <p className="mt-1 text-[10px] text-slate-500">Min Rp 10,000 · Max Rp 10,000,000 per top-up.</p>
+        <p className="mt-1 text-[10px] text-slate-500">Min Rp 10.000 · Max Rp 10.000.000 per top-up.</p>
       </div>
       {needsEmail && (
         <div>
