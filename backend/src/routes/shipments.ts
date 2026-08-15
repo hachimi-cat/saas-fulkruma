@@ -11,6 +11,11 @@ import {
   getBalance as getShippingCreditBalance,
   InsufficientShippingCreditError,
 } from '../services/shipping-credit-service.js';
+import {
+  generateShipmentLabel,
+  SHIPMENT_LABEL_SIZES,
+  type ShipmentLabelOptions,
+} from '../services/shipment-label-service.js';
 
 const router = Router();
 router.use(requireAuth);
@@ -88,6 +93,64 @@ router.get('/:id/tracking', async (req, res) => {
   } catch (e) {
     return res.status(502).json(err('BITESHIP_TRACKING_FAILED', (e as Error).message, reqId));
   }
+});
+
+const queryBoolean = (defaultValue: boolean) => z.enum(['true', 'false'])
+  .transform((value) => value === 'true')
+  .default(defaultValue ? 'true' : 'false');
+
+const labelQuerySchema = z.object({
+  size: z.enum(SHIPMENT_LABEL_SIZES).default('thermal-100x150'),
+  showSenderPhone: queryBoolean(true),
+  showRecipientPhone: queryBoolean(true),
+  maskRecipientName: queryBoolean(false),
+  showShippingCost: queryBoolean(true),
+  showInsurance: queryBoolean(true),
+  showItems: queryBoolean(true),
+  showItemDescriptions: queryBoolean(true),
+  showItemSkus: queryBoolean(true),
+});
+
+// Biteship deliberately has no shipping-label API. Generate the PDF from
+// Fulkruma's authoritative shipment snapshot so every Forjio product prints
+// the same document. If an older confirmed row missed the nested
+// courier.waybill_id response shape, refresh once before declaring it unready.
+router.get('/:id/label', async (req, res) => {
+  const accountId = req.auth?.accountId;
+  const reqId = req.requestId ?? 'req_unknown';
+  if (!accountId) return res.status(403).json(err('NO_ACCOUNT', 'token missing accountId', reqId));
+  const parsed = labelQuerySchema.safeParse(req.query);
+  if (!parsed.success) return res.status(400).json(err('VALIDATION', parsed.error.message, reqId));
+
+  let shipment = await prisma.shipment.findFirst({ where: { id: req.params.id, accountId } });
+  if (!shipment) return res.status(404).json(err('NOT_FOUND', 'shipment not found', reqId));
+
+  if (!shipment.waybillId && shipment.biteshipOrderId) {
+    try {
+      const adapter = await getAdapterForAccount(prisma, accountId);
+      const order = await adapter.getOrder(shipment.biteshipOrderId);
+      const waybillId = order.waybill_id ?? order.courier?.waybill_id ?? null;
+      if (waybillId) {
+        shipment = await prisma.shipment.update({
+          where: { id: shipment.id },
+          data: {
+            waybillId,
+            biteshipTrackingId: order.courier?.tracking_id ?? shipment.biteshipTrackingId,
+            trackingUrl: order.tracking?.url ?? shipment.trackingUrl,
+          },
+        });
+      }
+    } catch (e) {
+      console.warn(`[shipments/:id/label] unable to refresh Biteship order ${shipment.biteshipOrderId}:`, (e as Error).message);
+    }
+  }
+
+  if (!shipment.waybillId) {
+    return res.status(409).json(err('LABEL_NOT_READY', 'Label is available after the courier is booked and an AWB is issued', reqId));
+  }
+
+  const label = await generateShipmentLabel(shipment, parsed.data as ShipmentLabelOptions);
+  return res.json(ok({ label }, reqId));
 });
 
 router.post('/', async (req, res) => {
@@ -368,9 +431,11 @@ router.post('/:id/confirm-pickup', async (req, res) => {
         data: {
           biteshipOrderId: order.id,
           biteshipTrackingId: order.courier?.tracking_id ?? null,
-          waybillId: order.waybill_id ?? null,
+          waybillId: order.waybill_id ?? order.courier?.waybill_id ?? null,
           trackingUrl: order.tracking?.url ?? null,
-          labelUrl: order.label ?? null,
+          // Kept null for schema compatibility. Biteship has no label API;
+          // GET /shipments/:id/label generates the PDF from this row.
+          labelUrl: null,
           status: 'confirmed',
         },
       });
@@ -390,7 +455,7 @@ router.post('/:id/confirm-pickup', async (req, res) => {
           data: {
             shipmentId: row.id,
             biteshipOrderId: order.id,
-            waybillId: order.waybill_id ?? null,
+            waybillId: order.waybill_id ?? order.courier?.waybill_id ?? null,
           },
         }),
       });

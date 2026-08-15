@@ -102,11 +102,12 @@ export interface BiteshipOrder {
   id: string;
   status: string;
   waybill_id?: string;
-  courier: { company: string; type: string; tracking_id?: string };
+  courier: { company: string; type: string; tracking_id?: string; waybill_id?: string };
   price: number;
   reference_id: string;
   tracking?: { url?: string };
-  label?: string; // PDF URL
+  // Biteship's dashboard generates labels, but its public API does not
+  // expose a label file or URL. Fulkruma generates the merchant label.
 }
 
 // Returned by POST /v1/draft_orders. Shape is the same as a regular

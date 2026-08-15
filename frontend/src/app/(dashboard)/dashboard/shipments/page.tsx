@@ -1,15 +1,24 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { ExternalLink, Loader2, Truck } from 'lucide-react';
+import { ExternalLink, Loader2, Printer, Truck } from 'lucide-react';
 import { api, type Shipment, type ShipmentEvent } from '@/lib/api';
 import { ErrorBox, StatusPill } from '@/components/dashboard/ui';
 import { DataTable, type Column, type FilterDef } from '@/components/data-table';
 import { PageHeader } from '@/components/dashboard/page-header';
+import { Button } from '@/components/ui/button';
+import { ShipmentLabelDialog } from '@/components/shipping/ShipmentLabelDialog';
+import { shipmentLabelQuery, type ShipmentLabelFile, type ShipmentLabelOptions } from '@/lib/shipment-label';
 
 export default function ShipmentsPage() {
   const [rows, setRows] = useState<Shipment[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [labelTarget, setLabelTarget] = useState<Shipment | null>(null);
+
+  async function loadShipmentLabel(shipmentId: string, options: ShipmentLabelOptions): Promise<ShipmentLabelFile> {
+    const result = await api<{ label: ShipmentLabelFile }>(`/shipments/${shipmentId}/label?${shipmentLabelQuery(options)}`);
+    return result.label;
+  }
 
   async function reload() {
     try { setRows((await api<{ shipments: Shipment[] }>('/shipments?limit=100')).shipments); }
@@ -80,7 +89,20 @@ export default function ShipmentsPage() {
     {
       key: 'open',
       header: '',
-      cell: () => <span className="text-xs text-muted-foreground">→</span>,
+      align: 'right',
+      cell: (shipment) => (
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          onClick={(event) => { event.stopPropagation(); setLabelTarget(shipment); }}
+          disabled={!shipment.waybillId}
+          title={shipment.waybillId ? 'Print resi' : 'Available after booking and AWB issuance'}
+          className="h-8 w-8 disabled:cursor-not-allowed disabled:opacity-35"
+        >
+          <Printer className="h-3.5 w-3.5" />
+        </Button>
+      ),
     },
   ];
 
@@ -116,14 +138,21 @@ export default function ShipmentsPage() {
           searchPlaceholder="Search waybill, customer…"
           defaultSort={{ key: 'createdAt', dir: 'desc' }}
           empty="No shipments match."
-          renderExpanded={(s) => <ShipmentDetailInline shipment={s} />}
+          renderExpanded={(s) => <ShipmentDetailInline shipment={s} onPrint={() => setLabelTarget(s)} />}
         />
       ) : null}
+
+      <ShipmentLabelDialog
+        open={!!labelTarget}
+        onOpenChange={(open) => { if (!open) setLabelTarget(null); }}
+        shipment={labelTarget}
+        loadLabel={loadShipmentLabel}
+      />
     </div>
   );
 }
 
-function ShipmentDetailInline({ shipment }: { shipment: Shipment }) {
+function ShipmentDetailInline({ shipment, onPrint }: { shipment: Shipment; onPrint: () => void }) {
   const [full, setFull] = useState<Shipment & { events: ShipmentEvent[] } | null>(null);
 
   useEffect(() => {
@@ -149,6 +178,10 @@ function ShipmentDetailInline({ shipment }: { shipment: Shipment }) {
             Tracking <ExternalLink size={12} />
           </a>
         )}
+        <Button type="button" variant="outline" size="sm" onClick={onPrint} disabled={!data.waybillId}>
+          <Printer className="h-3.5 w-3.5" />
+          {data.waybillId ? 'Print resi' : 'Label available after booking'}
+        </Button>
       </div>
 
       <section className="grid grid-cols-1 gap-4 sm:grid-cols-2">
