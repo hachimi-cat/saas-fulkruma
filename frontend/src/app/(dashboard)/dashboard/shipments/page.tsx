@@ -96,8 +96,8 @@ export default function ShipmentsPage() {
           variant="ghost"
           size="icon"
           onClick={(event) => { event.stopPropagation(); setLabelTarget(shipment); }}
-          disabled={!shipment.waybillId}
-          title={shipment.waybillId ? 'Print resi' : 'Available after booking and AWB issuance'}
+          disabled={!shipment.waybillId && !shipment.biteshipOrderId}
+          title={shipment.waybillId || shipment.biteshipOrderId ? 'Print resi' : 'Available after booking and AWB issuance'}
           className="h-8 w-8 disabled:cursor-not-allowed disabled:opacity-35"
         >
           <Printer className="h-3.5 w-3.5" />
@@ -178,9 +178,9 @@ function ShipmentDetailInline({ shipment, onPrint }: { shipment: Shipment; onPri
             Tracking <ExternalLink size={12} />
           </a>
         )}
-        <Button type="button" variant="outline" size="sm" onClick={onPrint} disabled={!data.waybillId}>
+        <Button type="button" variant="outline" size="sm" onClick={onPrint} disabled={!data.waybillId && !data.biteshipOrderId}>
           <Printer className="h-3.5 w-3.5" />
-          {data.waybillId ? 'Print resi' : 'Label available after booking'}
+          {data.waybillId || data.biteshipOrderId ? 'Print resi' : 'Label available after booking'}
         </Button>
       </div>
 

@@ -114,6 +114,7 @@ export interface ShipmentEvent {
 export interface Shipment {
   id: string;
   status: string;
+  biteshipOrderId: string | null;
   courierCode: string;
   courierServiceCode: string;
   courierType: string;
