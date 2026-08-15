@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { generateShipmentLabel, type ShipmentLabelSize } from '../services/shipment-label-service.js';
+import {
+  COURIER_LOGO_CODES,
+  defaultShipmentLabelOptions,
+  generateShipmentLabel,
+  type ShipmentLabelSize,
+} from '../services/shipment-label-service.js';
+import { DEFAULT_COURIERS } from '../services/shipping-service.js';
 
 const shipment = {
   id: 'sh_test',
@@ -37,6 +43,17 @@ const expectedMediaBoxes: Record<ShipmentLabelSize, string> = {
 };
 
 describe('shipment label generator', () => {
+  it('uses privacy-safe recipient defaults', () => {
+    expect(defaultShipmentLabelOptions()).toMatchObject({
+      showRecipientPhone: false,
+      maskRecipientName: true,
+    });
+  });
+
+  it('has a real logo for every enabled Fulkruma courier', () => {
+    expect([...COURIER_LOGO_CODES].sort()).toEqual([...DEFAULT_COURIERS].sort());
+  });
+
   it.each(Object.keys(expectedMediaBoxes) as ShipmentLabelSize[])('generates a valid %s PDF at the exact page size', async (size) => {
     const label = await generateShipmentLabel(shipment as never, { size });
     const pdf = Buffer.from(label.base64, 'base64');
@@ -65,6 +82,15 @@ describe('shipment label generator', () => {
 
     expect(Buffer.from(label.base64, 'base64').length).toBeGreaterThan(2_000);
     expect(JSON.stringify(shipment)).toBe(before);
+  });
+
+  it.each(COURIER_LOGO_CODES)('embeds the real %s courier logo', async (courierCode) => {
+    const label = await generateShipmentLabel({ ...shipment, courierCode } as never, {
+      size: 'thermal-80x100',
+      showItems: false,
+    });
+
+    expect(Buffer.from(label.base64, 'base64').length).toBeGreaterThan(5_000);
   });
 
   it('refuses to generate a label before an AWB exists', async () => {

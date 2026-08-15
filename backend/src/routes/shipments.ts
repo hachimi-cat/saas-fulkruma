@@ -102,8 +102,8 @@ const queryBoolean = (defaultValue: boolean) => z.enum(['true', 'false'])
 const labelQuerySchema = z.object({
   size: z.enum(SHIPMENT_LABEL_SIZES).default('thermal-100x150'),
   showSenderPhone: queryBoolean(true),
-  showRecipientPhone: queryBoolean(true),
-  maskRecipientName: queryBoolean(false),
+  showRecipientPhone: queryBoolean(false),
+  maskRecipientName: queryBoolean(true),
   showShippingCost: queryBoolean(true),
   showInsurance: queryBoolean(true),
   showItems: queryBoolean(true),
