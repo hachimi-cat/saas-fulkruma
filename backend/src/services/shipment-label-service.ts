@@ -158,13 +158,14 @@ function formatMoney(value: number): string {
 
 function formatAddress(snapshot: Record<string, unknown>): string[] {
   const primary = pick(snapshot, 'address', 'line1', 'addressLine1', 'street');
+  const primaryLower = clean(primary).toLocaleLowerCase('id-ID');
   const locality = [
     pick(snapshot, 'village', 'administrative_division_level_4_name'),
     pick(snapshot, 'district', 'administrative_division_level_3_name'),
     pick(snapshot, 'city', 'administrative_division_level_2_name'),
     pick(snapshot, 'province', 'administrative_division_level_1_name'),
     pick(snapshot, 'postalCode', 'postal', 'postal_code'),
-  ].filter(Boolean).join(', ');
+  ].filter((part) => part && !primaryLower.includes(clean(part).toLocaleLowerCase('id-ID'))).join(', ');
   return [primary, locality].filter(Boolean).map(clean);
 }
 
@@ -326,7 +327,10 @@ function drawAddressCell(
   const bodySize = compact ? 6.5 : 7.5;
   const nameY = y + pad + titleSize + 3;
   const bodyY = nameY + (compact ? 10 : 12);
-  const bodyLines = [...addressLines, phone].filter(Boolean);
+  const addressText = addressLines.filter(Boolean).join('\n');
+  const phoneGap = compact ? 2 : 3;
+  const phoneLineHeight = phone ? (compact ? 8 : 9) : 0;
+  const maxAddressHeight = height - (bodyY - y) - pad - phoneLineHeight - (phone ? phoneGap : 0);
 
   doc.rect(x, y, width, height).strokeColor('#111111').lineWidth(0.6).stroke();
   doc.font('Helvetica-Bold').fontSize(titleSize).fillColor('#111111')
@@ -338,9 +342,18 @@ function drawAddressCell(
       lineBreak: false,
       ellipsis: true,
     });
-  drawText(doc, bodyLines.join('\n'), x + pad, bodyY, width - (pad * 2), bodySize, {
-    height: height - (bodyY - y) - pad,
+  doc.font('Helvetica').fontSize(bodySize);
+  const measuredAddressHeight = doc.heightOfString(cleanMultiline(addressText) || '—', {
+    width: width - (pad * 2),
   });
+  const addressHeight = Math.min(maxAddressHeight, measuredAddressHeight + 0.5);
+  drawText(doc, addressText, x + pad, bodyY, width - (pad * 2), bodySize, { height: addressHeight });
+  if (phone) {
+    drawText(doc, phone, x + pad, bodyY + addressHeight + phoneGap, width - (pad * 2), bodySize, {
+      height: phoneLineHeight,
+      lineBreak: false,
+    });
+  }
 }
 
 function drawForjioFooter(
@@ -431,7 +444,7 @@ function drawLabel(
   drawCell(doc, contentX + half, cursorY, half, metaH, 'Reference', costLines, compact);
   cursorY += metaH;
 
-  const addressH = compact ? 64 : 82;
+  const addressH = compact ? 68 : 90;
   drawAddressCell(
     doc,
     contentX,
