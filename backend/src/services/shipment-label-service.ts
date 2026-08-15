@@ -24,8 +24,12 @@ const courierLogoBackgrounds: Partial<Record<CourierLogoCode, string>> = {
   gojek: '#00AA13',
 };
 
-const GELLIX_SEMIBOLD = fileURLToPath(
-  new URL('../../assets/fonts/Gellix-SemiBold.ttf', import.meta.url),
+const GEIST_BOLD = fileURLToPath(
+  new URL('../../assets/fonts/Geist-Bold.ttf', import.meta.url),
+);
+
+const FORJIO_BLACK = fileURLToPath(
+  new URL('../../assets/brand/forjio-black.png', import.meta.url),
 );
 
 export const SHIPMENT_LABEL_SIZES = ['a4', 'thermal-80x100', 'thermal-100x150'] as const;
@@ -36,6 +40,7 @@ export interface ShipmentLabelOptions {
   showSenderPhone: boolean;
   showRecipientPhone: boolean;
   maskRecipientName: boolean;
+  maskRecipientPhone: boolean;
   showShippingCost: boolean;
   showInsurance: boolean;
   showItems: boolean;
@@ -91,8 +96,9 @@ export function defaultShipmentLabelOptions(size: ShipmentLabelSize = 'thermal-1
   return {
     size,
     showSenderPhone: true,
-    showRecipientPhone: false,
+    showRecipientPhone: true,
     maskRecipientName: true,
+    maskRecipientPhone: true,
     showShippingCost: true,
     showInsurance: true,
     showItems: true,
@@ -120,9 +126,30 @@ function clean(value: string): string {
   return value.replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
+function cleanMultiline(value: string): string {
+  return value.split(/\r?\n/).map(clean).filter(Boolean).join('\n');
+}
+
 function maskName(name: string): string {
   const words = clean(name).split(' ').filter(Boolean);
   return words.map((word) => word.length <= 1 ? '*' : `${word[0]}${'*'.repeat(Math.min(word.length - 1, 6))}`).join(' ');
+}
+
+export function maskPhone(phone: string): string {
+  const source = clean(phone);
+  const digits = source.replace(/\D/g, '');
+  if (!digits) return '';
+  if (digits.length <= 4) return '•'.repeat(digits.length);
+
+  const suffix = digits.slice(-4);
+  if (digits.startsWith('62') && digits.length > 9) {
+    const carrier = digits.slice(2, 5);
+    return `+62 ${carrier} •••• ${suffix}`;
+  }
+  if (digits.startsWith('0') && digits.length > 8) {
+    return `${digits.slice(0, 4)} •••• ${suffix}`;
+  }
+  return `${digits.slice(0, Math.min(4, digits.length - 4))} •••• ${suffix}`;
 }
 
 function formatMoney(value: number): string {
@@ -190,7 +217,7 @@ function drawText(
   options: PDFKit.Mixins.TextOptions = {},
 ): void {
   doc.font('Helvetica').fontSize(fontSize).fillColor('#111111')
-    .text(clean(text) || '—', x, y, { width, lineBreak: true, ellipsis: true, ...options });
+    .text(cleanMultiline(text) || '—', x, y, { width, lineBreak: true, ellipsis: true, ...options });
 }
 
 function drawCell(
@@ -259,13 +286,12 @@ function drawFulkrumaBrand(
   width: number,
   compact: boolean,
 ): void {
-  const iconSize = compact ? 17 : 21;
-  const wordmarkSize = compact ? 10 : 13;
-  const taglineSize = compact ? 5.5 : 6.5;
+  const iconSize = compact ? 10.5 : 13;
+  const wordmarkSize = iconSize;
   const gap = compact ? 4 : 5;
   const scale = iconSize / 32;
 
-  doc.font('Gellix-SemiBold').fontSize(wordmarkSize);
+  doc.font('Geist-Bold').fontSize(wordmarkSize);
   const wordmarkWidth = doc.widthOfString('Fulkruma');
   const totalWidth = iconSize + gap + wordmarkWidth;
   const startX = Math.max(right - width, right - totalWidth);
@@ -278,10 +304,8 @@ function drawFulkrumaBrand(
   doc.restore();
 
   const textX = startX + iconSize + gap;
-  doc.font('Gellix-SemiBold').fontSize(wordmarkSize).fillColor('#111111')
-    .text('Fulkruma', textX, y - (compact ? 0.5 : 1), { width: wordmarkWidth, lineBreak: false });
-  doc.font('Helvetica').fontSize(taglineSize).fillColor('#444444')
-    .text('Forjio family', textX, y + (compact ? 10 : 13), { width: wordmarkWidth, lineBreak: false });
+  doc.font('Geist-Bold').fontSize(wordmarkSize).fillColor('#111111')
+    .text('Fulkruma', textX, y - (compact ? 1 : 1.5), { width: wordmarkWidth, lineBreak: false });
 }
 
 function drawAddressCell(
@@ -301,8 +325,7 @@ function drawAddressCell(
   const nameSize = compact ? 7 : 8;
   const bodySize = compact ? 6.5 : 7.5;
   const nameY = y + pad + titleSize + 3;
-  const dividerY = nameY + (compact ? 11 : 14);
-  const bodyY = dividerY + (compact ? 4 : 5);
+  const bodyY = nameY + (compact ? 10 : 12);
   const bodyLines = [...addressLines, phone].filter(Boolean);
 
   doc.rect(x, y, width, height).strokeColor('#111111').lineWidth(0.6).stroke();
@@ -311,14 +334,44 @@ function drawAddressCell(
   doc.font('Helvetica-Bold').fontSize(nameSize).fillColor('#111111')
     .text(clean(name) || '—', x + pad, nameY, {
       width: width - (pad * 2),
-      height: dividerY - nameY,
+      height: bodyY - nameY,
       lineBreak: false,
       ellipsis: true,
     });
-  doc.moveTo(x, dividerY).lineTo(x + width, dividerY).lineWidth(0.45).strokeColor('#555555').stroke();
   drawText(doc, bodyLines.join('\n'), x + pad, bodyY, width - (pad * 2), bodySize, {
     height: height - (bodyY - y) - pad,
   });
+}
+
+function drawForjioFooter(
+  doc: PDFKit.PDFDocument,
+  x: number,
+  y: number,
+  width: number,
+  compact: boolean,
+): void {
+  const logoHeight = compact ? 5.5 : 7;
+  const logoWidth = logoHeight * (625 / 130);
+  const textSize = compact ? 4.5 : 5.5;
+  const gap = compact ? 3 : 4;
+  const firstLineY = y + (compact ? 4 : 5);
+
+  doc.moveTo(x, y).lineTo(x + width, y).lineWidth(0.6).strokeColor('#111111').stroke();
+  doc.font('Helvetica').fontSize(textSize);
+  const prefixWidth = doc.widthOfString('Part of');
+  const rowWidth = prefixWidth + gap + logoWidth;
+  const rowX = x + ((width - rowWidth) / 2);
+  doc.fillColor('#111111').text('Part of', rowX, firstLineY, { width: prefixWidth, lineBreak: false });
+  doc.image(FORJIO_BLACK, rowX + prefixWidth + gap, firstLineY - 0.5, {
+    width: logoWidth,
+    height: logoHeight,
+  });
+  doc.font('Helvetica-Bold').fontSize(textSize).fillColor('#111111')
+    .text('fulkruma.com', x, firstLineY + logoHeight + (compact ? 2 : 3), {
+      width,
+      align: 'center',
+      lineBreak: false,
+    });
 }
 
 function drawLabel(
@@ -345,6 +398,7 @@ function drawLabel(
   const recipientRaw = pick(destination, 'contactName', 'contact_name', 'name') || 'Recipient';
   const recipientName = options.maskRecipientName ? maskName(recipientRaw) : recipientRaw;
   const recipientPhone = pick(destination, 'contactPhone', 'contact_phone', 'phone');
+  const displayedRecipientPhone = options.maskRecipientPhone ? maskPhone(recipientPhone) : recipientPhone;
   const quantity = items.reduce((sum, item) => sum + itemQuantity(item), 0);
   const weight = totalWeight(items);
   const contentX = x + pad;
@@ -353,7 +407,7 @@ function drawLabel(
 
   doc.rect(x, y, width, height).strokeColor('#111111').lineWidth(1).stroke();
   drawCourierLogo(doc, courierCode, contentX, cursorY, contentW * 0.45, compact ? 19 : 24, compact);
-  drawFulkrumaBrand(doc, contentX + contentW, cursorY, contentW * 0.5, compact);
+  drawFulkrumaBrand(doc, contentX + contentW, cursorY + (compact ? 4 : 5.5), contentW * 0.5, compact);
   cursorY += compact ? 25 : 31;
   doc.moveTo(contentX, cursorY).lineTo(contentX + contentW, cursorY).lineWidth(1.2).stroke();
   cursorY += compact ? 5 : 7;
@@ -399,13 +453,16 @@ function drawLabel(
     'Recipient',
     recipientName,
     formatAddress(destination),
-    options.showRecipientPhone ? recipientPhone : '',
+    options.showRecipientPhone ? displayedRecipientPhone : '',
     compact,
   );
   cursorY += addressH + (compact ? 4 : 6);
 
+  const footerHeight = compact ? 20 : 27;
+  const footerY = y + height - pad - footerHeight;
+
   if (options.showItems && items.length > 0) {
-    const available = Math.max(compact ? 37 : 55, (y + height - pad - 12) - cursorY);
+    const available = Math.max(compact ? 32 : 48, footerY - (compact ? 5 : 7) - cursorY);
     doc.rect(contentX, cursorY, contentW, available).lineWidth(0.6).stroke();
     doc.font('Helvetica-Bold').fontSize(compact ? 5.5 : 6.5).text('ITEMS', contentX + (compact ? 4 : 6), cursorY + (compact ? 4 : 6));
     const itemLines = items.slice(0, compact ? 3 : 5).map((item) => {
@@ -426,6 +483,7 @@ function drawLabel(
       height: available - (compact ? 17 : 23),
     });
   }
+  drawForjioFooter(doc, contentX, footerY, contentW, compact);
 }
 
 export async function generateShipmentLabel(
@@ -448,7 +506,7 @@ export async function generateShipmentLabel(
     },
   });
   const chunks: Buffer[] = [];
-  doc.registerFont('Gellix-SemiBold', GELLIX_SEMIBOLD);
+  doc.registerFont('Geist-Bold', GEIST_BOLD);
   const complete = new Promise<Buffer>((resolve, reject) => {
     doc.on('data', (chunk: Buffer | Uint8Array) => chunks.push(Buffer.from(chunk)));
     doc.on('end', () => resolve(Buffer.concat(chunks)));

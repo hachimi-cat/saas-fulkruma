@@ -3,6 +3,7 @@ import {
   COURIER_LOGO_CODES,
   defaultShipmentLabelOptions,
   generateShipmentLabel,
+  maskPhone,
   type ShipmentLabelSize,
 } from '../services/shipment-label-service.js';
 import { DEFAULT_COURIERS } from '../services/shipping-service.js';
@@ -45,9 +46,18 @@ const expectedMediaBoxes: Record<ShipmentLabelSize, string> = {
 describe('shipment label generator', () => {
   it('uses privacy-safe recipient defaults', () => {
     expect(defaultShipmentLabelOptions()).toMatchObject({
-      showRecipientPhone: false,
+      showRecipientPhone: true,
       maskRecipientName: true,
+      maskRecipientPhone: true,
     });
+  });
+
+  it.each([
+    ['0813-0000-0000', '0813 •••• 0000'],
+    ['+62 813 0000 0000', '+62 813 •••• 0000'],
+    ['6281300000000', '+62 813 •••• 0000'],
+  ])('masks recipient phone %s while retaining a useful prefix and suffix', (phone, expected) => {
+    expect(maskPhone(phone)).toBe(expected);
   });
 
   it('has a real logo for every enabled Fulkruma courier', () => {
@@ -73,7 +83,8 @@ describe('shipment label generator', () => {
     const before = JSON.stringify(shipment);
     const label = await generateShipmentLabel(shipment as never, {
       maskRecipientName: true,
-      showRecipientPhone: false,
+      maskRecipientPhone: true,
+      showRecipientPhone: true,
       showSenderPhone: false,
       showItems: false,
       showShippingCost: false,
