@@ -64,12 +64,35 @@ test:
       export FULKRUMA_INTERNAL_API_SECRET=0000000000000000000000000000000000000000000000000000000000000000
       npx prisma migrate deploy
       npm test
+sdk-cli:
+  stage: test
+  image: node:22-bookworm
+  script:
+    - "# -- SDK: build + its own tests. Neither was ever run in CI — the only"
+    - "# -- job that touched sdk/ was sync-sdk-mirrors, which copies the source"
+    - "# -- to the public mirrors without ever compiling it."
+    - (
+    - "  cd sdk/node && npm ci && npm run build && npm test"
+    - )
+    - "# -- CLI: typecheck + tests. `npm ci` here resolves the PUBLISHED sdk,"
+    - "# -- which is what a user actually gets."
+    - (
+    - "  cd cli && npm ci && npm run lint && npm test"
+    - )
+    - "# -- ...and the declared range must resolve to the sdk in THIS repo."
+    - "# -- Building green against a stale-but-resolvable dependency is the"
+    - "# -- silent half a build cannot see: cli pinned ^0.2.0 while sdk/node"
+    - "# -- shipped 0.4.1, and npm ci happily installed 0.2.0 for months."
+    - (
+    - "  python3 scripts/check-cli-sdk-dep.py"
+    - )
 build-staging:
   stage: build
   image: node:22-bookworm
   needs:
     - lint
     - test
+    - sdk-cli
   timeout: 30m
   artifacts:
     paths:
@@ -98,6 +121,7 @@ build-production:
   needs:
     - lint
     - test
+    - sdk-cli
   timeout: 30m
   artifacts:
     paths:
