@@ -56,7 +56,14 @@ router.post('/', async (req, res) => {
       accountId,
       name: parsed.data.name,
       keyId,
-      secretHash: sha256Hex(secret),
+      // `hmac-auth.ts` uses this column RAW as the HMAC key — its own
+      // comment says "we just put the raw secret in secretHash going
+      // forward" — but this handler never followed. Storing sha256(secret)
+      // meant the server signed with the hash while every client signed
+      // with the secret, so no key minted here could ever authenticate:
+      // guaranteed BAD_SIGNATURE. HMAC needs the shared secret on both
+      // sides; the column name is historical.
+      secretHash: secret,
       secretPreview: preview(secret),
       scopes: parsed.data.scopes,
       createdBy: userId ?? null,
