@@ -77,4 +77,30 @@ if local_version not in resolvable:
         f"  Fix: bump the range in cli/package.json to match, and publish the SDK."
     )
 
-print(f"OK - {declared} resolves to {resolved}, and includes the in-repo {local_version}")
+# ── 2. the lockfile, which is what `npm ci` in CI actually installs ────
+# The range and the lockfile fail in opposite directions, so a repo can be
+# healthy on one and broken on the other. linksnap proved it: range ^0.1.0
+# correctly admitted the in-repo 0.1.2, but the lock pinned 0.1.0, so CI
+# compiled against a version no user ever received. A range-only check
+# calls that healthy.
+lock_path = root / "cli" / "package-lock.json"
+if not lock_path.exists():
+    fail("cli/package-lock.json is missing — `npm ci` cannot be reproducible")
+
+lock = json.loads(lock_path.read_text())
+entry = (lock.get("packages") or {}).get(f"node_modules/{DEP}")
+if entry is None:
+    fail(f"cli/package-lock.json has no entry for {DEP}; run `npm install` in cli/")
+
+locked = entry.get("version")
+print(f"cli/package-lock.json pins {locked}")
+
+if locked != local_version:
+    fail(
+        f"the lockfile pins {DEP}@{locked}, but sdk/node in this repo is {local_version}.\n"
+        f"  `npm ci` installs the lockfile exactly, so CI compiles and tests against\n"
+        f"  {locked} while a user installing the CLI gets {resolved}.\n"
+        f"  Fix: cd cli && npm install --package-lock-only, and commit the lockfile."
+    )
+
+print(f"OK - range {declared} and lockfile both resolve to the in-repo {local_version}")
