@@ -79,16 +79,31 @@ async function deliver(ev: OutboxRow) {
   });
 }
 
+// Consumers of fulkruma's shipment lifecycle. Adding an event type to
+// buildEvent() is NOT enough — an event with no subscriber here is
+// marked published with zero deliveries and vanishes silently, so every
+// new type has to be listed.
+const SHIPMENT_EVENT_TYPES = new Set([
+  'fulkruma.shipment.status_updated.v1',
+  'fulkruma.shipment.pickup_confirmed.v1',
+  // Cancel + rebook raised anywhere other than the partner's own proxy
+  // (fulkruma's dashboard, a direct API client). The proxy path already
+  // repoints the order inline; these keep the out-of-band paths honest.
+  'fulkruma.shipment.cancelled.v1',
+  'fulkruma.shipment.rebooked.v1',
+]);
+
 function subscribersFor(type: string): Array<{ url: string; secret: string }> {
   const out: Array<{ url: string; secret: string }> = [];
   // F-008: storlaunch subscribes to shipment + delivery events.
-  if (
-    type === 'fulkruma.shipment.status_updated.v1'
-    || type === 'fulkruma.shipment.pickup_confirmed.v1'
-  ) {
-    const url = process.env.STORLAUNCH_WEBHOOK_URL;
+  if (SHIPMENT_EVENT_TYPES.has(type)) {
     const secret = process.env.FULKRUMA_OUTBOX_SECRET;
+    const url = process.env.STORLAUNCH_WEBHOOK_URL;
     if (url && secret) out.push({ url, secret });
+    // Malapos runs the same consumer shape at /api/v1/webhooks/fulkruma.
+    // Unset on the box today, so this stays a no-op until it's added.
+    const malaposUrl = process.env.MALAPOS_WEBHOOK_URL;
+    if (malaposUrl && secret) out.push({ url: malaposUrl, secret });
   }
   return out;
 }
