@@ -454,6 +454,21 @@ model Shipment {
   destinationSnapshot Json
   items               Json
   cancelReason        String?
+  cancelledAt         DateTime?
+  // Shipping-credit refund bookkeeping. Confirm-pickup debits the
+  // merchant's prepaid credit; cancelling before the parcel is picked
+  // up gives it back. `refundedAt` is the idempotency latch — the
+  // refund is applied via a conditional updateMany on `refundedAt IS
+  // NULL`, so two concurrent cancels can never double-credit.
+  refundedAt          DateTime?
+  refundedAmount      Int            @default(0)
+  // Rebook chain. A dead shipment (cancelled / rejected / no driver)
+  // can't be revived — Biteship orders are immutable once cancelled —
+  // so "Rebook" mints a NEW Shipment from this one's snapshots and
+  // links the two. Both sides are stored so the UI can render "replaced
+  // by …" on the old row and "rebooked from …" on the new one.
+  replacesShipmentId   String?
+  replacedByShipmentId String?       @unique
   // Source-system back-reference (see License).
   externalSource      String?
   externalRef         String?
@@ -469,6 +484,7 @@ model Shipment {
   @@index([checkoutSessionId])
   @@index([accountId, status])
   @@index([accountId, externalSource, externalRef])
+  @@index([replacesShipmentId])
 }
 
 model ShipmentEvent {

@@ -143,9 +143,34 @@ export interface CustomerAddress {
   updatedAt: string;
 }
 
+// 1:1 with Fulkruma's ShipmentStatus enum, which mirrors Biteship's
+// published tracking statuses plus two internal values (pending =
+// unconfirmed draft, failed = our API error before dispatch).
 export type ShipmentStatus =
-  | 'pending' | 'confirmed' | 'allocated' | 'picking_up' | 'picked_up'
-  | 'dropping_off' | 'in_transit' | 'delivered' | 'cancelled' | 'returned' | 'failed';
+  | 'pending' | 'confirmed' | 'scheduled' | 'allocated' | 'picking_up'
+  | 'picked_up' | 'dropping_off' | 'on_hold' | 'return_in_transit'
+  | 'delivered' | 'rejected' | 'rejected_by_recipient' | 'returned'
+  | 'cancelled' | 'courier_not_found' | 'disposed' | 'failed';
+
+/** Statuses where the booking can still be called off — the parcel is
+ *  provably still at the merchant's origin. */
+export const CANCELLABLE_SHIPMENT_STATUSES: ShipmentStatus[] = [
+  'pending', 'confirmed', 'scheduled', 'allocated', 'picking_up',
+];
+
+/** Statuses where the shipment is dead and a replacement can safely be
+ *  booked from the same snapshots. */
+export const REBOOKABLE_SHIPMENT_STATUSES: ShipmentStatus[] = [
+  'cancelled', 'rejected', 'rejected_by_recipient', 'courier_not_found', 'failed',
+];
+
+export function isCancellableShipment(status: string): boolean {
+  return (CANCELLABLE_SHIPMENT_STATUSES as string[]).includes(status);
+}
+
+export function isRebookableShipment(status: string): boolean {
+  return (REBOOKABLE_SHIPMENT_STATUSES as string[]).includes(status);
+}
 
 export interface Shipment {
   id: string;
@@ -154,7 +179,10 @@ export interface Shipment {
   checkoutSessionId: string | null;
   customerId: string | null;
   customerEmail: string | null;
-  biteshipOrderId: string;
+  /** Null until the merchant confirms pickup — draft-only shipments
+   *  have `biteshipDraftOrderId` instead. */
+  biteshipOrderId: string | null;
+  biteshipDraftOrderId: string | null;
   biteshipTrackingId: string | null;
   waybillId: string | null;
   courierCode: string;
@@ -170,6 +198,15 @@ export interface Shipment {
   destinationSnapshot: Record<string, unknown>;
   items: Array<Record<string, unknown>>;
   cancelReason: string | null;
+  cancelledAt: string | null;
+  /** Shipping credit handed back when this shipment was cancelled
+   *  before pickup. `refundedAt` non-null means the refund is done. */
+  refundedAt: string | null;
+  refundedAmount: number;
+  /** Rebook chain — the dead shipment this one replaces, and the
+   *  replacement booked for it. */
+  replacesShipmentId: string | null;
+  replacedByShipmentId: string | null;
   externalSource: string | null;
   externalRef: string | null;
   createdAt: string;

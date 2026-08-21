@@ -5,7 +5,16 @@ import type { Prisma } from '@prisma/client';
 import { prisma } from '../lib/db.js';
 import { requireAuth } from '../middleware/auth.js';
 import { buildEvent } from '../lib/events.js';
-import { getAdapterForAccount, resolveOrigin } from '../services/shipping-service.js';
+import {
+  cancelShipment,
+  getAdapterForAccount,
+  rebookShipment,
+  resolveOrigin,
+  ShipmentStateError,
+  snapshotToDestination,
+  snapshotToItems,
+  snapshotToOrigin,
+} from '../services/shipping-service.js';
 import {
   applyTransaction as applyShippingCreditTxn,
   getBalance as getShippingCreditBalance,
@@ -213,43 +222,14 @@ router.post('/', async (req, res) => {
       throw new Error('skip_biteship_call');
     }
     const adapter = await getAdapterForAccount(prisma, accountId);
-    const origin = resolvedOriginPayload as Record<string, unknown>;
-    const destination = d.destination as Record<string, unknown>;
-    const items = d.items as Array<Record<string, unknown>>;
     const draft = await adapter.createDraftOrder({
       referenceId: d.externalRef ?? `fulkruma-${Date.now()}`,
-      origin: {
-        contactName: String(origin.contactName ?? ''),
-        contactPhone: String(origin.contactPhone ?? ''),
-        address: String(origin.address ?? ''),
-        postalCode: origin.postalCode != null ? String(origin.postalCode) : undefined,
-        areaId: origin.areaId != null ? String(origin.areaId) : undefined,
-        lat: typeof origin.lat === 'number' ? origin.lat : undefined,
-        lng: typeof origin.lng === 'number' ? origin.lng : undefined,
-        note: origin.note != null ? String(origin.note) : undefined,
-      },
-      destination: {
-        contactName: String(destination.contactName ?? ''),
-        contactPhone: String(destination.contactPhone ?? ''),
-        email: destination.email != null ? String(destination.email) : undefined,
-        address: String(destination.address ?? ''),
-        postalCode: destination.postalCode != null ? String(destination.postalCode) : undefined,
-        areaId: destination.areaId != null ? String(destination.areaId) : undefined,
-        lat: typeof destination.lat === 'number' ? destination.lat : undefined,
-        lng: typeof destination.lng === 'number' ? destination.lng : undefined,
-        note: destination.note != null ? String(destination.note) : undefined,
-      },
+      origin: snapshotToOrigin(resolvedOriginPayload as Record<string, unknown>),
+      destination: snapshotToDestination(d.destination as Record<string, unknown>),
       courierCompany: d.courierCode,
       courierType: d.courierServiceCode,
       courierInsurance: d.insured ? d.insurance : undefined,
-      items: items.map((it) => ({
-        name: String(it.name ?? 'Item'),
-        description: it.description != null ? String(it.description) : undefined,
-        category: it.category != null ? String(it.category) : 'others',
-        value: typeof it.value === 'number' ? it.value : 0,
-        weight: typeof it.weight === 'number' ? Math.max(1, it.weight) : 1,
-        quantity: typeof it.quantity === 'number' ? it.quantity : 1,
-      })),
+      items: snapshotToItems(d.items as Array<Record<string, unknown>>),
     });
     draftOrderId = draft.id;
   } catch (e) {
@@ -356,48 +336,18 @@ router.post('/:id/confirm-pickup', async (req, res) => {
       if (!isValidationFailure) throw firstErr;
       console.warn(`[shipments] confirm failed on stale draft ${shipment.biteshipDraftOrderId} for ${shipment.id}: ${msg} — rebuilding draft from snapshots`);
 
-      const origin = (shipment.originSnapshot as Record<string, unknown>) ?? {};
-      const destination = (shipment.destinationSnapshot as Record<string, unknown>) ?? {};
-      const items = (shipment.items as Array<Record<string, unknown>>) ?? [];
-
       // Best-effort delete of the stale draft; ignore errors (Biteship
       // may have already GC'd it or never accepted it cleanly).
       try { await adapter.deleteDraftOrder(shipment.biteshipDraftOrderId); } catch { /* noop */ }
 
       const fresh = await adapter.createDraftOrder({
         referenceId: `${shipment.externalRef ?? shipment.id}-retry-${Date.now()}`,
-        origin: {
-          contactName: String(origin.contactName ?? ''),
-          contactPhone: String(origin.contactPhone ?? ''),
-          address: String(origin.address ?? ''),
-          postalCode: origin.postalCode != null ? String(origin.postalCode) : undefined,
-          areaId: origin.areaId != null ? String(origin.areaId) : undefined,
-          lat: typeof origin.lat === 'number' ? origin.lat : undefined,
-          lng: typeof origin.lng === 'number' ? origin.lng : undefined,
-          note: origin.note != null ? String(origin.note) : undefined,
-        },
-        destination: {
-          contactName: String(destination.contactName ?? ''),
-          contactPhone: String(destination.contactPhone ?? ''),
-          email: destination.email != null ? String(destination.email) : undefined,
-          address: String(destination.address ?? ''),
-          postalCode: destination.postalCode != null ? String(destination.postalCode) : undefined,
-          areaId: destination.areaId != null ? String(destination.areaId) : undefined,
-          lat: typeof destination.lat === 'number' ? destination.lat : undefined,
-          lng: typeof destination.lng === 'number' ? destination.lng : undefined,
-          note: destination.note != null ? String(destination.note) : undefined,
-        },
+        origin: snapshotToOrigin((shipment.originSnapshot as Record<string, unknown>) ?? {}),
+        destination: snapshotToDestination((shipment.destinationSnapshot as Record<string, unknown>) ?? {}),
         courierCompany: shipment.courierCode,
         courierType: shipment.courierServiceCode,
         courierInsurance: shipment.insured ? shipment.insurance : undefined,
-        items: items.map((it) => ({
-          name: String(it.name ?? 'Item'),
-          description: it.description != null ? String(it.description) : undefined,
-          category: it.category != null ? String(it.category) : 'others',
-          value: typeof it.value === 'number' ? it.value : 0,
-          weight: typeof it.weight === 'number' ? Math.max(1, it.weight) : 1,
-          quantity: typeof it.quantity === 'number' ? it.quantity : 1,
-        })),
+        items: snapshotToItems((shipment.items as Array<Record<string, unknown>>) ?? []),
       });
 
       await prisma.shipment.update({
@@ -476,34 +426,77 @@ router.post('/:id/confirm-pickup', async (req, res) => {
   res.json(ok({ shipment: updated }, reqId));
 });
 
-router.post('/:id/cancel', async (req, res) => {
+// Cancel a booking the courier hasn't collected yet, and give back the
+// shipping credit confirm-pickup consumed. All of the behaviour lives in
+// cancelShipment() so this route and the legacy /shipping/shipments/:id/
+// cancel one can't drift — see the doc comment there.
+router.post('/:id/cancel', async (req, res, next) => {
   const accountId = req.auth?.accountId;
   const reqId = req.requestId ?? 'req_unknown';
   if (!accountId) return res.status(403).json(err('NO_ACCOUNT', 'token missing accountId', reqId));
-  const reason = typeof req.body?.reason === 'string' ? req.body.reason : 'Merchant cancelled';
+  const reason = typeof req.body?.reason === 'string' && req.body.reason.trim()
+    ? req.body.reason.trim()
+    : 'Merchant cancelled';
   const shipment = await prisma.shipment.findFirst({
     where: { id: req.params.id, accountId },
+    select: { id: true },
   });
   if (!shipment) return res.status(404).json(err('NOT_FOUND', 'shipment not found', reqId));
 
-  const adapter = await getAdapterForAccount(prisma, accountId);
   try {
-    // Confirmed shipments cancel via /v1/orders; unconfirmed drafts
-    // cancel via /v1/draft_orders (no Biteship charge incurred).
-    if (shipment.biteshipOrderId) {
-      await adapter.cancelOrder(shipment.biteshipOrderId, reason);
-    } else if (shipment.biteshipDraftOrderId) {
-      await adapter.deleteDraftOrder(shipment.biteshipDraftOrderId);
-    }
+    const result = await cancelShipment(prisma, shipment.id, reason);
+    return res.json(ok({
+      shipment: result.shipment,
+      refunded: result.refunded,
+      courierError: result.courierError,
+    }, reqId));
   } catch (e) {
-    console.warn('[shipments/:id/cancel] biteship cancel failed; flipping local row anyway:', (e as Error).message);
+    if (e instanceof ShipmentStateError) {
+      return res.status(409).json(err('INVALID_STATE', e.message, reqId));
+    }
+    return next(e);
   }
+});
 
-  const updated = await prisma.shipment.update({
-    where: { id: shipment.id },
-    data: { status: 'cancelled', cancelReason: reason },
+// "Reorder" — mint a fresh shipment from a dead one's snapshots, so a
+// no-show pickup or a courier rejection doesn't strand the parcel. The
+// merchant may switch courier in the process; the replacement starts as
+// an unconfirmed draft, so nothing is charged until they book it.
+const rebookSchema = z.object({
+  courierCode: z.string().min(1).optional(),
+  courierServiceCode: z.string().min(1).optional(),
+  courierType: z.string().min(1).optional(),
+  price: z.number().int().nonnegative().optional(),
+  insured: z.boolean().optional(),
+  insurance: z.number().int().nonnegative().optional(),
+});
+
+router.post('/:id/rebook', async (req, res, next) => {
+  const accountId = req.auth?.accountId;
+  const reqId = req.requestId ?? 'req_unknown';
+  if (!accountId) return res.status(403).json(err('NO_ACCOUNT', 'token missing accountId', reqId));
+  const parsed = rebookSchema.safeParse(req.body ?? {});
+  if (!parsed.success) return res.status(400).json(err('VALIDATION', parsed.error.message, reqId));
+
+  const shipment = await prisma.shipment.findFirst({
+    where: { id: req.params.id, accountId },
+    select: { id: true },
   });
-  res.json(ok({ shipment: updated }, reqId));
+  if (!shipment) return res.status(404).json(err('NOT_FOUND', 'shipment not found', reqId));
+
+  try {
+    const { shipment: created, draftCreateError } = await rebookShipment(prisma, shipment.id, parsed.data);
+    return res.status(201).json(ok({
+      shipment: created,
+      previousShipmentId: shipment.id,
+      draftCreateError,
+    }, reqId));
+  } catch (e) {
+    if (e instanceof ShipmentStateError) {
+      return res.status(409).json(err('INVALID_STATE', e.message, reqId));
+    }
+    return next(e);
+  }
 });
 
 export default router;

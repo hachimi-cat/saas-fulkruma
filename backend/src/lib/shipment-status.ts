@@ -208,3 +208,74 @@ export const ACTIVE_SHIPMENT_STATUSES: string[] = [
   ...STATUSES_BY_STAGE.pre_pickup.map((d) => d.status),
   ...STATUSES_BY_STAGE.in_flight.map((d) => d.status),
 ].filter((s) => s !== 'pending' && FULKRUMA_SHIPMENT_STATUS_VALUES.has(s));
+
+// ─── Cancel / rebook gates ───────────────────────────────────────
+//
+// Two disjoint sets, both derived from where Biteship actually lets us
+// act:
+//
+//   CANCELLABLE — there is still a live booking to call off and the
+//   parcel is provably at the merchant's origin. Biteship accepts
+//   DELETE on the draft (unconfirmed) or the order (confirmed but not
+//   yet collected). `picking_up` is in here on purpose: the driver is
+//   en route to the merchant, so the parcel hasn't moved — this is
+//   exactly the state a no-show pickup gets stuck in.
+//
+//   REBOOKABLE — the shipment is dead and nothing is in flight, so a
+//   fresh booking is safe. Cancelled by the merchant, refused by the
+//   courier, no driver found, or an API failure before dispatch.
+//   `returned` / `disposed` are excluded: the parcel's round trip is
+//   over and re-dispatching the same snapshot would ship it again.
+//
+// Everything between the two — picked_up, dropping_off, on_hold,
+// return_in_transit, delivered — is untouchable: the courier has the
+// parcel, so neither cancelling nor rebooking is honest.
+export const CANCELLABLE_SHIPMENT_STATUSES = [
+  'pending', 'confirmed', 'scheduled', 'allocated', 'picking_up',
+] as const;
+
+export const REBOOKABLE_SHIPMENT_STATUSES = [
+  'cancelled', 'rejected', 'rejected_by_recipient', 'courier_not_found', 'failed',
+] as const;
+
+export function isCancellable(status: string): boolean {
+  return (CANCELLABLE_SHIPMENT_STATUSES as readonly string[]).includes(status);
+}
+
+export function isRebookable(status: string): boolean {
+  return (REBOOKABLE_SHIPMENT_STATUSES as readonly string[]).includes(status);
+}
+
+/**
+ * The full rebook gate, status plus the two fields that qualify it.
+ *
+ * Beyond the dead statuses there's one more genuinely stuck shape: a
+ * `pending` row whose Biteship draft never stuck (create failed, or the
+ * reference-id retries were exhausted). It looks bookable but
+ * confirm-pickup 409s with NO_DRAFT forever, so it needs a fresh
+ * booking, not a retry. A row already rebooked is never rebookable
+ * again — follow `replacedByShipmentId` to the live one.
+ */
+export function canRebookShipment(shipment: {
+  status: string;
+  biteshipDraftOrderId?: string | null;
+  replacedByShipmentId?: string | null;
+}): boolean {
+  if (shipment.replacedByShipmentId) return false;
+  if (isRebookable(shipment.status)) return true;
+  return shipment.status === 'pending' && !shipment.biteshipDraftOrderId;
+}
+
+// A cancel only earns a shipping-credit refund when the merchant was
+// actually charged (confirm-pickup debits, draft creation does not) and
+// the courier never took custody. Callers pair this with the
+// `refundedAt IS NULL` latch for idempotency.
+export function isRefundableOnCancel(shipment: {
+  status: string;
+  biteshipOrderId: string | null;
+  price: number;
+}): boolean {
+  return isCancellable(shipment.status)
+    && Boolean(shipment.biteshipOrderId)
+    && shipment.price > 0;
+}

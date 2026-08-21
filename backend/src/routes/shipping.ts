@@ -9,6 +9,8 @@ import {
   getAdapterForAccount,
   quoteRates,
   cancelShipment,
+  rebookShipment,
+  ShipmentStateError,
   DEFAULT_COURIERS,
   isInstantCourier,
   type ShippingDestination,
@@ -69,6 +71,18 @@ const itemSchema = z.object({
   height: z.number().int().positive().optional(),
   quantity: z.number().int().min(1),
   productId: z.string().optional(),
+});
+
+// Rebook ("reorder") body — every field optional; omitted ones fall
+// back to the dead shipment's own values, so `{}` means "same courier,
+// try again".
+const rebookSchema = z.object({
+  courierCode: z.string().min(1).optional(),
+  courierServiceCode: z.string().min(1).optional(),
+  courierType: z.string().min(1).optional(),
+  price: z.number().int().nonnegative().optional(),
+  insured: z.boolean().optional(),
+  insurance: z.number().int().nonnegative().optional(),
 });
 
 const rateQuoteSchema = z.object({
@@ -384,19 +398,54 @@ router.get('/shipments/:id', requireAuth, async (req, res, next) => {
 });
 
 // ─── POST /shipping/shipments/:id/cancel ─────────────────────────────────────
+// Legacy namespace. Same cancelShipment() call as /shipments/:id/cancel,
+// so both paths refund the shipping credit and emit the same events.
 router.post('/shipments/:id/cancel', requireAuth, async (req, res, next) => {
   try {
     const accountId = req.auth?.accountId;
     if (!accountId) return res.status(403).json(err('NO_ACCOUNT', 'token missing accountId', rid(req)));
-    const reason = typeof req.body?.reason === 'string' ? req.body.reason : 'Merchant cancelled';
+    const reason = typeof req.body?.reason === 'string' && req.body.reason.trim()
+      ? req.body.reason.trim()
+      : 'Merchant cancelled';
     const shipment = await prisma.shipment.findUnique({ where: { id: String(req.params.id) } });
     if (!shipment || shipment.accountId !== accountId) {
       return res.status(404).json(err('NOT_FOUND', 'Shipment not found', rid(req)));
     }
-    await cancelShipment(prisma, shipment.id, reason);
-    return res.json(ok({ id: shipment.id, status: 'cancelled' }, rid(req)));
+    const result = await cancelShipment(prisma, shipment.id, reason);
+    return res.json(ok({
+      id: shipment.id,
+      status: 'cancelled',
+      refunded: result.refunded,
+      courierError: result.courierError,
+    }, rid(req)));
   } catch (e) {
-    if (e instanceof Error && e.message.startsWith('Cannot cancel')) {
+    if (e instanceof ShipmentStateError) {
+      return res.status(409).json(err('INVALID_STATE', e.message, rid(req)));
+    }
+    next(e);
+  }
+});
+
+// ─── POST /shipping/shipments/:id/rebook ─────────────────────────────────────
+// Legacy-namespace twin of /shipments/:id/rebook.
+router.post('/shipments/:id/rebook', requireAuth, async (req, res, next) => {
+  try {
+    const accountId = req.auth?.accountId;
+    if (!accountId) return res.status(403).json(err('NO_ACCOUNT', 'token missing accountId', rid(req)));
+    const parsed = rebookSchema.safeParse(req.body ?? {});
+    if (!parsed.success) return res.status(400).json(err('VALIDATION_ERROR', parsed.error.message, rid(req)));
+    const shipment = await prisma.shipment.findUnique({ where: { id: String(req.params.id) } });
+    if (!shipment || shipment.accountId !== accountId) {
+      return res.status(404).json(err('NOT_FOUND', 'Shipment not found', rid(req)));
+    }
+    const { shipment: created, draftCreateError } = await rebookShipment(prisma, shipment.id, parsed.data);
+    return res.status(201).json(ok({
+      shipment: created,
+      previousShipmentId: shipment.id,
+      draftCreateError,
+    }, rid(req)));
+  } catch (e) {
+    if (e instanceof ShipmentStateError) {
       return res.status(409).json(err('INVALID_STATE', e.message, rid(req)));
     }
     next(e);

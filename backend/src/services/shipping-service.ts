@@ -1,5 +1,7 @@
 import crypto from 'node:crypto';
-import type { PrismaClient } from '@prisma/client';
+import type { Prisma, PrismaClient } from '@prisma/client';
+import { canRebookShipment, isCancellable, isRefundableOnCancel } from '../lib/shipment-status.js';
+import { applyTransaction as applyShippingCreditTxn } from './shipping-credit-service.js';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -711,45 +713,354 @@ export async function quoteRates(
   return rates.sort((a, b) => a.price - b.price);
 }
 
+/** Raised when cancel / rebook is asked for in a status that doesn't
+ *  allow it. Routes map this to 409 INVALID_STATE. */
+export class ShipmentStateError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'ShipmentStateError';
+  }
+}
+
+export interface CancelShipmentResult {
+  shipment: Awaited<ReturnType<PrismaClient['shipment']['update']>>;
+  /** Shipping credit handed back, in IDR. 0 when nothing was charged. */
+  refunded: number;
+  /** Set when Biteship rejected the cancel but we flipped the local row
+   *  anyway (the parcel is at the merchant either way). */
+  courierError: string | null;
+}
+
+/**
+ * Cancel a shipment and give back the shipping credit it consumed.
+ *
+ * Single implementation behind BOTH cancel routes (`/shipments/:id/
+ * cancel` and the legacy `/shipping/shipments/:id/cancel`) so the two
+ * can't drift on what a cancel actually does.
+ *
+ * Four things happen, in this order:
+ *   1. Refuse anything the courier already collected — see
+ *      CANCELLABLE_SHIPMENT_STATUSES. `picking_up` IS cancellable: the
+ *      driver is en route to the merchant, so the parcel hasn't moved,
+ *      and that's precisely the state a no-show pickup strands.
+ *   2. Call off the booking at Biteship — DELETE the order when it was
+ *      confirmed, DELETE the draft when it wasn't (no charge either
+ *      way on their side).
+ *   3. Refund the merchant's prepaid shipping credit if confirm-pickup
+ *      had debited it. Idempotent via the `refundedAt IS NULL` latch.
+ *   4. Record it: status + cancelReason + cancelledAt, a ShipmentEvent
+ *      for the timeline, and an outbox event so storlaunch / malapos
+ *      can un-stick the order they linked to this shipment.
+ */
 export async function cancelShipment(
   prisma: PrismaLike,
   shipmentId: string,
   reason: string,
   adapter?: BiteshipAdapter,
-): Promise<void> {
+): Promise<CancelShipmentResult> {
   const shipment = await prisma.shipment.findUnique({ where: { id: shipmentId } });
   if (!shipment) throw new Error(`Shipment ${shipmentId} not found`);
-  // Once the parcel has left the origin we can't cancel — Biteship
-  // refuses, so we refuse upstream. F-003 removed our internal
-  // 'in_transit' value; the real Biteship lifecycle uses on_hold /
-  // dropping_off / return_in_transit between picked_up and delivered.
-  if ([
-    'picked_up', 'dropping_off', 'on_hold', 'return_in_transit',
-    'delivered', 'cancelled', 'returned', 'disposed',
-  ].includes(shipment.status)) {
-    throw new Error(`Cannot cancel shipment in status ${shipment.status}`);
+  if (!isCancellable(shipment.status)) {
+    throw new ShipmentStateError(
+      shipment.status === 'cancelled'
+        ? 'Shipment is already cancelled'
+        : `Cannot cancel a shipment in status "${shipment.status}" — the courier already has the parcel`,
+    );
   }
-  const ad = adapter ?? await getAdapterForAccount(prisma, shipment.accountId);
+
   // F-004: confirmed shipments cancel via /v1/orders; unconfirmed
   // drafts (biteshipOrderId still null) cancel via /v1/draft_orders.
-  if (shipment.biteshipOrderId) {
-    await ad.cancelOrder(shipment.biteshipOrderId, reason);
-  } else if (shipment.biteshipDraftOrderId) {
-    await ad.deleteDraftOrder(shipment.biteshipDraftOrderId);
+  // A courier-side failure must not strand the merchant: the parcel is
+  // sitting at their origin regardless, so flip the local row and
+  // surface the upstream message rather than refusing the whole cancel.
+  let courierError: string | null = null;
+  try {
+    const ad = adapter ?? await getAdapterForAccount(prisma, shipment.accountId);
+    if (shipment.biteshipOrderId) {
+      await ad.cancelOrder(shipment.biteshipOrderId, reason);
+    } else if (shipment.biteshipDraftOrderId) {
+      await ad.deleteDraftOrder(shipment.biteshipDraftOrderId);
+    }
+  } catch (e) {
+    courierError = (e as Error).message;
+    console.warn(`[shipping] biteship cancel failed for ${shipmentId}; cancelling locally anyway:`, courierError);
   }
-  await prisma.shipment.update({
+
+  const refunded = await refundShippingCredit(prisma, shipment, reason);
+
+  const updated = await prisma.shipment.update({
     where: { id: shipmentId },
-    data: { status: 'cancelled', cancelReason: reason },
+    data: { status: 'cancelled', cancelReason: reason, cancelledAt: new Date() },
   });
   await prisma.shipmentEvent.create({
     data: {
       shipmentId,
       status: 'cancelled',
-      note: reason,
+      note: refunded > 0
+        ? `${reason} — Rp ${refunded.toLocaleString('id-ID')} shipping credit refunded.`
+        : reason,
       occurredAt: new Date(),
-      raw: {} as never,
+      raw: (courierError ? { courierError } : {}) as never,
     },
   });
+  await prisma.outboxEvent.create({
+    data: buildEvent({
+      type: 'fulkruma.shipment.cancelled.v1',
+      accountId: shipment.accountId,
+      data: {
+        shipmentId,
+        biteshipOrderId: shipment.biteshipOrderId,
+        waybillId: shipment.waybillId,
+        reason,
+        refunded,
+        courierError,
+        externalSource: shipment.externalSource ?? null,
+        externalRef: shipment.externalRef ?? null,
+      },
+    }),
+  });
+
+  return { shipment: updated, refunded, courierError };
+}
+
+/**
+ * Hand back the shipping credit a confirm-pickup consumed.
+ *
+ * The merchant is debited when the draft is confirmed, not when it's
+ * created — so only a shipment that reached `biteshipOrderId` has
+ * anything to refund. `refundedAt` is the idempotency latch: the
+ * conditional updateMany is a single atomic statement, so of two
+ * concurrent cancels exactly one sees count === 1 and issues the
+ * ledger entry. If the ledger write then fails we release the latch so
+ * a retry can still make the merchant whole.
+ *
+ * Returns the amount refunded (0 when there was nothing to give back).
+ */
+async function refundShippingCredit(
+  prisma: PrismaLike,
+  shipment: { id: string; accountId: string; status: string; biteshipOrderId: string | null; price: number; courierCode: string },
+  reason: string,
+): Promise<number> {
+  if (!isRefundableOnCancel(shipment)) return 0;
+  const amount = shipment.price;
+
+  const latched = await prisma.shipment.updateMany({
+    where: { id: shipment.id, refundedAt: null },
+    data: { refundedAt: new Date(), refundedAmount: amount },
+  });
+  if (latched.count !== 1) return 0; // already refunded by a concurrent cancel
+
+  try {
+    await applyShippingCreditTxn({
+      accountId: shipment.accountId,
+      amount,
+      kind: 'shipment_refund',
+      shipmentId: shipment.id,
+      memo: `Cancelled before pickup (${shipment.courierCode}) — ${reason}`,
+    });
+    return amount;
+  } catch (e) {
+    await prisma.shipment.updateMany({
+      where: { id: shipment.id },
+      data: { refundedAt: null, refundedAmount: 0 },
+    });
+    console.error(`[shipping] refund failed for ${shipment.id}; latch released:`, (e as Error).message);
+    throw e;
+  }
+}
+
+export interface RebookShipmentInput {
+  /** Defaults to the dead shipment's courier — pass a different one to
+   *  switch away from the courier that failed. */
+  courierCode?: string;
+  courierServiceCode?: string;
+  courierType?: string;
+  /** Quoted price for the chosen service. Defaults to the original. */
+  price?: number;
+  insured?: boolean;
+  insurance?: number;
+}
+
+/**
+ * Rebook a dead shipment: mint a fresh one from its snapshots.
+ *
+ * A cancelled or courier-rejected Biteship order can't be revived, so
+ * "reorder" means a NEW Shipment row carrying the same origin,
+ * destination and items — optionally on a different courier, which is
+ * the whole point when the original one no-showed. The two rows are
+ * linked in both directions so the old AWB, its charge and its refund
+ * stay auditable instead of being overwritten.
+ *
+ * The new row starts as an unconfirmed draft (status `pending`, no
+ * charge, no driver) exactly like a first-time booking — the merchant
+ * still clicks "Book courier" to dispatch, and only then is their
+ * credit debited.
+ */
+export async function rebookShipment(
+  prisma: PrismaLike,
+  shipmentId: string,
+  input: RebookShipmentInput = {},
+  adapter?: BiteshipAdapter,
+): Promise<{ shipment: Awaited<ReturnType<PrismaClient['shipment']['create']>>; draftCreateError: string | null }> {
+  const source = await prisma.shipment.findUnique({ where: { id: shipmentId } });
+  if (!source) throw new Error(`Shipment ${shipmentId} not found`);
+  if (source.replacedByShipmentId) {
+    throw new ShipmentStateError(
+      `Shipment was already rebooked as ${source.replacedByShipmentId}`,
+    );
+  }
+  if (!canRebookShipment(source)) {
+    throw new ShipmentStateError(
+      `Cannot rebook a shipment in status "${source.status}" — cancel it first, or wait for the courier to finish`,
+    );
+  }
+
+  const courierCode = input.courierCode ?? source.courierCode;
+  const courierServiceCode = input.courierServiceCode ?? source.courierServiceCode;
+  const courierType = input.courierType ?? source.courierType;
+  // Only inherit the old price when the courier is unchanged — a
+  // different service costs a different amount, and a stale price here
+  // becomes the wrong debit at confirm-pickup.
+  const sameService = courierCode === source.courierCode && courierServiceCode === source.courierServiceCode;
+  const price = input.price ?? (sameService ? source.price : 0);
+  const insured = input.insured ?? source.insured;
+  const insurance = input.insurance ?? source.insurance;
+
+  const origin = (source.originSnapshot as Record<string, unknown>) ?? {};
+  const destination = (source.destinationSnapshot as Record<string, unknown>) ?? {};
+  const items = (source.items as Array<Record<string, unknown>>) ?? [];
+
+  // Biteship enforces reference_id uniqueness across the merchant's
+  // whole Biteship account, so the replacement can never reuse the dead
+  // booking's reference. Count the existing chain to build a stable,
+  // collision-free suffix (…-rb2, …-rb3) instead of a timestamp.
+  const priorRebooks = await prisma.shipment.count({
+    where: { accountId: source.accountId, externalSource: source.externalSource, externalRef: source.externalRef },
+  });
+  const referenceId = `${source.externalRef ?? source.id}-rb${priorRebooks + 1}`;
+
+  let draftOrderId: string | null = null;
+  let draftCreateError: string | null = null;
+  try {
+    const ad = adapter ?? await getAdapterForAccount(prisma, source.accountId);
+    const draft = await ad.createDraftOrder({
+      referenceId,
+      origin: snapshotToOrigin(origin),
+      destination: snapshotToDestination(destination),
+      courierCompany: courierCode,
+      courierType: courierServiceCode,
+      courierInsurance: insured ? insurance : undefined,
+      items: snapshotToItems(items),
+    });
+    draftOrderId = draft.id;
+  } catch (e) {
+    // Same contract as first-time create: persist the local row so the
+    // merchant sees the attempt and can retry, but say why it didn't book.
+    draftCreateError = (e as Error).message;
+    console.error(`[shipping] rebook draft create failed for ${shipmentId}:`, draftCreateError);
+  }
+
+  const created = await prisma.shipment.create({
+    data: {
+      accountId: source.accountId,
+      productId: source.productId,
+      checkoutSessionId: source.checkoutSessionId,
+      customerId: source.customerId,
+      customerEmail: source.customerEmail,
+      biteshipDraftOrderId: draftOrderId,
+      biteshipOrderId: null,
+      courierCode,
+      courierServiceCode,
+      courierType,
+      price,
+      insurance,
+      insured,
+      originSnapshot: origin as Prisma.InputJsonValue,
+      destinationSnapshot: destination as Prisma.InputJsonValue,
+      items: items as Prisma.InputJsonValue,
+      externalSource: source.externalSource,
+      externalRef: source.externalRef,
+      replacesShipmentId: source.id,
+    },
+  });
+
+  await prisma.shipment.update({
+    where: { id: source.id },
+    data: { replacedByShipmentId: created.id },
+  });
+  await prisma.shipmentEvent.create({
+    data: {
+      shipmentId: created.id,
+      status: 'pending',
+      note: `Rebooked from ${source.id} (${source.courierCode} ${source.courierServiceCode} → ${courierCode} ${courierServiceCode}).`,
+      occurredAt: new Date(),
+      raw: (draftCreateError ? { draftCreateError } : {}) as never,
+    },
+  });
+  await prisma.outboxEvent.create({
+    data: buildEvent({
+      type: 'fulkruma.shipment.rebooked.v1',
+      accountId: source.accountId,
+      data: {
+        shipmentId: created.id,
+        previousShipmentId: source.id,
+        courierCode,
+        courierServiceCode,
+        price,
+        biteshipDraftOrderId: draftOrderId,
+        draftCreateError,
+        externalSource: source.externalSource ?? null,
+        externalRef: source.externalRef ?? null,
+      },
+    }),
+  });
+
+  return { shipment: created, draftCreateError };
+}
+
+// ─── Snapshot → Biteship payload ────────────────────────────────────────────
+// The stored origin/destination/item snapshots are loose Json. These
+// three narrow them back into the adapter's typed params. Shared by
+// confirm-pickup's stale-draft rebuild and rebookShipment so the two
+// can't disagree on how a snapshot becomes a booking.
+
+export function snapshotToOrigin(o: Record<string, unknown>): ShippingOrigin {
+  return {
+    contactName: String(o.contactName ?? ''),
+    contactPhone: String(o.contactPhone ?? ''),
+    address: String(o.address ?? ''),
+    postalCode: o.postalCode != null ? String(o.postalCode) : undefined,
+    areaId: o.areaId != null ? String(o.areaId) : undefined,
+    lat: typeof o.lat === 'number' ? o.lat : undefined,
+    lng: typeof o.lng === 'number' ? o.lng : undefined,
+    note: o.note != null ? String(o.note) : undefined,
+  };
+}
+
+export function snapshotToDestination(d: Record<string, unknown>): ShippingDestination {
+  return {
+    contactName: String(d.contactName ?? ''),
+    contactPhone: String(d.contactPhone ?? ''),
+    email: d.email != null ? String(d.email) : undefined,
+    address: String(d.address ?? ''),
+    postalCode: d.postalCode != null ? String(d.postalCode) : undefined,
+    areaId: d.areaId != null ? String(d.areaId) : undefined,
+    lat: typeof d.lat === 'number' ? d.lat : undefined,
+    lng: typeof d.lng === 'number' ? d.lng : undefined,
+    note: d.note != null ? String(d.note) : undefined,
+  };
+}
+
+export function snapshotToItems(items: Array<Record<string, unknown>>): ShippingItem[] {
+  return items.map((it) => ({
+    name: String(it.name ?? 'Item'),
+    description: it.description != null ? String(it.description) : undefined,
+    category: it.category != null ? String(it.category) : 'others',
+    value: typeof it.value === 'number' ? it.value : 0,
+    // Biteship rejects weight < 1g.
+    weight: typeof it.weight === 'number' ? Math.max(1, it.weight) : 1,
+    quantity: typeof it.quantity === 'number' ? it.quantity : 1,
+  }));
 }
 
 /**

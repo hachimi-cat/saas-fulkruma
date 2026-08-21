@@ -282,10 +282,28 @@ export class FulkrumaClient {
       this.request<{ shipment: Shipment }>({
         method: 'POST', path: `/api/v1/shipments/${id}/confirm-pickup`, idempotencyKey: this.genIdem(),
       }),
+    /** Cancel a booking the courier hasn't collected yet. Refunds the
+     *  shipping credit confirm-pickup debited; `refunded` is 0 when the
+     *  shipment was still an unconfirmed draft (never charged). */
     cancel: (id: string, reason?: string) =>
-      this.request<{ shipment: Shipment }>({
+      this.request<{ shipment: Shipment; refunded: number; courierError: string | null }>({
         method: 'POST', path: `/api/v1/shipments/${id}/cancel`, body: { reason },
       }),
+    /** "Reorder" a dead shipment — books a NEW draft from its origin /
+     *  destination / item snapshots, optionally on a different courier.
+     *  Only valid from a rebookable status (see isRebookableShipment);
+     *  the replacement starts unconfirmed, so nothing is charged until
+     *  the merchant books it. Pass `{}` to retry the same courier. */
+    rebook: (id: string, input: {
+      courierCode?: string;
+      courierServiceCode?: string;
+      courierType?: string;
+      price?: number;
+      insured?: boolean;
+      insurance?: number;
+    } = {}) => this.request<{ shipment: Shipment; previousShipmentId: string; draftCreateError: string | null }>({
+      method: 'POST', path: `/api/v1/shipments/${id}/rebook`, body: input, idempotencyKey: this.genIdem(),
+    }),
     // F-008 — live tracking detail (driver, status history, link to
     // Biteship's public map) for native rendering in merchant + buyer
     // portals. Pulls from Biteship /v1/trackings/:trackingId on each call.
