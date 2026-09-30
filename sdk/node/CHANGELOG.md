@@ -2,7 +2,7 @@
 
 ## 0.5.0
 - Requests sign exactly the bytes they send. A call that carries nothing — `licenses.revoke`, `apiKeys.revoke`, `billing.cancel`, or any body that serialises to `{}` / `[]` — now sends no body and signs none; it used to send and sign `{}`, which the server hashed as the empty string, so those calls failed with BAD_SIGNATURE.
-- `apiKeys.create({ name, scopes? })`: the server requires `name` (and takes `scopes`: read / write / admin); `description` and `scope` were never read. `apiKeys.revoke` returns `{ apiKey: { id, revokedAt } }`, what the server sends.
+- `apiKeys.create({ name, scopes? })`: the server requires `name` (and takes `scopes`: read / write / admin); `description` and `scope` were never read. `apiKeys.list` returns `{ apiKeys }` and `apiKeys.create` `{ apiKey, secret }`, and `apiKeys.revoke` `{ apiKey: { id, revokedAt } }` — what the server sends (they were typed as `keys` / `key` / `revoked`).
 - `auditLog.list({ action?, target_type?, limit? })`: the filters the server reads (`action` is a prefix). `cursor`, `since` and `eventType` were ignored.
 - `billing.checkout({ plan: 'STARTER' | 'GROWTH' | 'SCALE', email?, name? })` returns `{ subscriptionId, invoiceId, checkoutSessionId, checkoutUrl }`; it sent `planId` / `successUrl` / `cancelUrl`, which the server rejects.
 - `webhooks.listEvents()` takes no parameters: the server returns the 50 most recent events and ignored `limit` / `cursor` / `type`.

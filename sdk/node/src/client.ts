@@ -421,11 +421,15 @@ export class FulkrumaClient {
 
   // ─── API keys ────────────────────────────────────────────────
   apiKeys = {
-    list: () => this.request<{ keys: Array<Record<string, unknown>> }>({
+    list: () => this.request<{ apiKeys: Array<Record<string, unknown>> }>({
       method: 'GET', path: '/api/v1/api-keys',
     }),
-    /** `scopes` defaults to ['read', 'write'] on the server. */
-    create: (input: { name: string; scopes?: Array<'read' | 'write' | 'admin'> }) => this.request<{ key: Record<string, unknown> }>({
+    /** `scopes` defaults to ['read', 'write'] on the server. The response is the only
+     *  time `secret` is ever returned. */
+    create: (input: { name: string; scopes?: Array<'read' | 'write' | 'admin'> }) => this.request<{
+      apiKey: { id: string; name: string; keyId: string; scopes: string[]; createdAt: string };
+      secret: string;
+    }>({
       method: 'POST', path: '/api/v1/api-keys', body: input, idempotencyKey: this.genIdem(),
     }),
     revoke: (id: string) => this.request<{ apiKey: { id: string; revokedAt: string } }>({

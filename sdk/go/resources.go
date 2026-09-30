@@ -691,12 +691,15 @@ func (r *DeliveriesResource) Create(ctx context.Context, in DeliveryCreateInput)
 // APIKeysResource — /api/v1/api-keys.
 type APIKeysResource struct{ c *Client }
 
-type apiKeyEnvelope struct {
-	Key map[string]any `json:"key"`
+// APIKeyCreated is what APIKeys.Create returns: the key's record, and its
+// secret — returned this once, never again.
+type APIKeyCreated struct {
+	APIKey map[string]any `json:"apiKey"`
+	Secret string         `json:"secret"`
 }
 
 type apiKeyListEnvelope struct {
-	Keys []map[string]any `json:"keys"`
+	APIKeys []map[string]any `json:"apiKeys"`
 }
 
 // APIKeyCreateInput — POST /api/v1/api-keys body. Scopes: any of "read",
@@ -725,19 +728,19 @@ func (r *APIKeysResource) List(ctx context.Context) ([]map[string]any, error) {
 	if err := r.c.Request(ctx, "GET", "/api/v1/api-keys", nil, &out, nil); err != nil {
 		return nil, err
 	}
-	return out.Keys, nil
+	return out.APIKeys, nil
 }
 
-// Create — POST /api/v1/api-keys (idempotent).
-func (r *APIKeysResource) Create(ctx context.Context, in APIKeyCreateInput) (map[string]any, error) {
-	var out apiKeyEnvelope
+// Create — POST /api/v1/api-keys (idempotent). The secret is in the result.
+func (r *APIKeysResource) Create(ctx context.Context, in APIKeyCreateInput) (*APIKeyCreated, error) {
+	var out APIKeyCreated
 	err := r.c.Request(ctx, "POST", "/api/v1/api-keys", in, &out, &RequestOptions{
 		IdempotencyKey: r.c.genIdem(),
 	})
 	if err != nil {
 		return nil, err
 	}
-	return out.Key, nil
+	return &out, nil
 }
 
 // Revoke — POST /api/v1/api-keys/:id/revoke. Reports whether the key is now revoked.
