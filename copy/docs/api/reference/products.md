@@ -63,7 +63,7 @@ POST /api/v1/products
 curl -X POST "https://fulkruma.com/api/v1/products" \
   -H "Authorization: Fulkruma-HMAC-SHA256 keyId=<key id>, scope=*, signature=<see /docs/api/authentication>" \
   -H "Content-Type: application/json" \
-  -d '{"name":"…","sku":"…","description":"…","type":"physical","weight":0,"length":0,"width":0,"height":0,"licenseEnabled":false,"maxActivations":0}'
+  -d '{"name":"…","sku":"…","description":"…","type":"physical","weight":0,"length":0,"width":0,"height":0,"licenseEnabled":false,"maxActivations":1}'
 ```
 
 ## Delete a product
@@ -137,7 +137,7 @@ PATCH /api/v1/products/{id}
 curl -X PATCH "https://fulkruma.com/api/v1/products/:id" \
   -H "Authorization: Fulkruma-HMAC-SHA256 keyId=<key id>, scope=*, signature=<see /docs/api/authentication>" \
   -H "Content-Type: application/json" \
-  -d '{"name":"…","sku":"…","description":"…","type":"physical","weight":0,"length":0,"width":0,"height":0,"licenseEnabled":false,"maxActivations":0}'
+  -d '{"name":"…","sku":"…","description":"…","type":"physical","weight":0,"length":0,"width":0,"height":0,"licenseEnabled":false,"maxActivations":1}'
 ```
 
 ## Variants a product

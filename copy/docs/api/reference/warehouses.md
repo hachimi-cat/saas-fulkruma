@@ -9,9 +9,9 @@ Generated from Fulkruma's own code: every route in this area, what it takes and 
 | Method | Path | What it does |
 |---|---|---|
 | `GET` | `/api/v1/warehouses` | [List warehouses](#list-warehouses) |
-| `POST` | `/api/v1/warehouses` | [Create a warehous](#create-a-warehous) |
-| `DELETE` | `/api/v1/warehouses/{id}` | [Delete a warehous](#delete-a-warehous) |
-| `PATCH` | `/api/v1/warehouses/{id}` | [Update a warehous](#update-a-warehous) |
+| `POST` | `/api/v1/warehouses` | [Create a warehouse](#create-a-warehouse) |
+| `DELETE` | `/api/v1/warehouses/{id}` | [Delete a warehouse](#delete-a-warehouse) |
+| `PATCH` | `/api/v1/warehouses/{id}` | [Update a warehouse](#update-a-warehouse) |
 
 ## List warehouses
 
@@ -26,7 +26,7 @@ curl -X GET "https://fulkruma.com/api/v1/warehouses" \
   -H "Authorization: Fulkruma-HMAC-SHA256 keyId=<key id>, scope=*, signature=<see /docs/api/authentication>"
 ```
 
-## Create a warehous
+## Create a warehouse
 
 ```
 POST /api/v1/warehouses
@@ -54,7 +54,7 @@ curl -X POST "https://fulkruma.com/api/v1/warehouses" \
   -d '{"name":"…","address":"…","city":"…","postal":"…","lat":1,"lng":1,"phone":"…","isDefault":false}'
 ```
 
-## Delete a warehous
+## Delete a warehouse
 
 ```
 DELETE /api/v1/warehouses/{id}
@@ -73,7 +73,7 @@ curl -X DELETE "https://fulkruma.com/api/v1/warehouses/:id" \
   -H "Authorization: Fulkruma-HMAC-SHA256 keyId=<key id>, scope=*, signature=<see /docs/api/authentication>"
 ```
 
-## Update a warehous
+## Update a warehouse
 
 ```
 PATCH /api/v1/warehouses/{id}

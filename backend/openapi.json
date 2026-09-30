@@ -415,8 +415,8 @@
     "x-forjio": {
      "source": "src/routes/admin.ts:98",
      "guards": [
-      "adminGuard",
-      "requireAuth"
+      "requireAuth",
+      "adminGuard"
      ]
     }
    }
@@ -471,8 +471,8 @@
     "x-forjio": {
      "source": "src/routes/admin.ts:43",
      "guards": [
-      "adminGuard",
-      "requireAuth"
+      "requireAuth",
+      "adminGuard"
      ],
      "body": "validated",
      "bodySchema": "provisionSchema"
@@ -541,8 +541,8 @@
     "x-forjio": {
      "source": "src/routes/admin.ts:88",
      "guards": [
-      "adminGuard",
-      "requireAuth"
+      "requireAuth",
+      "adminGuard"
      ]
     }
    }
@@ -805,7 +805,6 @@
     "x-forjio": {
      "source": "src/routes/billing.ts:86",
      "guards": [
-      "adminGuard",
       "requireAuth"
      ],
      "body": "read-unknown"
@@ -834,7 +833,6 @@
     "x-forjio": {
      "source": "src/routes/billing.ts:55",
      "guards": [
-      "adminGuard",
       "requireAuth"
      ],
      "body": "validated",
@@ -897,7 +895,6 @@
     "x-forjio": {
      "source": "src/routes/billing.ts:40",
      "guards": [
-      "adminGuard",
       "requireAuth"
      ]
     }
@@ -914,7 +911,6 @@
     "x-forjio": {
      "source": "src/routes/billing.ts:19",
      "guards": [
-      "adminGuard",
       "requireAuth"
      ]
     }
@@ -931,9 +927,7 @@
     "parameters": [],
     "x-forjio": {
      "source": "src/routes/billing.ts:15",
-     "guards": [
-      "adminGuard"
-     ]
+     "guards": []
     }
    }
   },
@@ -948,7 +942,6 @@
     "x-forjio": {
      "source": "src/routes/billing.ts:26",
      "guards": [
-      "adminGuard",
       "requireAuth"
      ]
     }
@@ -965,7 +958,6 @@
     "x-forjio": {
      "source": "src/routes/billing.ts:33",
      "guards": [
-      "adminGuard",
       "requireAuth"
      ]
     }
@@ -1499,7 +1491,6 @@
     "x-forjio": {
      "source": "src/routes/integrations.ts:23",
      "guards": [
-      "adminGuard",
       "requireAuth"
      ]
     }
@@ -1522,7 +1513,7 @@
    },
    "post": {
     "operationId": "postLicenses",
-    "summary": "Create a licens",
+    "summary": "Create a license",
     "tags": [
      "licenses"
     ],
@@ -1589,7 +1580,7 @@
   "/api/v1/licenses/{id}/revoke": {
    "post": {
     "operationId": "postLicensesIdRevoke",
-    "summary": "Revoke a licens",
+    "summary": "Revoke a license",
     "tags": [
      "licenses"
     ],
@@ -3386,8 +3377,7 @@
   "/api/v1/shipping/track/{waybillId}": {
    "get": {
     "operationId": "getShippingTrackWaybillId",
-    "summary": "─── GET /shipping/track/:waybillId (public — gated by requireAuth in Fulkruma) ─",
-    "description": "─── GET /shipping/track/:waybillId (public — gated by requireAuth in Fulkruma) ─",
+    "summary": "Get a track",
     "tags": [
      "shipping"
     ],
@@ -3575,7 +3565,7 @@
    },
    "post": {
     "operationId": "postWarehouses",
-    "summary": "Create a warehous",
+    "summary": "Create a warehouse",
     "tags": [
      "warehouses"
     ],
@@ -3641,7 +3631,7 @@
   "/api/v1/warehouses/{id}": {
    "patch": {
     "operationId": "patchWarehousesId",
-    "summary": "Update a warehous",
+    "summary": "Update a warehouse",
     "tags": [
      "warehouses"
     ],
@@ -3711,7 +3701,7 @@
    },
    "delete": {
     "operationId": "deleteWarehousesId",
-    "summary": "Delete a warehous",
+    "summary": "Delete a warehouse",
     "tags": [
      "warehouses"
     ],
@@ -3886,7 +3876,6 @@
     "x-forjio": {
      "source": "src/routes/plugipay-webhooks.ts:45",
      "guards": [
-      "adminGuard",
       "express.raw"
      ],
      "body": "read-unknown"

@@ -457,6 +457,20 @@ export const API_ROUTES: Array<{ area: string; routes: Route[] }> = [
   ]
  },
  {
+  "area": "integrations",
+  "routes": [
+   {
+    "name": "status",
+    "method": "GET",
+    "path": "/api/v1/integrations/status",
+    "summary": "List status",
+    "pathParams": [],
+    "query": [],
+    "body": null
+   }
+  ]
+ },
+ {
   "area": "licenses",
   "routes": [
    {
@@ -483,7 +497,7 @@ export const API_ROUTES: Array<{ area: string; routes: Route[] }> = [
     "name": "create",
     "method": "POST",
     "path": "/api/v1/licenses",
-    "summary": "Create a licens",
+    "summary": "Create a license",
     "pathParams": [],
     "query": [],
     "body": [
@@ -572,7 +586,7 @@ export const API_ROUTES: Array<{ area: string; routes: Route[] }> = [
     "name": "revoke",
     "method": "POST",
     "path": "/api/v1/licenses/{id}/revoke",
-    "summary": "Revoke a licens",
+    "summary": "Revoke a license",
     "pathParams": [
      "id"
     ],
@@ -1403,7 +1417,7 @@ export const API_ROUTES: Array<{ area: string; routes: Route[] }> = [
     "name": "track",
     "method": "GET",
     "path": "/api/v1/shipping/track/{waybillId}",
-    "summary": "─── GET /shipping/track/:waybillId (public — gated by requireAuth in Fulkruma) ─",
+    "summary": "Get a track",
     "pathParams": [
      "waybillId"
     ],
@@ -1726,7 +1740,7 @@ export const API_ROUTES: Array<{ area: string; routes: Route[] }> = [
     "name": "create",
     "method": "POST",
     "path": "/api/v1/warehouses",
-    "summary": "Create a warehous",
+    "summary": "Create a warehouse",
     "pathParams": [],
     "query": [],
     "body": [
@@ -1776,7 +1790,7 @@ export const API_ROUTES: Array<{ area: string; routes: Route[] }> = [
     "name": "delete",
     "method": "DELETE",
     "path": "/api/v1/warehouses/{id}",
-    "summary": "Delete a warehous",
+    "summary": "Delete a warehouse",
     "pathParams": [
      "id"
     ],
@@ -1796,7 +1810,7 @@ export const API_ROUTES: Array<{ area: string; routes: Route[] }> = [
     "name": "update",
     "method": "PATCH",
     "path": "/api/v1/warehouses/{id}",
-    "summary": "Update a warehous",
+    "summary": "Update a warehouse",
     "pathParams": [
      "id"
     ],

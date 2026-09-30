@@ -39,6 +39,12 @@ export const REFERENCE_NAV: DocMeta[] = [
     "href": "/docs/api/reference/deliveries"
   },
   {
+    "slug": "api/reference/integrations",
+    "title": "Integrations",
+    "group": "API reference (every route)",
+    "href": "/docs/api/reference/integrations"
+  },
+  {
     "slug": "api/reference/licenses",
     "title": "Licenses",
     "group": "API reference (every route)",

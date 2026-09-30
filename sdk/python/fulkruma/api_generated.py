@@ -11,7 +11,7 @@ from typing import Any, Dict, List, Optional
 
 
 class GeneratedApi:
-    """All 76 feature routes of the Fulkruma API."""
+    """All 77 feature routes of the Fulkruma API."""
 
     def __init__(self, client: Any) -> None:
         self._client = client
@@ -211,6 +211,10 @@ class GeneratedApi:
         """Revoke: expire the delivery now. (POST /api/v1/deliveries/{id}/revoke)."""
         return self._call("POST", f"/api/v1/deliveries/{_q(id_)}/revoke", {}, None)
 
+    def integrations_status(self) -> Any:
+        """List status (GET /api/v1/integrations/status)."""
+        return self._call("GET", f"/api/v1/integrations/status", {}, None)
+
     def licenses_activate(self, *, key: Optional[str] = None, instance_id: Optional[str] = None, json_body: Optional[Dict[str, Any]] = None) -> Any:
         """/v1/licenses/activate is unauthenticated — buyers' apps call this with the license key directly. (POST /api/v1/licenses/activate).
         
@@ -227,7 +231,7 @@ class GeneratedApi:
         return self._call("POST", f"/api/v1/licenses/activate", {}, payload)
 
     def licenses_create(self, *, product_id: Optional[str] = None, customer_id: Optional[str] = None, max_activations: Optional[int] = None, expires_at: Optional[str] = None, external_source: Optional[str] = None, external_ref: Optional[str] = None, key: Optional[str] = None, json_body: Optional[Dict[str, Any]] = None) -> Any:
-        """Create a licens (POST /api/v1/licenses).
+        """Create a license (POST /api/v1/licenses).
         
         Body fields are keyword arguments; `json_body=` passes the whole body (fields override it)."""
         payload: Dict[str, Any] = dict(json_body or {})
@@ -275,7 +279,7 @@ class GeneratedApi:
         return self._call("GET", f"/api/v1/licenses/lookup", {"key": key}, None)
 
     def licenses_revoke(self, id_: str) -> Any:
-        """Revoke a licens (POST /api/v1/licenses/{id}/revoke)."""
+        """Revoke a license (POST /api/v1/licenses/{id}/revoke)."""
         return self._call("POST", f"/api/v1/licenses/{_q(id_)}/revoke", {}, None)
 
     def licenses_validate(self, *, key: str, product_id: Optional[str] = None) -> Any:
@@ -590,7 +594,7 @@ class GeneratedApi:
         return self._call("POST", f"/api/v1/shipping/shipments/{_q(id_)}/rebook", {}, payload)
 
     def shipping_track(self, waybill_id: str, *, courier: Optional[Any] = None) -> Any:
-        """─── GET /shipping/track/:waybillId (public — gated by requireAuth in Fulkruma) ─ (GET /api/v1/shipping/track/{waybillId})."""
+        """Get a track (GET /api/v1/shipping/track/{waybillId})."""
         return self._call("GET", f"/api/v1/shipping/track/{_q(waybill_id)}", {"courier": courier}, None)
 
     def shipping_update_origin(self, *, address: Optional[str] = None, province: Optional[str] = None, city: Optional[str] = None, district: Optional[str] = None, village: Optional[str] = None, postal: Optional[str] = None, area_id: Optional[str] = None, lat: Optional[float] = None, lng: Optional[float] = None, note: Optional[str] = None, contact_name: Optional[str] = None, contact_phone: Optional[str] = None, couriers: Optional[List[Any]] = None, json_body: Optional[Dict[str, Any]] = None) -> Any:
@@ -735,7 +739,7 @@ class GeneratedApi:
         return self._call("GET", f"/api/v1/stock/reservations", {}, None)
 
     def warehouses_create(self, *, name: Optional[str] = None, address: Optional[str] = None, city: Optional[str] = None, postal: Optional[str] = None, lat: Optional[float] = None, lng: Optional[float] = None, phone: Optional[str] = None, is_default: Optional[bool] = None, json_body: Optional[Dict[str, Any]] = None) -> Any:
-        """Create a warehous (POST /api/v1/warehouses).
+        """Create a warehouse (POST /api/v1/warehouses).
         
         Body fields are keyword arguments; `json_body=` passes the whole body (fields override it)."""
         payload: Dict[str, Any] = dict(json_body or {})
@@ -760,7 +764,7 @@ class GeneratedApi:
         return self._call("POST", f"/api/v1/warehouses", {}, payload)
 
     def warehouses_delete(self, id_: str) -> Any:
-        """Delete a warehous (DELETE /api/v1/warehouses/{id})."""
+        """Delete a warehouse (DELETE /api/v1/warehouses/{id})."""
         return self._call("DELETE", f"/api/v1/warehouses/{_q(id_)}", {}, None)
 
     def warehouses_list(self) -> Any:
@@ -768,7 +772,7 @@ class GeneratedApi:
         return self._call("GET", f"/api/v1/warehouses", {}, None)
 
     def warehouses_update(self, id_: str, *, name: Optional[str] = None, address: Optional[str] = None, city: Optional[str] = None, postal: Optional[str] = None, lat: Optional[float] = None, lng: Optional[float] = None, phone: Optional[str] = None, is_default: Optional[bool] = None, json_body: Optional[Dict[str, Any]] = None) -> Any:
-        """Update a warehous (PATCH /api/v1/warehouses/{id}).
+        """Update a warehouse (PATCH /api/v1/warehouses/{id}).
         
         Body fields are keyword arguments; `json_body=` passes the whole body (fields override it)."""
         payload: Dict[str, Any] = dict(json_body or {})

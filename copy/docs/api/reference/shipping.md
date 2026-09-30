@@ -20,7 +20,7 @@ Generated from Fulkruma's own code: every route in this area, what it takes and 
 | `POST` | `/api/v1/shipping/shipments/{id}/cancel` | [Legacy namespace.](#legacy-namespace) |
 | `GET` | `/api/v1/shipping/shipments/{id}/label` | [Legacy shipping namespace.](#legacy-shipping-namespace) |
 | `POST` | `/api/v1/shipping/shipments/{id}/rebook` | [Legacy-namespace twin of /shipments/:id/rebook.](#legacy-namespace-twin-of-shipmentsidrebook) |
-| `GET` | `/api/v1/shipping/track/{waybillId}` | [─── GET /shipping/track/:waybillId (public — gated by requireAuth in Fulkruma) ─](#get-shippingtrackwaybillid-public-gated-by-requireauth-in-fulkruma) |
+| `GET` | `/api/v1/shipping/track/{waybillId}` | [Get a track](#get-a-track) |
 
 ## List areas
 
@@ -294,7 +294,7 @@ curl -X POST "https://fulkruma.com/api/v1/shipping/shipments/:id/rebook" \
   -d '{"courierCode":"…","courierServiceCode":"…","courierType":"…","price":0,"insured":false,"insurance":0}'
 ```
 
-## ─── GET /shipping/track/:waybillId (public — gated by requireAuth in Fulkruma) ─
+## Get a track
 
 ```
 GET /api/v1/shipping/track/{waybillId}

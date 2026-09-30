@@ -13,6 +13,7 @@ Every Fulkruma feature, route by route, generated from the product's own code (t
 | [Audit log](/docs/api/reference/audit-log) | 1 |
 | [Billing](/docs/api/reference/billing) | 7 |
 | [Deliveries](/docs/api/reference/deliveries) | 6 |
+| [Integrations](/docs/api/reference/integrations) | 1 |
 | [Licenses](/docs/api/reference/licenses) | 7 |
 | [Products](/docs/api/reference/products) | 8 |
 | [Shipments](/docs/api/reference/shipments) | 8 |

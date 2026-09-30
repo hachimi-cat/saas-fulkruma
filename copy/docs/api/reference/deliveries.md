@@ -52,7 +52,7 @@ POST /api/v1/deliveries
 curl -X POST "https://fulkruma.com/api/v1/deliveries" \
   -H "Authorization: Fulkruma-HMAC-SHA256 keyId=<key id>, scope=*, signature=<see /docs/api/authentication>" \
   -H "Content-Type: application/json" \
-  -d '{"productId":"…","customerId":"…","checkoutSessionId":"…","maxDownloads":0,"expiresAt":"2026-01-01T00:00:00Z","externalSource":"…","externalRef":"…"}'
+  -d '{"productId":"…","customerId":"…","checkoutSessionId":"…","maxDownloads":1,"expiresAt":"2026-01-01T00:00:00Z","externalSource":"…","externalRef":"…"}'
 ```
 
 ## Get a delivery

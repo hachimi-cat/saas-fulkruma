@@ -7,7 +7,7 @@ export interface ApigenTransport {
   apigenRequest(method: string, path: string, query: Record<string, unknown> | undefined, body: unknown): Promise<unknown>;
 }
 
-/** All 76 feature routes of the Fulkruma API. */
+/** All 77 feature routes of the Fulkruma API. */
 export class GeneratedApi {
   constructor(private readonly client: ApigenTransport) {}
 
@@ -143,6 +143,11 @@ export class GeneratedApi {
     return this.call("POST", `/api/v1/deliveries/${encodeURIComponent(id)}/revoke`, {}, undefined);
   }
 
+  /** List status (GET /api/v1/integrations/status) */
+  integrationsStatus(): Promise<unknown> {
+    return this.call("GET", `/api/v1/integrations/status`, {}, undefined);
+  }
+
   /** /v1/licenses/activate is unauthenticated — buyers' apps call this with the license key directly. (POST /api/v1/licenses/activate) */
   licensesActivate(input: { "key": string; "instanceId": string }): Promise<unknown> {
     const all: Record<string, unknown> = { ...(input ?? {}) };
@@ -150,7 +155,7 @@ export class GeneratedApi {
     return this.call("POST", `/api/v1/licenses/activate`, query, all);
   }
 
-  /** Create a licens (POST /api/v1/licenses) */
+  /** Create a license (POST /api/v1/licenses) */
   licensesCreate(input: { "productId": string; "customerId": string; "maxActivations"?: number; "expiresAt"?: string; "externalSource"?: string; "externalRef"?: string; "key"?: string }): Promise<unknown> {
     const all: Record<string, unknown> = { ...(input ?? {}) };
     const query: Record<string, unknown> = {};
@@ -177,7 +182,7 @@ export class GeneratedApi {
     return this.call("GET", `/api/v1/licenses/lookup`, query, undefined);
   }
 
-  /** Revoke a licens (POST /api/v1/licenses/{id}/revoke) */
+  /** Revoke a license (POST /api/v1/licenses/{id}/revoke) */
   licensesRevoke(id: string): Promise<unknown> {
     return this.call("POST", `/api/v1/licenses/${encodeURIComponent(id)}/revoke`, {}, undefined);
   }
@@ -377,7 +382,7 @@ export class GeneratedApi {
     return this.call("POST", `/api/v1/shipping/shipments/${encodeURIComponent(id)}/rebook`, query, all);
   }
 
-  /** ─── GET /shipping/track/:waybillId (public — gated by requireAuth in Fulkruma) ─ (GET /api/v1/shipping/track/{waybillId}) */
+  /** Get a track (GET /api/v1/shipping/track/{waybillId}) */
   shippingTrack(waybillId: string, input?: { "courier"?: unknown }): Promise<unknown> {
     const all: Record<string, unknown> = { ...(input ?? {}) };
     const query: Record<string, unknown> = {};
@@ -460,14 +465,14 @@ export class GeneratedApi {
     return this.call("GET", `/api/v1/stock/reservations`, {}, undefined);
   }
 
-  /** Create a warehous (POST /api/v1/warehouses) */
+  /** Create a warehouse (POST /api/v1/warehouses) */
   warehousesCreate(input: { "name": string; "address"?: string; "city"?: string; "postal"?: string; "lat"?: number; "lng"?: number; "phone"?: string; "isDefault"?: boolean }): Promise<unknown> {
     const all: Record<string, unknown> = { ...(input ?? {}) };
     const query: Record<string, unknown> = {};
     return this.call("POST", `/api/v1/warehouses`, query, all);
   }
 
-  /** Delete a warehous (DELETE /api/v1/warehouses/{id}) */
+  /** Delete a warehouse (DELETE /api/v1/warehouses/{id}) */
   warehousesDelete(id: string): Promise<unknown> {
     return this.call("DELETE", `/api/v1/warehouses/${encodeURIComponent(id)}`, {}, undefined);
   }
@@ -477,7 +482,7 @@ export class GeneratedApi {
     return this.call("GET", `/api/v1/warehouses`, {}, undefined);
   }
 
-  /** Update a warehous (PATCH /api/v1/warehouses/{id}) */
+  /** Update a warehouse (PATCH /api/v1/warehouses/{id}) */
   warehousesUpdate(id: string, input?: { "name"?: string; "address"?: string; "city"?: string; "postal"?: string; "lat"?: number; "lng"?: number; "phone"?: string; "isDefault"?: boolean }): Promise<unknown> {
     const all: Record<string, unknown> = { ...(input ?? {}) };
     const query: Record<string, unknown> = {};

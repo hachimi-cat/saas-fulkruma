@@ -97,7 +97,7 @@ POST /api/v1/shipping-credits/topup
 curl -X POST "https://fulkruma.com/api/v1/shipping-credits/topup" \
   -H "Authorization: Fulkruma-HMAC-SHA256 keyId=<key id>, scope=*, signature=<see /docs/api/authentication>" \
   -H "Content-Type: application/json" \
-  -d '{"amount":0,"externalRef":"…","memo":"…"}'
+  -d '{"amount":1,"externalRef":"…","memo":"…"}'
 ```
 
 ## List transactions

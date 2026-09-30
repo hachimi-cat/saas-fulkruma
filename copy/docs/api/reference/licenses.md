@@ -9,8 +9,8 @@ Generated from Fulkruma's own code: every route in this area, what it takes and 
 | Method | Path | What it does |
 |---|---|---|
 | `GET` | `/api/v1/licenses` | [List licenses](#list-licenses) |
-| `POST` | `/api/v1/licenses` | [Create a licens](#create-a-licens) |
-| `POST` | `/api/v1/licenses/{id}/revoke` | [Revoke a licens](#revoke-a-licens) |
+| `POST` | `/api/v1/licenses` | [Create a license](#create-a-license) |
+| `POST` | `/api/v1/licenses/{id}/revoke` | [Revoke a license](#revoke-a-license) |
 | `POST` | `/api/v1/licenses/activate` | [/v1/licenses/activate is unauthenticated — buyers' apps call this with the license key directly.](#v1licensesactivate-is-unauthenticated-buyers-apps-call-this-with-the-license-key-directly) |
 | `POST` | `/api/v1/licenses/deactivate` | [Release a previously-activated instance.](#release-a-previously-activated-instance) |
 | `GET` | `/api/v1/licenses/lookup` | [Full license + its activation rows, resolved by key within the merchant's account.](#full-license-its-activation-rows-resolved-by-key-within-the-merchants-account) |
@@ -29,7 +29,7 @@ curl -X GET "https://fulkruma.com/api/v1/licenses" \
   -H "Authorization: Fulkruma-HMAC-SHA256 keyId=<key id>, scope=*, signature=<see /docs/api/authentication>"
 ```
 
-## Create a licens
+## Create a license
 
 ```
 POST /api/v1/licenses
@@ -53,10 +53,10 @@ POST /api/v1/licenses
 curl -X POST "https://fulkruma.com/api/v1/licenses" \
   -H "Authorization: Fulkruma-HMAC-SHA256 keyId=<key id>, scope=*, signature=<see /docs/api/authentication>" \
   -H "Content-Type: application/json" \
-  -d '{"productId":"…","customerId":"…","maxActivations":0,"expiresAt":"2026-01-01T00:00:00Z","externalSource":"…","externalRef":"…","key":"…"}'
+  -d '{"productId":"…","customerId":"…","maxActivations":1,"expiresAt":"2026-01-01T00:00:00Z","externalSource":"…","externalRef":"…","key":"…"}'
 ```
 
-## Revoke a licens
+## Revoke a license
 
 ```
 POST /api/v1/licenses/{id}/revoke
