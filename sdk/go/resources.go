@@ -800,18 +800,23 @@ type BillingInvoicesParams struct {
 	Cursor string
 }
 
-// BillingInvoicesResult mirrors the paginated envelope.
+// BillingInvoicesResult — one page, newest first. Pass Cursor as
+// BillingInvoicesParams.Cursor for the next page while HasMore.
 type BillingInvoicesResult struct {
-	Invoices   []map[string]any `json:"invoices"`
-	NextCursor string           `json:"nextCursor,omitempty"`
+	Data    []map[string]any `json:"data"`
+	Cursor  string           `json:"cursor"`
+	HasMore bool             `json:"hasMore"`
 }
 
 // BillingCheckoutInput — POST /billing/checkout body. Plan is "STARTER",
 // "GROWTH" or "SCALE"; Email is required when the caller is an API key.
+// Currency ("IDR" or "USD") defaults by the caller's country: IDR in
+// Indonesia, USD elsewhere.
 type BillingCheckoutInput struct {
-	Plan  string `json:"plan"`
-	Email string `json:"email,omitempty"`
-	Name  string `json:"name,omitempty"`
+	Plan     string `json:"plan"`
+	Email    string `json:"email,omitempty"`
+	Name     string `json:"name,omitempty"`
+	Currency string `json:"currency,omitempty"`
 }
 
 // BillingCheckoutResult — the Plugipay subscription started, and where to pay.

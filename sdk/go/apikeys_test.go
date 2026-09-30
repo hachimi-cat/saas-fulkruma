@@ -36,3 +36,21 @@ func TestAPIKeys_DecodeWhatTheServerSends(t *testing.T) {
 		t.Fatalf("Create = %+v", created)
 	}
 }
+
+// GET /billing/invoices answers { data, cursor, hasMore } (backend
+// services/billing.ts getBillingHistory); the SDK decoded invoices/nextCursor.
+func TestBilling_InvoicesDecodeWhatTheServerSends(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write(envelopeOK(map[string]any{
+			"data":    []any{map[string]any{"id": "inv_1", "amount": 99000}},
+			"cursor":  "inv_1",
+			"hasMore": true,
+		}))
+	}))
+	defer ts.Close()
+	c := newTestClient(t, ts, 1_700_000_000)
+	page, err := c.Billing.Invoices(context.Background(), BillingInvoicesParams{Limit: 1})
+	if err != nil || len(page.Data) != 1 || page.Cursor != "inv_1" || !page.HasMore {
+		t.Fatalf("Invoices = %+v, %v", page, err)
+	}
+}

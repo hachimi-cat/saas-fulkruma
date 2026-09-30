@@ -452,12 +452,14 @@ export class FulkrumaClient {
     currentPlan: () => this.request<Record<string, unknown>>({ method: 'GET', path: '/api/v1/billing/plan' }),
     subscription: () => this.request<Record<string, unknown>>({ method: 'GET', path: '/api/v1/billing/subscription' }),
     usage: () => this.request<Record<string, unknown>>({ method: 'GET', path: '/api/v1/billing/usage' }),
+    /** Newest first; `limit` is at most 50 (default 20). Pass the returned `cursor` to get the next page. */
     invoices: (params: { limit?: number; cursor?: string } = {}) =>
-      this.request<{ invoices: Array<Record<string, unknown>>; nextCursor?: string }>({
+      this.request<{ data: Array<Record<string, unknown>>; cursor: string | null; hasMore: boolean }>({
         method: 'GET', path: `/api/v1/billing/invoices${qs(params)}`,
       }),
-    /** `email` is required when the caller is an API key (it has no email of its own). */
-    checkout: (input: { plan: 'STARTER' | 'GROWTH' | 'SCALE'; email?: string; name?: string }) =>
+    /** `email` is required when the caller is an API key (it has no email of its own).
+     *  `currency` defaults by the caller's country: IDR in Indonesia, USD elsewhere. */
+    checkout: (input: { plan: 'STARTER' | 'GROWTH' | 'SCALE'; email?: string; name?: string; currency?: 'IDR' | 'USD' }) =>
       this.request<{ subscriptionId: string; invoiceId: string; checkoutSessionId: string; checkoutUrl: string }>({
         method: 'POST', path: '/api/v1/billing/checkout', body: input,
       }),
