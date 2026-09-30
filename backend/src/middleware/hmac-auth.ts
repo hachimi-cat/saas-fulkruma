@@ -8,6 +8,9 @@
  * String to sign:
  *   `${METHOD}\n${PATH}\n${TIMESTAMP}\n${SHA256_HEX(BODY)}`
  *   plus optional `\n${IDEMPOTENCY_KEY}` if `Idempotency-Key` is set.
+ *   BODY is the bytes the client sent ('' when it sent none). The body as
+ *   re-serialised here (JSON.stringify of the parsed body, '' for {}) is
+ *   still accepted, for clients that signed it that way.
  *
  * Headers:
  *   X-Fulkruma-Timestamp        — unix seconds
@@ -49,7 +52,7 @@ function parseAuthHeader(h: string | undefined): ParsedAuth | null {
   return { keyId: parts.keyId, signature: parts.signature, scope: parts.scope ?? '*' };
 }
 
-function sha256Hex(s: string): string {
+function sha256Hex(s: string | Buffer): string {
   return crypto.createHash('sha256').update(s).digest('hex');
 }
 
@@ -76,12 +79,14 @@ export async function hmacAuth(req: Request, res: Response, next: NextFunction) 
   const idem = req.headers['idempotency-key'];
   const idemPart = idem && typeof idem === 'string' ? `\n${idem}` : '';
 
-  // Reconstruct body hash. The shipping route mounts express.raw on
-  // /webhooks/*; for the admin/SDK surface we use express.json which has
-  // already consumed the body — so pull from req.body. Tests must POST
-  // with a body parser already in the chain.
+  // The body hash a client may have signed: the bytes it sent (req.rawBody, kept by
+  // express.json in index.ts; what every SDK signs), or — as before — the body
+  // re-serialised here, with an empty object as ''. Only the second used to count, so
+  // a body with non-ASCII text, a float like 1.0, or an empty {} failed the check
+  // although the client signed exactly what it sent.
+  const raw = req.rawBody && req.rawBody.length > 0 ? req.rawBody : null;
   const bodyJson = req.body && Object.keys(req.body).length > 0 ? JSON.stringify(req.body) : '';
-  const bodyHash = sha256Hex(bodyJson);
+  const bodyHashes = [...new Set([raw ? sha256Hex(raw) : sha256Hex(''), sha256Hex(bodyJson)])];
 
   // The SDK signs the full URL path INCLUDING query string (and the
   // /api/v1 mount prefix). Use req.originalUrl as-is so GET requests
@@ -89,7 +94,7 @@ export async function hmacAuth(req: Request, res: Response, next: NextFunction) 
   // hash to the same canonical string the client signed. Mirrors
   // plugipay's HMAC verifier (which also includes the query).
   const fullPath = req.originalUrl ?? req.url;
-  const stringToSign = `${req.method.toUpperCase()}\n${fullPath}\n${ts}\n${bodyHash}${idemPart}`;
+  const toSign = (bodyHash: string) => `${req.method.toUpperCase()}\n${fullPath}\n${ts}\n${bodyHash}${idemPart}`;
 
   // Fetch the key; verify the key is active.
   const key = await prisma.apiKey.findUnique({ where: { keyId: parsed.keyId } });
@@ -107,10 +112,10 @@ export async function hmacAuth(req: Request, res: Response, next: NextFunction) 
   // never displayed to users twice — the key creation flow shows
   // them once). Update: rename column treatment without migration —
   // we just put the raw secret in `secretHash` going forward.
-  const sigOk = constantEq(
-    crypto.createHmac('sha256', key.secretHash).update(stringToSign).digest('hex'),
+  const sigOk = bodyHashes.some((bodyHash) => constantEq(
+    crypto.createHmac('sha256', key.secretHash).update(toSign(bodyHash)).digest('hex'),
     parsed.signature,
-  );
+  ));
   if (!sigOk) return fail('BAD_SIGNATURE', 'Signature mismatch');
 
   // Honour on-behalf-of when the caller holds the platform-admin scope.

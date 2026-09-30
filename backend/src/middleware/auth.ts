@@ -53,6 +53,8 @@ declare module 'express-serve-static-core' {
   interface Request {
     auth?: ForjioClaims;
     requestId?: string;
+    /** The JSON body's bytes as sent, kept by express.json in index.ts. */
+    rawBody?: Buffer;
   }
 }
 

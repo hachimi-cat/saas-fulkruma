@@ -183,7 +183,8 @@ type RequestOptions struct {
 //
 // `body` is JSON-marshaled (compact, the Go default) before signing. The
 // raw bytes that get signed are exactly the bytes that get sent over the
-// wire — same invariant the backend enforces.
+// wire, which the backend verifies. An empty body ({}, [] or null) is sent
+// as no body at all, and signed as the empty string.
 func (c *Client) Request(ctx context.Context, method, path string, body any, out any, opts *RequestOptions) error {
 	var bodyBytes []byte
 	if body != nil {
@@ -191,6 +192,9 @@ func (c *Client) Request(ctx context.Context, method, path string, body any, out
 		bodyBytes, err = json.Marshal(body)
 		if err != nil {
 			return newErr(0, "serialize_failed", err.Error())
+		}
+		if s := string(bodyBytes); s == "{}" || s == "[]" || s == "null" {
+			bodyBytes = nil
 		}
 	}
 

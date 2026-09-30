@@ -72,8 +72,6 @@ export interface ProductCreateInput {
   height?: number;
   licenseEnabled?: boolean;
   maxActivations?: number;
-  externalRef?: string;
-  externalSource?: string;
 }
 
 export interface VariantCreateInput {
@@ -84,8 +82,6 @@ export interface VariantCreateInput {
   lowStockThreshold?: number;
   weight?: number;
   isDefault?: boolean;
-  externalRef?: string;
-  externalSource?: string;
 }
 
 export interface WarehouseCreateInput {
@@ -139,8 +135,13 @@ export class FulkrumaClient {
     return { signature, timestamp: ts };
   }
 
+  /**
+   * One signed API call. The signature covers exactly the bytes sent: the JSON body,
+   * or '' when there is none — an empty object or array is sent as no body at all.
+   */
   async request<T>(args: FetchArgs): Promise<T> {
-    const bodyJson = args.body !== undefined ? JSON.stringify(args.body) : null;
+    let bodyJson = args.body !== undefined && args.body !== null ? JSON.stringify(args.body) : null;
+    if (bodyJson === '{}' || bodyJson === '[]') bodyJson = null;
     const { signature, timestamp } = this.sign({
       method: args.method,
       path: args.path,
@@ -201,13 +202,10 @@ export class FulkrumaClient {
           Object.entries(query).map(([k, v]): [string, string] => [k, typeof v === 'string' ? v : JSON.stringify(v)]),
         ).toString()
       : '';
-    // The server hashes an empty JSON body as '' (backend middleware/hmac-auth.ts) while
-    // request() hashes '{}': send no body when no field was given, so the signatures agree.
-    const empty = body !== null && typeof body === 'object' && !Array.isArray(body) && Object.keys(body).length === 0;
     return this.request<unknown>({
       method: method as FetchArgs['method'],
       path: qs ? `${path}?${qs}` : path,
-      body: empty ? undefined : body,
+      body,
       idempotencyKey: method === 'GET' ? undefined : this.genIdem(),
     });
   }
@@ -389,7 +387,7 @@ export class FulkrumaClient {
         method: 'POST', path: '/api/v1/licenses', body: input, idempotencyKey: this.genIdem(),
       }),
     revoke: (id: string) =>
-      this.request<{ license: License }>({ method: 'POST', path: `/api/v1/licenses/${id}/revoke`, body: {} }),
+      this.request<{ license: License }>({ method: 'POST', path: `/api/v1/licenses/${id}/revoke` }),
     /** Public unauthenticated — buyers' apps call this with just the key. */
     activate: (input: { key: string; instanceId: string }) =>
       this.request<{ license: License; activation: LicenseActivation; alreadyActive: boolean }>({
@@ -426,18 +424,20 @@ export class FulkrumaClient {
     list: () => this.request<{ keys: Array<Record<string, unknown>> }>({
       method: 'GET', path: '/api/v1/api-keys',
     }),
-    create: (input: { description?: string; scope?: string } = {}) => this.request<{ key: Record<string, unknown> }>({
+    /** `scopes` defaults to ['read', 'write'] on the server. */
+    create: (input: { name: string; scopes?: Array<'read' | 'write' | 'admin'> }) => this.request<{ key: Record<string, unknown> }>({
       method: 'POST', path: '/api/v1/api-keys', body: input, idempotencyKey: this.genIdem(),
     }),
-    revoke: (id: string) => this.request<{ revoked: boolean }>({
-      method: 'POST', path: `/api/v1/api-keys/${id}/revoke`, body: {},
+    revoke: (id: string) => this.request<{ apiKey: { id: string; revokedAt: string } }>({
+      method: 'POST', path: `/api/v1/api-keys/${id}/revoke`,
     }),
   };
 
   // ─── Audit log ───────────────────────────────────────────────
   auditLog = {
-    list: (params: { limit?: number; cursor?: string; since?: string; eventType?: string } = {}) =>
-      this.request<{ entries: Array<Record<string, unknown>>; nextCursor?: string }>({
+    /** Newest first. `action` matches a prefix (e.g. 'api_key.'); `limit` is at most 500 (default 100). */
+    list: (params: { action?: string; target_type?: string; limit?: number } = {}) =>
+      this.request<{ entries: Array<Record<string, unknown>> }>({
         method: 'GET', path: `/api/v1/audit-log${qs(params)}`,
       }),
   };
@@ -452,12 +452,13 @@ export class FulkrumaClient {
       this.request<{ invoices: Array<Record<string, unknown>>; nextCursor?: string }>({
         method: 'GET', path: `/api/v1/billing/invoices${qs(params)}`,
       }),
-    checkout: (input: { planId: string; successUrl?: string; cancelUrl?: string }) =>
-      this.request<{ url: string; sessionId: string }>({
+    /** `email` is required when the caller is an API key (it has no email of its own). */
+    checkout: (input: { plan: 'STARTER' | 'GROWTH' | 'SCALE'; email?: string; name?: string }) =>
+      this.request<{ subscriptionId: string; invoiceId: string; checkoutSessionId: string; checkoutUrl: string }>({
         method: 'POST', path: '/api/v1/billing/checkout', body: input,
       }),
     cancel: () => this.request<Record<string, unknown>>({
-      method: 'POST', path: '/api/v1/billing/cancel', body: {},
+      method: 'POST', path: '/api/v1/billing/cancel',
     }),
   };
 
@@ -495,9 +496,10 @@ export class FulkrumaClient {
       }),
     deleteEndpoint: (id: string) =>
       this.request<{ deleted: boolean }>({ method: 'DELETE', path: `/api/v1/webhooks/endpoints/${id}` }),
-    listEvents: (params: { limit?: number; cursor?: string; type?: string } = {}) =>
-      this.request<{ events: Array<Record<string, unknown>>; nextCursor?: string }>({
-        method: 'GET', path: `/api/v1/webhooks/events${qs(params)}`,
+    /** The 50 most recent events. */
+    listEvents: () =>
+      this.request<{ events: Array<Record<string, unknown>> }>({
+        method: 'GET', path: '/api/v1/webhooks/events',
       }),
   };
 

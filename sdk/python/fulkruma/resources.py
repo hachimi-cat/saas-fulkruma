@@ -171,8 +171,7 @@ class LicensesResources(_Namespace):
 
     def revoke(self, license_id: str, *, on_behalf_of: Optional[str] = None):
         return self._c.request(
-            "POST", f"/api/v1/licenses/{license_id}/revoke",
-            body={}, on_behalf_of=on_behalf_of,
+            "POST", f"/api/v1/licenses/{license_id}/revoke", on_behalf_of=on_behalf_of,
         )
 
     def activate(self, body: Dict[str, Any]):
@@ -210,16 +209,26 @@ class ApiKeysResources(_Namespace):
     def list(self, *, on_behalf_of: Optional[str] = None):
         return self._c.request("GET", "/api/v1/api-keys", on_behalf_of=on_behalf_of)
 
-    def create(self, body: Optional[Dict[str, Any]] = None, *, on_behalf_of: Optional[str] = None):
+    def create(
+        self,
+        *,
+        name: str,
+        scopes: Optional[List[str]] = None,
+        on_behalf_of: Optional[str] = None,
+    ):
+        """``scopes``: any of ``"read"``, ``"write"``, ``"admin"``; the server
+        defaults to ``["read", "write"]``."""
+        body: Dict[str, Any] = {"name": name}
+        if scopes is not None:
+            body["scopes"] = scopes
         return self._c.request(
-            "POST", "/api/v1/api-keys", body=body or {},
+            "POST", "/api/v1/api-keys", body=body,
             idempotency_key=self._c._gen_idem(), on_behalf_of=on_behalf_of,
         )
 
     def revoke(self, key_id: str, *, on_behalf_of: Optional[str] = None):
         return self._c.request(
-            "POST", f"/api/v1/api-keys/{key_id}/revoke",
-            body={}, on_behalf_of=on_behalf_of,
+            "POST", f"/api/v1/api-keys/{key_id}/revoke", on_behalf_of=on_behalf_of,
         )
 
 
@@ -227,19 +236,19 @@ class AuditLogResources(_Namespace):
     def list(
         self,
         *,
+        action: Optional[str] = None,
+        target_type: Optional[str] = None,
         limit: Optional[int] = None,
-        cursor: Optional[str] = None,
-        since: Optional[str] = None,
-        event_type: Optional[str] = None,
         on_behalf_of: Optional[str] = None,
     ):
+        """Newest first. ``action`` matches a prefix (e.g. ``"api_key."``); ``limit``
+        is at most 500 (default 100)."""
         return self._c.request(
             "GET",
             "/api/v1/audit-log" + self._c._qs({
+                "action": action,
+                "target_type": target_type,
                 "limit": limit,
-                "cursor": cursor,
-                "since": since,
-                "eventType": event_type,
             }),
             on_behalf_of=on_behalf_of,
         )
@@ -269,14 +278,14 @@ class BillingResources(_Namespace):
         )
 
     def checkout(self, body: Dict[str, Any], *, on_behalf_of: Optional[str] = None):
+        """``body``: ``{"plan": "STARTER" | "GROWTH" | "SCALE", "email"?, "name"?}``;
+        ``email`` is required when the caller is an API key."""
         return self._c.request(
             "POST", "/api/v1/billing/checkout", body=body, on_behalf_of=on_behalf_of,
         )
 
     def cancel(self, *, on_behalf_of: Optional[str] = None):
-        return self._c.request(
-            "POST", "/api/v1/billing/cancel", body={}, on_behalf_of=on_behalf_of,
-        )
+        return self._c.request("POST", "/api/v1/billing/cancel", on_behalf_of=on_behalf_of)
 
 
 class IntegrationsResources(_Namespace):
@@ -313,20 +322,9 @@ class WebhooksResources(_Namespace):
             on_behalf_of=on_behalf_of,
         )
 
-    def list_events(
-        self,
-        *,
-        limit: Optional[int] = None,
-        cursor: Optional[str] = None,
-        type: Optional[str] = None,
-        on_behalf_of: Optional[str] = None,
-    ):
-        return self._c.request(
-            "GET",
-            "/api/v1/webhooks/events"
-            + self._c._qs({"limit": limit, "cursor": cursor, "type": type}),
-            on_behalf_of=on_behalf_of,
-        )
+    def list_events(self, *, on_behalf_of: Optional[str] = None):
+        """The 50 most recent events."""
+        return self._c.request("GET", "/api/v1/webhooks/events", on_behalf_of=on_behalf_of)
 
 
 class AdminResources(_Namespace):

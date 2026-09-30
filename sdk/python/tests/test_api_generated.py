@@ -27,20 +27,25 @@ def _client(seen: List[httpx.Request]) -> FulkrumaClient:
 
 def _server_accepts(request: httpx.Request, secret: str) -> bool:
     """The server's recipe (backend middleware/hmac-auth.ts): the path as sent, and the
-    body hashed as JSON.stringify(req.body) -- the empty string when there is no field."""
+    body hashed as the bytes received -- or, as the server also accepts, as
+    JSON.stringify(req.body), the empty string when there is no field."""
     parsed = json.loads(request.content) if request.content else {}
-    body_json = json.dumps(parsed, separators=(",", ":"), ensure_ascii=False) if parsed else ""
+    reserialised = json.dumps(parsed, separators=(",", ":"), ensure_ascii=False) if parsed else ""
     idem = request.headers.get("idempotency-key")
-    to_sign = "\n".join(
-        [
-            request.method,
-            request.url.raw_path.decode(),
-            request.headers["x-fulkruma-timestamp"],
-            hashlib.sha256(body_json.encode()).hexdigest(),
-        ]
-    ) + (f"\n{idem}" if idem else "")
-    expected = hmac.new(secret.encode(), to_sign.encode(), hashlib.sha256).hexdigest()
-    return request.headers["authorization"].endswith(f"signature={expected}")
+
+    def expected(body: bytes) -> str:
+        to_sign = "\n".join(
+            [
+                request.method,
+                request.url.raw_path.decode(),
+                request.headers["x-fulkruma-timestamp"],
+                hashlib.sha256(body).hexdigest(),
+            ]
+        ) + (f"\n{idem}" if idem else "")
+        return hmac.new(secret.encode(), to_sign.encode(), hashlib.sha256).hexdigest()
+
+    signature = request.headers["authorization"].rsplit("signature=", 1)[1]
+    return signature in (expected(request.content), expected(reserialised.encode()))
 
 
 def test_create_sends_the_fields_fulkruma_validates_signed() -> None:

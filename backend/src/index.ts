@@ -18,7 +18,12 @@ app.use('/api/v1/webhooks/plugipay', plugipayWebhooks);
 app.use('/api/v1/webhooks/storlaunch', storlaunchWebhooks);
 app.use('/api/v1/webhooks/biteship', biteshipWebhook);
 
-app.use(express.json({ limit: '1mb' }));
+// Keep the bytes the client sent: an HMAC-signed request is verified against them
+// (middleware/hmac-auth.ts).
+app.use(express.json({
+  limit: '1mb',
+  verify: (req, _res, buf) => { (req as express.Request).rawBody = Buffer.from(buf); },
+}));
 app.use('/api/v1', routes);
 
 app.use((e: unknown, req: express.Request, res: express.Response, _next: express.NextFunction) => {

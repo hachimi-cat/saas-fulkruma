@@ -44,10 +44,11 @@ describe('v0.2.0 new resources', () => {
   });
   afterEach(() => h.restore());
 
-  it('apiKeys.create POSTs', async () => {
-    await h.client.apiKeys.create({ description: 'CI key' });
+  it('apiKeys.create POSTs the name and scopes the server validates', async () => {
+    await h.client.apiKeys.create({ name: 'CI key', scopes: ['read'] });
     expect(h.captured[0]!.method).toBe('POST');
     expect(h.captured[0]!.url).toContain('/api/v1/api-keys');
+    expect(JSON.parse(h.captured[0]!.body!)).toEqual({ name: 'CI key', scopes: ['read'] });
   });
 
   it('apiKeys.revoke posts to /:id/revoke', async () => {
@@ -56,12 +57,11 @@ describe('v0.2.0 new resources', () => {
     expect(h.captured[0]!.method).toBe('POST');
   });
 
-  it('auditLog.list GETs with query', async () => {
-    await h.client.auditLog.list({ limit: 50, eventType: 'shipment.created' });
+  it('auditLog.list GETs with the filters the server reads', async () => {
+    await h.client.auditLog.list({ limit: 50, action: 'shipment.', target_type: 'shipment' });
     const u = new URL(h.captured[0]!.url);
     expect(u.pathname).toBe('/api/v1/audit-log');
-    expect(u.searchParams.get('limit')).toBe('50');
-    expect(u.searchParams.get('eventType')).toBe('shipment.created');
+    expect(Object.fromEntries(u.searchParams)).toEqual({ limit: '50', action: 'shipment.', target_type: 'shipment' });
   });
 
   it('billing.plans GETs', async () => {
@@ -69,10 +69,11 @@ describe('v0.2.0 new resources', () => {
     expect(h.captured[0]!.url).toContain('/api/v1/billing/plans');
   });
 
-  it('billing.checkout POSTs', async () => {
-    await h.client.billing.checkout({ planId: 'pro' });
+  it('billing.checkout POSTs the plan', async () => {
+    await h.client.billing.checkout({ plan: 'GROWTH', email: 'ops@example.com' });
     expect(h.captured[0]!.method).toBe('POST');
     expect(h.captured[0]!.url).toContain('/api/v1/billing/checkout');
+    expect(JSON.parse(h.captured[0]!.body!)).toEqual({ plan: 'GROWTH', email: 'ops@example.com' });
   });
 
   it('integrations.status GETs', async () => {

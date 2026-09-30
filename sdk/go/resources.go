@@ -14,18 +14,16 @@ import (
 // Optional fields are JSON-omitempty so zero values don't override
 // backend defaults.
 type ProductCreateInput struct {
-	Name           string       `json:"name"`
-	SKU            string       `json:"sku,omitempty"`
-	Description    string       `json:"description,omitempty"`
-	Type           ProductType  `json:"type,omitempty"`
-	Weight         *float64     `json:"weight,omitempty"`
-	Length         *float64     `json:"length,omitempty"`
-	Width          *float64     `json:"width,omitempty"`
-	Height         *float64     `json:"height,omitempty"`
-	LicenseEnabled *bool        `json:"licenseEnabled,omitempty"`
-	MaxActivations *int64       `json:"maxActivations,omitempty"`
-	ExternalRef    string       `json:"externalRef,omitempty"`
-	ExternalSource string       `json:"externalSource,omitempty"`
+	Name           string      `json:"name"`
+	SKU            string      `json:"sku,omitempty"`
+	Description    string      `json:"description,omitempty"`
+	Type           ProductType `json:"type,omitempty"`
+	Weight         *float64    `json:"weight,omitempty"`
+	Length         *float64    `json:"length,omitempty"`
+	Width          *float64    `json:"width,omitempty"`
+	Height         *float64    `json:"height,omitempty"`
+	LicenseEnabled *bool       `json:"licenseEnabled,omitempty"`
+	MaxActivations *int64      `json:"maxActivations,omitempty"`
 }
 
 // ProductUpdateInput patches a product — every field is optional.
@@ -40,21 +38,17 @@ type ProductUpdateInput struct {
 	Height         *float64     `json:"height,omitempty"`
 	LicenseEnabled *bool        `json:"licenseEnabled,omitempty"`
 	MaxActivations *int64       `json:"maxActivations,omitempty"`
-	ExternalRef    *string      `json:"externalRef,omitempty"`
-	ExternalSource *string      `json:"externalSource,omitempty"`
 }
 
 // VariantCreateInput is the request body for Products.AddVariant.
 type VariantCreateInput struct {
-	Name              string  `json:"name"`
-	SKU               string  `json:"sku,omitempty"`
-	PriceCents        *int64  `json:"priceCents,omitempty"`
-	CostCents         *int64  `json:"costCents,omitempty"`
-	LowStockThreshold *int64  `json:"lowStockThreshold,omitempty"`
+	Name              string   `json:"name"`
+	SKU               string   `json:"sku,omitempty"`
+	PriceCents        *int64   `json:"priceCents,omitempty"`
+	CostCents         *int64   `json:"costCents,omitempty"`
+	LowStockThreshold *int64   `json:"lowStockThreshold,omitempty"`
 	Weight            *float64 `json:"weight,omitempty"`
-	IsDefault         *bool   `json:"isDefault,omitempty"`
-	ExternalRef       string  `json:"externalRef,omitempty"`
-	ExternalSource    string  `json:"externalSource,omitempty"`
+	IsDefault         *bool    `json:"isDefault,omitempty"`
 }
 
 // VariantUpdateInput is the PATCH-only counterpart.
@@ -66,8 +60,6 @@ type VariantUpdateInput struct {
 	LowStockThreshold *int64   `json:"lowStockThreshold,omitempty"`
 	Weight            *float64 `json:"weight,omitempty"`
 	IsDefault         *bool    `json:"isDefault,omitempty"`
-	ExternalRef       *string  `json:"externalRef,omitempty"`
-	ExternalSource    *string  `json:"externalSource,omitempty"`
 }
 
 // ProductsResource groups every /api/v1/products call.
@@ -419,21 +411,21 @@ type shipmentListEnvelope struct {
 // SDK — origin/destination/items are arbitrary JSON shapes the backend
 // validates.
 type ShipmentCreateInput struct {
-	ProductID          string                   `json:"productId,omitempty"`
-	CheckoutSessionID  string                   `json:"checkoutSessionId,omitempty"`
-	CustomerID         string                   `json:"customerId,omitempty"`
-	CustomerEmail      string                   `json:"customerEmail,omitempty"`
-	CourierCode        string                   `json:"courierCode"`
-	CourierServiceCode string                   `json:"courierServiceCode"`
-	CourierType        string                   `json:"courierType"`
-	Price              float64                  `json:"price"`
-	Insurance          *float64                 `json:"insurance,omitempty"`
-	Insured            *bool                    `json:"insured,omitempty"`
-	Origin             map[string]any           `json:"origin"`
-	Destination        map[string]any           `json:"destination"`
-	Items              []map[string]any         `json:"items"`
-	ExternalSource     string                   `json:"externalSource,omitempty"`
-	ExternalRef        string                   `json:"externalRef,omitempty"`
+	ProductID          string           `json:"productId,omitempty"`
+	CheckoutSessionID  string           `json:"checkoutSessionId,omitempty"`
+	CustomerID         string           `json:"customerId,omitempty"`
+	CustomerEmail      string           `json:"customerEmail,omitempty"`
+	CourierCode        string           `json:"courierCode"`
+	CourierServiceCode string           `json:"courierServiceCode"`
+	CourierType        string           `json:"courierType"`
+	Price              float64          `json:"price"`
+	Insurance          *float64         `json:"insurance,omitempty"`
+	Insured            *bool            `json:"insured,omitempty"`
+	Origin             map[string]any   `json:"origin"`
+	Destination        map[string]any   `json:"destination"`
+	Items              []map[string]any `json:"items"`
+	ExternalSource     string           `json:"externalSource,omitempty"`
+	ExternalRef        string           `json:"externalRef,omitempty"`
 }
 
 // List — GET /api/v1/shipments.
@@ -596,8 +588,7 @@ func (r *LicensesResource) Issue(ctx context.Context, in LicenseIssueInput) (*Li
 // Revoke — POST /api/v1/licenses/:id/revoke.
 func (r *LicensesResource) Revoke(ctx context.Context, id string) (*License, error) {
 	var out licenseEnvelope
-	if err := r.c.Request(ctx, "POST", "/api/v1/licenses/"+id+"/revoke",
-		map[string]any{}, &out, nil); err != nil {
+	if err := r.c.Request(ctx, "POST", "/api/v1/licenses/"+id+"/revoke", nil, &out, nil); err != nil {
 		return nil, err
 	}
 	return &out.License, nil
@@ -708,15 +699,24 @@ type apiKeyListEnvelope struct {
 	Keys []map[string]any `json:"keys"`
 }
 
-// APIKeyCreateInput — POST /api/v1/api-keys body.
+// APIKeyCreateInput — POST /api/v1/api-keys body. Scopes: any of "read",
+// "write", "admin"; the server defaults to ["read", "write"].
 type APIKeyCreateInput struct {
-	Description string `json:"description,omitempty"`
-	Scope       string `json:"scope,omitempty"`
+	Name   string   `json:"name"`
+	Scopes []string `json:"scopes,omitempty"`
 }
 
 // RevokedEnvelope wraps `{ revoked: bool }`.
 type RevokedEnvelope struct {
 	Revoked bool `json:"revoked"`
+}
+
+// apiKeyRevokedEnvelope wraps `{ apiKey: { id, revokedAt } }`.
+type apiKeyRevokedEnvelope struct {
+	APIKey struct {
+		ID        string `json:"id"`
+		RevokedAt string `json:"revokedAt"`
+	} `json:"apiKey"`
 }
 
 // List — GET /api/v1/api-keys.
@@ -740,14 +740,13 @@ func (r *APIKeysResource) Create(ctx context.Context, in APIKeyCreateInput) (map
 	return out.Key, nil
 }
 
-// Revoke — POST /api/v1/api-keys/:id/revoke.
+// Revoke — POST /api/v1/api-keys/:id/revoke. Reports whether the key is now revoked.
 func (r *APIKeysResource) Revoke(ctx context.Context, id string) (bool, error) {
-	var out RevokedEnvelope
-	if err := r.c.Request(ctx, "POST", "/api/v1/api-keys/"+id+"/revoke",
-		map[string]any{}, &out, nil); err != nil {
+	var out apiKeyRevokedEnvelope
+	if err := r.c.Request(ctx, "POST", "/api/v1/api-keys/"+id+"/revoke", nil, &out, nil); err != nil {
 		return false, err
 	}
-	return out.Revoked, nil
+	return out.APIKey.RevokedAt != "", nil
 }
 
 // ─── Audit log ──────────────────────────────────────────────
@@ -755,34 +754,30 @@ func (r *APIKeysResource) Revoke(ctx context.Context, id string) (bool, error) {
 // AuditLogResource — /api/v1/audit-log.
 type AuditLogResource struct{ c *Client }
 
-// AuditLogListParams — GET /audit-log query.
+// AuditLogListParams — GET /audit-log query. Action matches a prefix (e.g.
+// "api_key."); Limit is at most 500 (default 100).
 type AuditLogListParams struct {
-	Limit     int
-	Cursor    string
-	Since     string
-	EventType string
+	Action     string
+	TargetType string
+	Limit      int
 }
 
-// AuditLogListResult mirrors the cursor-paginated envelope.
+// AuditLogListResult — the newest entries first.
 type AuditLogListResult struct {
-	Entries    []map[string]any `json:"entries"`
-	NextCursor string           `json:"nextCursor,omitempty"`
+	Entries []map[string]any `json:"entries"`
 }
 
 // List — GET /api/v1/audit-log.
 func (r *AuditLogResource) List(ctx context.Context, p AuditLogListParams) (*AuditLogListResult, error) {
 	q := map[string]any{}
+	if p.Action != "" {
+		q["action"] = p.Action
+	}
+	if p.TargetType != "" {
+		q["target_type"] = p.TargetType
+	}
 	if p.Limit > 0 {
 		q["limit"] = p.Limit
-	}
-	if p.Cursor != "" {
-		q["cursor"] = p.Cursor
-	}
-	if p.Since != "" {
-		q["since"] = p.Since
-	}
-	if p.EventType != "" {
-		q["eventType"] = p.EventType
 	}
 	var out AuditLogListResult
 	if err := r.c.Request(ctx, "GET", "/api/v1/audit-log"+qs(q), nil, &out, nil); err != nil {
@@ -808,17 +803,20 @@ type BillingInvoicesResult struct {
 	NextCursor string           `json:"nextCursor,omitempty"`
 }
 
-// BillingCheckoutInput — POST /billing/checkout body.
+// BillingCheckoutInput — POST /billing/checkout body. Plan is "STARTER",
+// "GROWTH" or "SCALE"; Email is required when the caller is an API key.
 type BillingCheckoutInput struct {
-	PlanID     string `json:"planId"`
-	SuccessURL string `json:"successUrl,omitempty"`
-	CancelURL  string `json:"cancelUrl,omitempty"`
+	Plan  string `json:"plan"`
+	Email string `json:"email,omitempty"`
+	Name  string `json:"name,omitempty"`
 }
 
-// BillingCheckoutResult mirrors `{ url, sessionId }`.
+// BillingCheckoutResult — the Plugipay subscription started, and where to pay.
 type BillingCheckoutResult struct {
-	URL       string `json:"url"`
-	SessionID string `json:"sessionId"`
+	SubscriptionID    string `json:"subscriptionId"`
+	InvoiceID         string `json:"invoiceId"`
+	CheckoutSessionID string `json:"checkoutSessionId"`
+	CheckoutURL       string `json:"checkoutUrl"`
 }
 
 // Plans — GET /billing/plans (untyped passthrough).
@@ -885,8 +883,7 @@ func (r *BillingResource) Checkout(ctx context.Context, in BillingCheckoutInput)
 // Cancel — POST /billing/cancel.
 func (r *BillingResource) Cancel(ctx context.Context) (map[string]any, error) {
 	var out map[string]any
-	if err := r.c.Request(ctx, "POST", "/api/v1/billing/cancel",
-		map[string]any{}, &out, nil); err != nil {
+	if err := r.c.Request(ctx, "POST", "/api/v1/billing/cancel", nil, &out, nil); err != nil {
 		return nil, err
 	}
 	return out, nil
@@ -964,17 +961,9 @@ type WebhookEndpointUpdateInput struct {
 	Active      *bool     `json:"active,omitempty"`
 }
 
-// WebhookEventsListParams — GET /webhooks/events query.
-type WebhookEventsListParams struct {
-	Limit  int
-	Cursor string
-	Type   string
-}
-
-// WebhookEventsListResult mirrors the cursor-paginated envelope.
+// WebhookEventsListResult — the 50 most recent events.
 type WebhookEventsListResult struct {
-	Events     []map[string]any `json:"events"`
-	NextCursor string           `json:"nextCursor,omitempty"`
+	Events []map[string]any `json:"events"`
 }
 
 // ListEndpoints — GET /api/v1/webhooks/endpoints.
@@ -1016,20 +1005,10 @@ func (r *WebhooksResource) DeleteEndpoint(ctx context.Context, id string) (bool,
 	return out.Deleted, nil
 }
 
-// ListEvents — GET /api/v1/webhooks/events.
-func (r *WebhooksResource) ListEvents(ctx context.Context, p WebhookEventsListParams) (*WebhookEventsListResult, error) {
-	q := map[string]any{}
-	if p.Limit > 0 {
-		q["limit"] = p.Limit
-	}
-	if p.Cursor != "" {
-		q["cursor"] = p.Cursor
-	}
-	if p.Type != "" {
-		q["type"] = p.Type
-	}
+// ListEvents — GET /api/v1/webhooks/events: the 50 most recent events.
+func (r *WebhooksResource) ListEvents(ctx context.Context) (*WebhookEventsListResult, error) {
 	var out WebhookEventsListResult
-	if err := r.c.Request(ctx, "GET", "/api/v1/webhooks/events"+qs(q), nil, &out, nil); err != nil {
+	if err := r.c.Request(ctx, "GET", "/api/v1/webhooks/events", nil, &out, nil); err != nil {
 		return nil, err
 	}
 	return &out, nil

@@ -225,27 +225,58 @@ def test_deliveries_create_posts_with_idempotency():
     assert "idempotency-key" in captured[0].headers
 
 
-def test_api_keys_create_posts():
+def test_api_keys_create_posts_name_and_scopes():
     client, captured = _make_client()
-    client.api_keys.create({"description": "CI key"})
+    client.api_keys.create(name="CI key", scopes=["read"])
     assert captured[0].method == "POST"
     assert captured[0].url.path == "/api/v1/api-keys"
+    assert json.loads(captured[0].content) == {"name": "CI key", "scopes": ["read"]}
 
 
-def test_audit_log_list_query_camelcased():
+def test_audit_log_list_sends_the_filters_the_server_reads():
     client, captured = _make_client()
-    client.audit_log.list(limit=50, event_type="shipment.created")
+    client.audit_log.list(limit=50, action="shipment.", target_type="shipment")
     req = captured[0]
     assert req.url.path == "/api/v1/audit-log"
-    assert req.url.params.get("limit") == "50"
-    assert req.url.params.get("eventType") == "shipment.created"
+    assert dict(req.url.params) == {"limit": "50", "action": "shipment.", "target_type": "shipment"}
 
 
 def test_billing_checkout_posts():
     client, captured = _make_client()
-    client.billing.checkout({"planId": "pro"})
+    client.billing.checkout({"plan": "GROWTH", "email": "ops@example.com"})
     assert captured[0].method == "POST"
     assert captured[0].url.path == "/api/v1/billing/checkout"
+
+
+def _signature(req: httpx.Request) -> str:
+    return req.headers["authorization"].rsplit("signature=", 1)[1]
+
+
+def _signed_over(req: httpx.Request, body: bytes) -> str:
+    idem = req.headers.get("idempotency-key")
+    to_sign = f"{req.method}\n{req.url.raw_path.decode()}\n{req.headers['x-fulkruma-timestamp']}\n{hashlib.sha256(body).hexdigest()}"
+    to_sign += f"\n{idem}" if idem else ""
+    return hmac.new(b"sk_test", to_sign.encode(), hashlib.sha256).hexdigest()
+
+
+def test_calls_that_carry_nothing_send_no_body_and_sign_none():
+    client, captured = _make_client()
+    client.licenses.revoke("lic_1")
+    client.api_keys.revoke("ak_1")
+    client.billing.cancel()
+    client.api.shipments_cancel("shp_1")
+    for req in captured:
+        assert req.content == b"", req.url.path
+        assert "content-type" not in req.headers
+        assert _signature(req) == _signed_over(req, b"")
+
+
+def test_signs_exactly_the_bytes_it_sends_non_ascii_and_floats_included():
+    client, captured = _make_client()
+    client.warehouses.create({"name": "Gudang Café — 東京 <main> & co", "lat": -6.2, "lng": 106.0})
+    req = captured[0]
+    assert req.content == '{"name":"Gudang Café — 東京 <main> & co","lat":-6.2,"lng":106.0}'.encode("utf-8")
+    assert _signature(req) == _signed_over(req, req.content)
 
 
 def test_integrations_status_gets():
