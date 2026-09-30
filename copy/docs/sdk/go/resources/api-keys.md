@@ -4,11 +4,11 @@ title: API keys
 
 # API keys
 
-An **API key** is the credential pair (`KeyID` + `Secret`) you sign Fulkruma requests with. Every workspace can have multiple keys with different descriptions and scopes &mdash; one for production, one for staging, one for a back-office script. Fulkruma keys carry the `AKIAFULK*` prefix; there's no test-mode/live-mode split (unlike Plugipay) because the merchant subscription model is single-environment. The Go SDK exposes three methods behind `client.APIKeys`. For the HTTP surface see [**API &rarr; API keys**](/docs/api/resources/api-keys), and for how keys are used in `NewClient` see [**API &rarr; Authentication**](/docs/api/authentication).
+An **API key** is the credential pair (`KeyID` + `Secret`) you sign Fulkruma requests with. Every workspace can have multiple keys, each with its own name &mdash; one for production, one for staging, one for a back-office script. Fulkruma keys carry the `AKIAFULK*` prefix; there's no test-mode/live-mode split (unlike Plugipay) because the merchant subscription model is single-environment. The Go SDK exposes three methods behind `client.APIKeys`. For the HTTP surface see [**API &rarr; API keys**](/docs/api/resources/api-keys), and for how keys are used in `NewClient` see [**API &rarr; Authentication**](/docs/api/authentication).
 
 ## Field on the Client
 
-`client.APIKeys` &mdash; type `*fulkruma.APIKeysResource`. No `Update` &mdash; key metadata is immutable. To "rename" a key, revoke and re-create. **Using this namespace requires an admin-level key** (typically the bootstrap key the workspace was provisioned with).
+`client.APIKeys` &mdash; type `*fulkruma.APIKeysResource`. No `Update` &mdash; key metadata is immutable. To "rename" a key, revoke and re-create.
 
 ## Methods
 
@@ -16,7 +16,7 @@ An **API key** is the credential pair (`KeyID` + `Secret`) you sign Fulkruma req
 
 **Signature.** `func (r *APIKeysResource) List(ctx context.Context) ([]map[string]any, error)`
 
-Returns every key in the workspace, including revoked ones (filter on `revokedAt` to find active). The `secret` field is **never** returned on list.
+Returns every key in the workspace, newest first, including revoked ones (filter on `revokedAt` to find active). The `secret` is **never** returned on list &mdash; only a `secretPreview` for recognising a key by eye.
 
 ```go
 keys, err := client.APIKeys.List(ctx)
@@ -25,26 +25,26 @@ for _, k := range keys {
     if v, ok := k["revokedAt"]; ok && v != nil {
         state = fmt.Sprintf("revoked %v", v)
     }
-    fmt.Printf("%v — %v — %s\n", k["keyId"], k["description"], state)
+    fmt.Printf("%v — %v — %s\n", k["keyId"], k["name"], state)
 }
 ```
 
 ### Create
 
-**Signature.** `func (r *APIKeysResource) Create(ctx context.Context, in APIKeyCreateInput) (map[string]any, error)`
+**Signature.** `func (r *APIKeysResource) Create(ctx context.Context, in APIKeyCreateInput) (*APIKeyCreated, error)`
 
-Mints a new key. Pass a human-readable `Description` (so you can identify it later in the dashboard) and optionally a `Scope` to narrow what it can do. The returned map includes the `secret` &mdash; **this is the only call that returns it**. The SDK auto-mints an `Idempotency-Key`.
+Mints a new key. `Name` is required (1&ndash;120 characters) &mdash; make it specific so you can identify the key later in the dashboard. `Scopes` is any of `"read"`, `"write"`, `"admin"`; left empty, the server uses `["read", "write"]`. The result carries the key's record (`APIKey`) and the plaintext `Secret` &mdash; **this is the only call that returns it**. The SDK auto-mints an `Idempotency-Key`.
 
 ```go
-key, err := client.APIKeys.Create(ctx, fulkruma.APIKeyCreateInput{
-    Description: "Production server (jakarta-1)",
-    Scope:       "fulkruma:shipment:* fulkruma:stock:read",
+created, err := client.APIKeys.Create(ctx, fulkruma.APIKeyCreateInput{
+    Name:   "Production server (jakarta-1)",
+    Scopes: []string{"read", "write"},
 })
 if err != nil {
     return err
 }
-log.Println(key["keyId"])    // "AKIAFULK..."
-log.Println(key["secret"])   // STORE NOW — never returned again
+log.Println(created.APIKey["keyId"]) // "AKIAFULK..."
+log.Println(created.Secret)          // STORE NOW — never returned again
 ```
 
 <blockquote class="callout-warn">
@@ -57,33 +57,39 @@ log.Println(key["secret"])   // STORE NOW — never returned again
 
 **Signature.** `func (r *APIKeysResource) Revoke(ctx context.Context, id string) (bool, error)`
 
-Revokes a key. Subsequent requests signed with that key fail immediately with `invalid_signature` / `key_revoked`. There's no un-revoke; mint a fresh key.
+Revokes a key; the request carries no body. The `bool` reports whether the server marked the key revoked (its `revokedAt` is set). Subsequent requests signed with that key fail immediately with `401 REVOKED_KEY`. There's no un-revoke; mint a fresh key.
 
 ```go
-ok, err := client.APIKeys.Revoke(ctx, "apk_01HX...")
+revoked, err := client.APIKeys.Revoke(ctx, "clx4q8k2b0001")
 ```
 
-Note the argument is the `apk_*` record ID, **not** the `AKIAFULK*` keyId. They're different &mdash; the record ID is what the management API uses; the keyId is what you sign requests with.
+Note the argument is the record `id`, **not** the `AKIAFULK*` keyId. They're different &mdash; the record ID is what the management API uses; the keyId is what you sign requests with.
 
 ## Types
 
 ```go
 type APIKeyCreateInput struct {
-    Description string `json:"description,omitempty"`
-    Scope       string `json:"scope,omitempty"`
+    Name   string   `json:"name"`
+    Scopes []string `json:"scopes,omitempty"`
+}
+
+type APIKeyCreated struct {
+    APIKey map[string]any `json:"apiKey"` // id, name, keyId, scopes, createdAt
+    Secret string         `json:"secret"`
 }
 ```
 
-The returned `map[string]any` has these keys:
+The maps returned by `List` have these keys:
 
-- `id` (string, `"apk_..."`) &mdash; used by `Revoke`
+- `id` (string) &mdash; the record ID, used by `Revoke`
+- `name` (string)
 - `keyId` (string, `"AKIAFULK..."`) &mdash; the access key
-- `description` (string or null)
-- `scope` (string) &mdash; space-separated permission list
-- `secret` (string) &mdash; **only on Create**
-- `createdAt`, `revokedAt` (string or null)
+- `secretPreview` (string) &mdash; first 8 + last 4 of the secret
+- `scopes` (array of `"read"` / `"write"` / `"admin"`)
+- `createdAt`, `lastUsedAt`, `revokedAt` (string or null)
+- `createdBy` (string or null)
 
-For the full scope vocabulary, see [**API &rarr; API keys**](/docs/api/resources/api-keys) and [**API &rarr; Authentication**](/docs/api/authentication).
+`scopes` is recorded on the key and shown in the dashboard; the API does not yet check `read` / `write` / `admin` route by route, so treat any key as full access to its workspace. See [**API &rarr; API keys**](/docs/api/resources/api-keys#scopes).
 
 ## Common patterns
 
@@ -91,20 +97,17 @@ For the full scope vocabulary, see [**API &rarr; API keys**](/docs/api/resources
 
 ```go
 func mintServerKey(ctx context.Context, c *fulkruma.Client, serviceName string, secretManager Secrets) (string, error) {
-    desc := fmt.Sprintf("Auto-provisioned: %s (%s)", serviceName, time.Now().UTC().Format("2006-01-02"))
-    key, err := c.APIKeys.Create(ctx, fulkruma.APIKeyCreateInput{
-        Description: desc,
-        Scope:       "fulkruma:shipment:* fulkruma:stock:read fulkruma:webhook:read",
+    created, err := c.APIKeys.Create(ctx, fulkruma.APIKeyCreateInput{
+        Name: fmt.Sprintf("Auto-provisioned: %s (%s)", serviceName, time.Now().UTC().Format("2006-01-02")),
     })
     if err != nil {
         return "", err
     }
-    keyID, _ := key["keyId"].(string)
-    secret, _ := key["secret"].(string)
+    keyID, _ := created.APIKey["keyId"].(string)
     if err := secretManager.Put(serviceName+"/FULKRUMA_KEY_ID", keyID); err != nil {
         return "", err
     }
-    if err := secretManager.Put(serviceName+"/FULKRUMA_KEY_SECRET", secret); err != nil {
+    if err := secretManager.Put(serviceName+"/FULKRUMA_KEY_SECRET", created.Secret); err != nil {
         return "", err
     }
     return keyID, nil
@@ -127,7 +130,7 @@ func auditActive(ctx context.Context, c *fulkruma.Client) error {
         if created, _ := k["createdAt"].(string); created != "" {
             if t, err := time.Parse(time.RFC3339, created); err == nil {
                 age := int(now.Sub(t).Hours() / 24)
-                fmt.Printf("%v — %v — %dd old\n", k["keyId"], k["description"], age)
+                fmt.Printf("%v — %v — %dd old\n", k["keyId"], k["name"], age)
             }
         }
     }
@@ -140,15 +143,14 @@ func auditActive(ctx context.Context, c *fulkruma.Client) error {
 Mint-then-revoke is safer than revoke-then-mint:
 
 ```go
-func rotateKey(ctx context.Context, c *fulkruma.Client, oldRecordID, description string, deploy func(keyID, secret string) error) error {
-    key, err := c.APIKeys.Create(ctx, fulkruma.APIKeyCreateInput{
-        Description: fmt.Sprintf("%s (rotation %s)", description, time.Now().UTC().Format("2006-01-02")),
-        Scope:       "*",
+func rotateKey(ctx context.Context, c *fulkruma.Client, oldRecordID, name string, deploy func(keyID, secret string) error) error {
+    created, err := c.APIKeys.Create(ctx, fulkruma.APIKeyCreateInput{
+        Name: fmt.Sprintf("%s (rotation %s)", name, time.Now().UTC().Format("2006-01-02")),
     })
     if err != nil {
         return err
     }
-    if err := deploy(key["keyId"].(string), key["secret"].(string)); err != nil {
+    if err := deploy(created.APIKey["keyId"].(string), created.Secret); err != nil {
         return err
     }
     _, err = c.APIKeys.Revoke(ctx, oldRecordID)
@@ -179,10 +181,10 @@ func revokeByAccessKey(ctx context.Context, c *fulkruma.Client, accessKeyID stri
 
 | `Code` | `Status` | Cause |
 |---|---|---|
-| `validation_error` | 400 | Bad `Scope` value, description too long. |
-| `insufficient_scope` | 403 | Calling key lacks `fulkruma:apikey:write`. |
-| `not_found` | 404 | Record ID doesn't exist (on revoke). |
-| `conflict` | 409 | Revoking an already-revoked key. |
+| `VALIDATION` | 400 | Missing or oversized `Name`, or a scope outside `read` / `write` / `admin`. |
+| `NO_ACCOUNT` | 403 | The credentials resolve to no workspace. |
+| `NOT_FOUND` | 404 | Record ID doesn't exist in this workspace (on revoke). |
+| `ALREADY_REVOKED` | 409 | Revoking an already-revoked key. |
 
 ## Next
 

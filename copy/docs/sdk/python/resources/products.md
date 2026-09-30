@@ -22,7 +22,7 @@ Every method below shares the same `httpx.Client` as the parent.
 fulkruma.products.create(body: dict, *, on_behalf_of: str | None = None) -> dict
 ```
 
-Creates a product. Only `name` is required. `type` defaults to `"physical"`; pass `"digital"` for download-only goods (which then unlock the deliveries + licenses surfaces) or `"service"` for non-stocked offerings. The SDK auto-mints an idempotency key, so retries are safe.
+Creates a product. Only `name` is required. `type` defaults to `"physical"`; pass `"digital"` for download-only goods (which then unlock the deliveries + licenses surfaces) or `"license"` for software sold as a key. The SDK auto-mints an idempotency key, so retries are safe.
 
 ```python
 result = fulkruma.products.create({
@@ -31,12 +31,13 @@ result = fulkruma.products.create({
     "description": "GPU portal — 12-month subscription",
     "licenseEnabled": True,
     "maxActivations": 3,
-    "externalRef": "sku-pawpado-premium-12m",
-    "externalSource": "storlaunch",
+    "sku": "pawpado-premium-12m",
 })
 
 print(result["product"]["id"])  # "prod_01HX..."
 ```
+
+`sku` is your handle into your own catalog. Products that Storlaunch mirrors into Fulkruma also carry `externalRef` + `externalSource` (`"storlaunch"`); those are set by that sync only &mdash; `create` and `update` don't accept them.
 
 ### `get`
 
@@ -164,7 +165,7 @@ Every method returns a plain dict matching the API envelope. The product shape:
         "name": "...",
         "sku": "..." | None,
         "description": "..." | None,
-        "type": "physical" | "digital" | "service",
+        "type": "physical" | "digital" | "license",
         "weight": float | None,
         "licenseEnabled": bool,
         "maxActivations": int | None,
@@ -197,20 +198,16 @@ def create_simple(fulkruma, name: str, sku: str, price_cents: int) -> str:
     return product_id
 ```
 
-**Sync from your own catalog.** If Storlaunch (or another upstream) owns the source-of-truth catalog, use `externalRef` to dedupe:
+**Sync from your own catalog.** If your own system owns the source-of-truth catalog, use `sku` to dedupe:
 
 ```python
-def upsert_product(fulkruma, ext_ref: str, name: str, price_cents: int) -> str:
+def upsert_product(fulkruma, sku: str, name: str, price_cents: int) -> str:
     result = fulkruma.products.list()
-    existing = next((p for p in result["products"] if p.get("externalRef") == ext_ref), None)
+    existing = next((p for p in result["products"] if p.get("sku") == sku), None)
     if existing:
         fulkruma.products.update(existing["id"], {"name": name})
         return existing["id"]
-    pres = fulkruma.products.create({
-        "name": name,
-        "externalRef": ext_ref,
-        "externalSource": "storlaunch",
-    })
+    pres = fulkruma.products.create({"name": name, "sku": sku})
     pid = pres["product"]["id"]
     fulkruma.products.add_variant(pid, {
         "name": "Default", "priceCents": price_cents, "isDefault": True,
@@ -218,30 +215,13 @@ def upsert_product(fulkruma, ext_ref: str, name: str, price_cents: int) -> str:
     return pid
 ```
 
-**Branch on conflicts.** A duplicate `externalRef` + `externalSource` returns `409 conflict`:
-
-```python
-from fulkruma import FulkrumaError
-
-try:
-    fulkruma.products.create({"name": "X", "externalRef": "abc", "externalSource": "storlaunch"})
-except FulkrumaError as err:
-    if err.status == 409 and err.code == "conflict":
-        pass  # already exists, look up by externalRef
-    else:
-        raise
-```
-
 ## Errors
 
 | `err.status` | `err.code` | Cause |
 |---|---|---|
-| `400` | `validation_error` | Missing `name`, bad `type`, negative `priceCents`. |
-| `404` | `not_found` | Product or variant ID missing or in another workspace. |
-| `409` | `conflict` | Archive with live stock; duplicate `externalRef`+`externalSource`. |
-| `403` | `insufficient_scope` | Key lacks `fulkruma:product:write`. |
-
-See [**Errors**](/docs/sdk/python/errors) for the full hierarchy.
+| `400` | `VALIDATION` | Missing `name`, bad `type`, a negative dimension or price. |
+| `403` | `NO_ACCOUNT` | The credentials resolve to no workspace. |
+| `404` | `NOT_FOUND` | Product or variant ID missing or in another workspace. |
 
 ## Next
 

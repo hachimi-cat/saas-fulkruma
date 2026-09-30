@@ -16,7 +16,7 @@ A **product** is the catalog entry buyers see. Each product has one or more **va
 
 **Signature.** `func (r *ProductsResource) Create(ctx context.Context, in ProductCreateInput) (*Product, error)`
 
-Creates a product. Only `Name` is required. `Type` defaults to `"physical"`; pass `fulkruma.ProductTypeDigital` for download-only goods (which then unlock deliveries + licenses) or `fulkruma.ProductTypeService` for non-stocked offerings. The SDK auto-mints an `Idempotency-Key`.
+Creates a product. Only `Name` is required. `Type` defaults to `"physical"`; pass `fulkruma.ProductTypeDigital` for download-only goods (which then unlock deliveries + licenses) or `fulkruma.ProductTypeLicense` for software sold as a key. The SDK auto-mints an `Idempotency-Key`.
 
 ```go
 licenseEnabled := true
@@ -28,14 +28,15 @@ product, err := client.Products.Create(ctx, fulkruma.ProductCreateInput{
     Description:    "GPU portal — 12-month subscription",
     LicenseEnabled: &licenseEnabled,
     MaxActivations: &maxAct,
-    ExternalRef:    "sku-pawpado-premium-12m",
-    ExternalSource: "storlaunch",
+    SKU:            "pawpado-premium-12m",
 })
 if err != nil {
     return err
 }
 log.Printf("created %s", product.ID)
 ```
+
+`SKU` is your handle into your own catalog. Products that Storlaunch mirrors into Fulkruma also carry `ExternalRef` + `ExternalSource` (`"storlaunch"`) on the returned `Product`; those are set by that sync only &mdash; the create and update inputs don't have them.
 
 ### Get
 
@@ -136,7 +137,7 @@ type ProductType string
 const (
     ProductTypePhysical ProductType = "physical"
     ProductTypeDigital  ProductType = "digital"
-    ProductTypeService  ProductType = "service"
+    ProductTypeLicense  ProductType = "license"
 )
 
 type Product struct {
@@ -199,13 +200,13 @@ func createSimple(ctx context.Context, c *fulkruma.Client, name, sku string, pri
 ### Sync from your own catalog
 
 ```go
-func upsertProduct(ctx context.Context, c *fulkruma.Client, extRef, name string, priceCents int64) (string, error) {
+func upsertProduct(ctx context.Context, c *fulkruma.Client, sku, name string, priceCents int64) (string, error) {
     products, err := c.Products.List(ctx, fulkruma.ProductListParams{})
     if err != nil {
         return "", err
     }
     for _, p := range products {
-        if p.ExternalRef != nil && *p.ExternalRef == extRef {
+        if p.SKU != nil && *p.SKU == sku {
             newName := name
             _, err := c.Products.Update(ctx, p.ID, fulkruma.ProductUpdateInput{
                 Name: &newName,
@@ -214,9 +215,8 @@ func upsertProduct(ctx context.Context, c *fulkruma.Client, extRef, name string,
         }
     }
     product, err := c.Products.Create(ctx, fulkruma.ProductCreateInput{
-        Name:           name,
-        ExternalRef:    extRef,
-        ExternalSource: "storlaunch",
+        Name: name,
+        SKU:  sku,
     })
     if err != nil {
         return "", err
@@ -229,28 +229,13 @@ func upsertProduct(ctx context.Context, c *fulkruma.Client, extRef, name string,
 }
 ```
 
-### Branch on conflicts
-
-```go
-_, err := c.Products.Create(ctx, fulkruma.ProductCreateInput{
-    Name: "X", ExternalRef: "abc", ExternalSource: "storlaunch",
-})
-var pe *fulkruma.Error
-if errors.As(err, &pe) && pe.Code == "conflict" {
-    // already exists, look up by externalRef
-}
-```
-
 ## Errors
 
 | `Code` | `Status` | Cause |
 |---|---|---|
-| `validation_error` | 400 | Missing `Name`, bad `Type`, negative `PriceCents`. |
-| `not_found` | 404 | Product or variant ID missing or in another workspace. |
-| `conflict` | 409 | Archive with live stock; duplicate `ExternalRef`+`ExternalSource`. |
-| `insufficient_scope` | 403 | Key lacks `fulkruma:product:write`. |
-
-Full mechanics: [**Errors**](/docs/sdk/go/errors).
+| `VALIDATION` | 400 | Missing `Name`, bad `Type`, a negative dimension or price. |
+| `NO_ACCOUNT` | 403 | The credentials resolve to no workspace. |
+| `NOT_FOUND` | 404 | Product or variant ID missing or in another workspace. |
 
 ## Next
 

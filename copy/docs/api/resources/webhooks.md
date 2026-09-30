@@ -100,23 +100,26 @@ Hard-deletes the endpoint row and stops further deliveries.
 GET /api/v1/webhooks/events
 ```
 
-Returns the last 50 delivery attempts (across endpoints), newest first. Useful for debugging "did the event fire?" without trawling your own server logs.
+Returns the last 50 delivery records (across endpoints), newest first &mdash; one per event per endpoint. It takes no query parameters and has no pagination. Useful for debugging "did the event fire?" without trawling your own server logs.
 
 ```json
 {
   "data": {
     "events": [
       {
-        "id": "wev_01HX...",
+        "id": "clx...",
         "accountId": "acc_01HX...",
-        "endpointId": "we_01HX...",
-        "eventId": "evt_01HX...",
+        "endpointId": "clx...",
         "type": "fulkruma.shipment.created.v1",
-        "status": "delivered",
+        "payload": { ... },
+        "status": "sent",
         "attempts": 1,
         "lastAttemptAt": "2026-05-12T10:42:01.500Z",
-        "responseStatus": 200,
-        "createdAt": "2026-05-12T10:42:01.000Z"
+        "nextRetryAt": null,
+        "responseCode": 200,
+        "responseBody": "ok",
+        "createdAt": "2026-05-12T10:42:01.000Z",
+        "updatedAt": "2026-05-12T10:42:01.500Z"
       }
     ]
   },

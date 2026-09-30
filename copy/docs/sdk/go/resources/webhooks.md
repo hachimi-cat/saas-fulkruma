@@ -4,39 +4,35 @@ title: Webhooks
 
 # Webhooks
 
-Webhooks let Fulkruma push event notifications to your server in real time, so you don't have to poll. Use them to know when a shipment moves through carrier states, when a stock movement was logged, when a license was revoked, when a subscription changed. The Go SDK exposes five methods behind `client.Webhooks`. For wire shapes, see [**API &rarr; Webhooks**](/docs/api/resources/webhooks); for the per-event payload schemas, see [**Webhook events**](/docs/api/webhooks/events/fulkruma.product.created).
+Webhooks let Fulkruma push event notifications to your server in real time, so you don't have to poll. Use them to know when a shipment moves through carrier states, when a stock movement was logged, when a license was issued or revoked. The Go SDK exposes five methods behind `client.Webhooks`. For wire shapes, see [**API &rarr; Webhooks**](/docs/api/resources/webhooks); for the per-event payload schemas, see [**Webhook events**](/docs/api/webhooks/events/fulkruma.product.created).
 
 ## Field on the Client
 
-`client.Webhooks` &mdash; type `*fulkruma.WebhooksResource`. Five methods. Four manage delivery endpoints; one (`ListEvents`) reads the cursor-paginated event ledger &mdash; useful for catching up after a downtime or backfilling state.
+`client.Webhooks` &mdash; type `*fulkruma.WebhooksResource`. Five methods. Four manage delivery endpoints; one (`ListEvents`) reads the most recent delivery records.
 
 ## Methods
 
 ### CreateEndpoint
 
-**Signature.** `func (r *WebhooksResource) CreateEndpoint(ctx context.Context, in WebhookEndpointCreateInput) (map[string]any, error)`
+**Signature.** `func (r *WebhooksResource) CreateEndpoint(ctx context.Context, in WebhookEndpointCreateInput) (*WebhookEndpointCreated, error)`
 
-Registers a URL to receive event deliveries. Optionally narrow the event types (default: all). The returned map includes the `signingSecret` &mdash; **this is the only call that returns it**. The SDK auto-mints an `Idempotency-Key`.
+Registers a URL to receive event deliveries. `Events` narrows the types (`["*"]`, every event, when empty); patterns like `"fulkruma.shipment.*"` are allowed. The result carries the endpoint and its signing `Secret` &mdash; **this is the only call that returns the secret**. The SDK auto-mints an `Idempotency-Key`.
 
 ```go
-endpoint, err := client.Webhooks.CreateEndpoint(ctx, fulkruma.WebhookEndpointCreateInput{
-    URL: "https://your-app.example.com/webhooks/fulkruma",
-    Events: []string{
-        "fulkruma.shipment.updated",
-        "fulkruma.shipment.delivered",
-        "fulkruma.license.issued",
-    },
+created, err := client.Webhooks.CreateEndpoint(ctx, fulkruma.WebhookEndpointCreateInput{
+    URL:         "https://your-app.example.com/webhooks/fulkruma",
+    Events:      []string{"fulkruma.shipment.*", "fulkruma.license.issued.v1"},
     Description: "Production receiver",
 })
 if err != nil {
     return err
 }
-log.Println(endpoint["id"], endpoint["signingSecret"])  // STASH signingSecret NOW
+log.Println(created.Endpoint["id"])  // STASH created.Secret NOW (whsec_...)
 ```
 
 <blockquote class="callout-warn">
 
-**The signing secret appears once.** Just like API keys, the webhook signing secret is only returned on create. You'll use it to verify the `X-Fulkruma-Signature` header on every inbound delivery (see [**Verifying webhooks**](/docs/sdk/go/verifying-webhooks)). Store it before the function returns.
+**The signing secret appears once.** Just like API keys, the webhook signing secret is only returned on create. You'll use it to verify the `Fulkruma-Signature` header on every inbound delivery (see [Verify inbound deliveries](#verify-inbound-deliveries)). Store it before the function returns.
 
 </blockquote>
 
@@ -44,7 +40,7 @@ log.Println(endpoint["id"], endpoint["signingSecret"])  // STASH signingSecret N
 
 **Signature.** `func (r *WebhooksResource) ListEndpoints(ctx context.Context) ([]map[string]any, error)`
 
-Returns every endpoint in the workspace. `signingSecret` is **not** included; only `CreateEndpoint` returns it.
+Returns every endpoint in the workspace, newest first. The secret is **not** included &mdash; only a `secretPreview` (`whsec_…` plus its last 4 characters); `CreateEndpoint` alone returns the secret.
 
 ```go
 endpoints, err := client.Webhooks.ListEndpoints(ctx)
@@ -79,7 +75,7 @@ You can also rewrite the URL or the events list:
 
 ```go
 newURL := "https://new-app.example.com/webhooks/fulkruma"
-newEvents := []string{"fulkruma.shipment.updated", "fulkruma.shipment.delivered"}
+newEvents := []string{"fulkruma.shipment.status_updated.v1", "fulkruma.shipment.cancelled.v1"}
 _, err := client.Webhooks.UpdateEndpoint(ctx, "whe_01HX...", fulkruma.WebhookEndpointUpdateInput{
     URL:    &newURL,
     Events: &newEvents,
@@ -98,20 +94,21 @@ ok, err := client.Webhooks.DeleteEndpoint(ctx, "whe_01HX...")
 
 ### ListEvents
 
-**Signature.** `func (r *WebhooksResource) ListEvents(ctx context.Context, p WebhookEventsListParams) (*WebhookEventsListResult, error)`
+**Signature.** `func (r *WebhooksResource) ListEvents(ctx context.Context) (*WebhookEventsListResult, error)`
 
-Cursor-paginated read of every event emitted in the workspace, regardless of whether any endpoint successfully received it. Filters: `Limit` (default 25, max 100), `Cursor`, `Type` (event type).
+The workspace's 50 most recent delivery records, newest first &mdash; one per event per endpoint, with its delivery `status` (`pending`, `sent`, `failed`), `attempts` and the receiver's `responseCode`. It takes no filters and has no pagination; filter the rows yourself.
 
 ```go
-result, err := client.Webhooks.ListEvents(ctx, fulkruma.WebhookEventsListParams{
-    Limit: 100, Type: "fulkruma.shipment.delivered",
-})
+result, err := client.Webhooks.ListEvents(ctx)
+if err != nil {
+    return err
+}
+for _, e := range result.Events {
+    if e["status"] == "failed" {
+        log.Println(e["type"], e["responseCode"])
+    }
+}
 ```
-
-Use this to:
-- backfill after your receiver was down,
-- replay an event for debugging,
-- audit "did we actually emit X?".
 
 ## Types
 
@@ -129,15 +126,16 @@ type WebhookEndpointUpdateInput struct {
     Active      *bool     `json:"active,omitempty"`
 }
 
-type WebhookEventsListParams struct {
-    Limit  int
-    Cursor string
-    Type   string
+type WebhookEndpointCreated struct {
+    Endpoint map[string]any `json:"endpoint"`
+    Secret   string         `json:"secret"`
 }
 
+// Delivery records: id, accountId, endpointId, type, payload (the event
+// envelope sent), status (pending | sent | failed), attempts, lastAttemptAt,
+// nextRetryAt, responseCode, responseBody, createdAt, updatedAt.
 type WebhookEventsListResult struct {
-    Events     []map[string]any `json:"events"`
-    NextCursor string           `json:"nextCursor,omitempty"`
+    Events []map[string]any `json:"events"`
 }
 ```
 
@@ -164,18 +162,17 @@ func ensureEndpoint(ctx context.Context, c *fulkruma.Client, url string, events 
     if err != nil {
         return nil, err
     }
-    id, _ := created["id"].(string)
-    secret, _ := created["signingSecret"].(string)
-    if err := secretManager.Put("FULKRUMA_WEBHOOK_SECRET/"+id, secret); err != nil {
+    id, _ := created.Endpoint["id"].(string)
+    if err := secretManager.Put("FULKRUMA_WEBHOOK_SECRET/"+id, created.Secret); err != nil {
         return nil, err
     }
-    return created, nil
+    return created.Endpoint, nil
 }
 ```
 
 ### Verify inbound deliveries
 
-The SDK ships a `VerifyWebhook` helper:
+The SDK ships a `VerifyWebhook` helper. It checks the `Fulkruma-Signature: t=<unix>,v1=<hex>` header &mdash; an HMAC-SHA256 of `<t>.<raw body>` with the endpoint's secret &mdash; and rejects a timestamp more than 5 minutes off (`VerifyWebhookOptions.ToleranceSec` changes that):
 
 ```go
 import (
@@ -188,12 +185,8 @@ import (
 
 func handleWebhook(w http.ResponseWriter, r *http.Request) {
     body, _ := io.ReadAll(r.Body)
-    event, err := fulkruma.VerifyWebhook(fulkruma.WebhookVerifyInput{
-        Payload:   body,
-        Signature: r.Header.Get("X-Fulkruma-Signature"),
-        Timestamp: r.Header.Get("X-Fulkruma-Timestamp"),
-        Secret:    os.Getenv("FULKRUMA_WEBHOOK_SECRET"),
-    })
+    event, err := fulkruma.VerifyWebhook(body, r.Header.Get("Fulkruma-Signature"),
+        os.Getenv("FULKRUMA_WEBHOOK_SECRET"), nil)
     if err != nil {
         http.Error(w, "invalid signature", http.StatusBadRequest)
         return
@@ -203,8 +196,6 @@ func handleWebhook(w http.ResponseWriter, r *http.Request) {
     w.WriteHeader(http.StatusOK)
 }
 ```
-
-See [**Verifying webhooks**](/docs/sdk/go/verifying-webhooks) for the full helper signature.
 
 ### Pause-replay-resume during a release
 
@@ -218,12 +209,12 @@ client.Webhooks.UpdateEndpoint(ctx, "whe_01HX...",
 
 // 2. Deploy your new handler.
 
-// 3. Catch up on missed events from the ledger
+// 3. Catch up on what was queued meanwhile (the 50 most recent deliveries)
 cutoff := "2026-05-13T10:00:00Z"
-result, _ := client.Webhooks.ListEvents(ctx, fulkruma.WebhookEventsListParams{Limit: 100})
+result, _ := client.Webhooks.ListEvents(ctx)
 for _, e := range result.Events {
     if t, _ := e["createdAt"].(string); t >= cutoff {
-        handleManually(e)
+        handleManually(e["payload"])
     }
 }
 
@@ -252,14 +243,12 @@ client.Webhooks.CreateEndpoint(ctx, fulkruma.WebhookEndpointCreateInput{
 
 | `Code` | `Status` | Cause |
 |---|---|---|
-| `validation_error` | 400 | Bad URL (must be HTTPS), unknown event type, too many events. |
-| `not_found` | 404 | Endpoint or event ID missing. |
-| `conflict` | 409 | Same URL already registered. |
-| `insufficient_scope` | 403 | Key lacks `fulkruma:webhook:write`. |
+| `VALIDATION` | 400 | `URL` isn't a URL, or `Events` is an empty list. |
+| `NO_ACCOUNT` | 403 | The credentials resolve to no workspace. |
+| `NOT_FOUND` | 404 | No endpoint with that ID in this workspace (update / delete). |
 
 ## Next
 
-- [**Verifying webhooks**](/docs/sdk/go/verifying-webhooks) &mdash; how to use the `VerifyWebhook` helper.
 - [**Webhook events overview**](/docs/api/webhooks/events/fulkruma.product.created) &mdash; per-event payload schemas.
 - [**Audit log**](/docs/sdk/go/resources/audit-log) &mdash; complementary on-side ledger of actions.
 - [**API &rarr; Webhooks**](/docs/api/resources/webhooks) &mdash; HTTP reference.

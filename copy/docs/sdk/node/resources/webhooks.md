@@ -4,7 +4,7 @@ title: Webhooks
 
 # Webhooks
 
-Webhooks let Fulkruma push event notifications to your server in real time, so you don't have to poll. Use them to know when a shipment moves through carrier states, when a stock movement was logged, when a license was revoked, when a subscription changed. This page covers the `fulkruma.webhooks` namespace &mdash; the control plane for endpoint management. For HTTP fields, see [API: Webhooks](/docs/api/resources/webhooks); for the per-event payload schemas, see [Webhook events](/docs/api/webhooks/events/fulkruma.product.created).
+Webhooks let Fulkruma push event notifications to your server in real time, so you don't have to poll. Use them to know when a shipment moves through carrier states, when a stock movement was logged, when a license was issued or revoked. This page covers the `fulkruma.webhooks` namespace &mdash; the control plane for endpoint management. For HTTP fields, see [API: Webhooks](/docs/api/resources/webhooks); for the per-event payload schemas, see [Webhook events](/docs/api/webhooks/events/fulkruma.product.created).
 
 ## Namespace
 
@@ -18,34 +18,29 @@ fulkruma.webhooks.deleteEndpoint(id)
 fulkruma.webhooks.listEvents(params?)
 ```
 
-Five methods. Four manage delivery endpoints; one (`listEvents`) reads the cursor-paginated event ledger &mdash; useful for catching up after a downtime or backfilling state.
+Five methods. Four manage delivery endpoints; one (`listEvents`) reads the most recent delivery records.
 
 ## Methods
 
 ### `webhooks.createEndpoint`
 
-**Signature.** `fulkruma.webhooks.createEndpoint(input): Promise<{ endpoint: Record<string, unknown> }>`
+**Signature.** `fulkruma.webhooks.createEndpoint(input: { url: string; events?: string[]; description?: string }): Promise<{ endpoint: Record<string, unknown>; secret: string }>`
 
-Registers a URL to receive event deliveries. Optionally narrow the event types (default: all). The response includes the endpoint's signing secret &mdash; **this is the only call that returns it**. The SDK auto-mints an `Idempotency-Key`.
+Registers a URL to receive event deliveries. `events` narrows the types (`["*"]`, every event, when omitted); patterns like `"fulkruma.shipment.*"` are allowed. The response carries the endpoint's signing `secret` next to it &mdash; **this is the only call that returns it**. The SDK auto-mints an `Idempotency-Key`.
 
 ```ts
-const { endpoint } = await fulkruma.webhooks.createEndpoint({
+const { endpoint, secret } = await fulkruma.webhooks.createEndpoint({
   url: 'https://your-app.example.com/webhooks/fulkruma',
-  events: [
-    'fulkruma.shipment.updated',
-    'fulkruma.shipment.delivered',
-    'fulkruma.license.issued',
-  ],
+  events: ['fulkruma.shipment.*', 'fulkruma.license.issued.v1'],
   description: 'Production receiver',
 });
 
-const e = endpoint as { id: string; signingSecret: string };
-console.log(e.id, e.signingSecret);  // STASH signingSecret NOW
+console.log(endpoint.id);  // STASH `secret` NOW (whsec_...)
 ```
 
 <blockquote class="callout-warn">
 
-**The signing secret appears once.** Just like API keys, the webhook signing secret is only returned on create. You'll use it to verify the `X-Fulkruma-Signature` header on every inbound delivery (see [Verifying webhooks](/docs/api/webhooks/events/fulkruma.product.created#verifying)). Store it before the function returns.
+**The signing secret appears once.** Just like API keys, the webhook signing secret is only returned on create. You'll use it to verify the `Fulkruma-Signature` header on every inbound delivery (see [Verify inbound deliveries](#verify-inbound-deliveries)). Store it before the function returns.
 
 </blockquote>
 
@@ -53,7 +48,7 @@ console.log(e.id, e.signingSecret);  // STASH signingSecret NOW
 
 **Signature.** `fulkruma.webhooks.listEndpoints(): Promise<{ endpoints: Array<Record<string, unknown>> }>`
 
-Returns every endpoint in the workspace. `signingSecret` is **not** included; only `create` returns it.
+Returns every endpoint in the workspace, newest first. The secret is **not** included &mdash; only a `secretPreview` (`whsec_…` plus its last 4 characters); `create` alone returns the secret.
 
 ```ts
 const { endpoints } = await fulkruma.webhooks.listEndpoints();
@@ -79,7 +74,7 @@ You can also rewrite the URL or the events list:
 ```ts
 await fulkruma.webhooks.updateEndpoint('whe_01HX...', {
   url: 'https://new-app.example.com/webhooks/fulkruma',
-  events: ['fulkruma.shipment.updated', 'fulkruma.shipment.delivered'],
+  events: ['fulkruma.shipment.status_updated.v1', 'fulkruma.shipment.cancelled.v1'],
 });
 ```
 
@@ -95,42 +90,44 @@ await fulkruma.webhooks.deleteEndpoint('whe_01HX...');
 
 ### `webhooks.listEvents`
 
-**Signature.** `fulkruma.webhooks.listEvents(params?): Promise<{ events: Array<Record<string, unknown>>; nextCursor?: string }>`
+**Signature.** `fulkruma.webhooks.listEvents(): Promise<{ events: Array<Record<string, unknown>> }>`
 
-Cursor-paginated read of every event emitted in the workspace, regardless of whether any endpoint successfully received it. Filters: `limit` (default 25, max 100), `cursor`, `type` (event type).
+The workspace's 50 most recent delivery records, newest first &mdash; one per event per endpoint, with its delivery `status` (`pending`, `sent`, `failed`), `attempts` and the receiver's `responseCode`. It takes no filters and has no pagination; filter the rows yourself.
 
 ```ts
-const { events, nextCursor } = await fulkruma.webhooks.listEvents({
-  limit: 100,
-  type: 'fulkruma.shipment.delivered',
-});
+const { events } = await fulkruma.webhooks.listEvents();
+const failed = events.filter((e) => e.status === 'failed');
 ```
-
-Use this to:
-- backfill after your receiver was down,
-- replay an event for debugging,
-- audit "did we actually emit X?".
 
 ## Types
 
 ```ts
 interface WebhookEndpoint {
-  id: string;              // 'whe_...'
+  id: string;
   accountId: string;
   url: string;
-  events: string[];        // [] means "all events"
+  events: string[];        // ["*"] means every event
   description: string | null;
   active: boolean;
-  signingSecret?: string;  // only on create
+  secretPreview: string | null;  // list only: 'whsec_…' + last 4
   createdAt: string;
+  updatedAt: string;
 }
 
-interface WebhookEvent {
-  id: string;              // 'evt_...'
+interface WebhookDelivery {
+  id: string;
   accountId: string;
-  type: string;            // 'fulkruma.shipment.updated' etc.
-  payload: Record<string, unknown>;  // event-type-specific
+  endpointId: string;
+  type: string;            // e.g. 'fulkruma.shipment.status_updated.v1'
+  payload: Record<string, unknown>;  // the event envelope sent
+  status: 'pending' | 'sent' | 'failed';
+  attempts: number;
+  lastAttemptAt: string | null;
+  nextRetryAt: string | null;
+  responseCode: number | null;
+  responseBody: string | null;
   createdAt: string;
+  updatedAt: string;
 }
 ```
 
@@ -147,16 +144,15 @@ async function ensureEndpoint(url: string, events: string[]) {
   const { endpoints } = await fulkruma.webhooks.listEndpoints();
   const existing = (endpoints as any[]).find((e) => e.url === url);
   if (existing) return existing;
-  const { endpoint } = await fulkruma.webhooks.createEndpoint({ url, events });
-  const e = endpoint as { id: string; signingSecret: string };
-  await secretManager.put(`FULKRUMA_WEBHOOK_SECRET/${e.id}`, e.signingSecret);
+  const { endpoint, secret } = await fulkruma.webhooks.createEndpoint({ url, events });
+  await secretManager.put(`FULKRUMA_WEBHOOK_SECRET/${endpoint.id}`, secret);
   return endpoint;
 }
 ```
 
 ### Verify inbound deliveries
 
-The SDK ships a `verifyWebhook` helper (see [Verifying](/docs/sdk/node/verifying-webhooks)). Sketch:
+The SDK ships a `verifyWebhook` helper. It checks the `Fulkruma-Signature: t=<unix>,v1=<hex>` header &mdash; an HMAC-SHA256 of `<t>.<raw body>` with the endpoint's secret &mdash; and rejects a timestamp more than 5 minutes off. Sketch:
 
 ```ts
 import { verifyWebhook } from '@forjio/fulkruma-node';
@@ -166,9 +162,8 @@ const app = express();
 app.post('/webhooks/fulkruma', express.raw({ type: 'application/json' }), (req, res) => {
   try {
     const event = verifyWebhook({
-      payload: req.body,                            // raw Buffer
-      signature: req.header('X-Fulkruma-Signature')!,
-      timestamp: req.header('X-Fulkruma-Timestamp')!,
+      rawBody: req.body,                            // raw Buffer
+      signature: req.header('Fulkruma-Signature'),
       secret: process.env.FULKRUMA_WEBHOOK_SECRET!,
     });
     // event is the typed delivery; handle by type
@@ -189,11 +184,11 @@ await fulkruma.webhooks.updateEndpoint('whe_01HX...', { active: false });
 
 // 2. Deploy your new handler.
 
-// 3. Catch up on missed events from the ledger
+// 3. Catch up on what was queued meanwhile (the 50 most recent deliveries)
 const cutoff = '2026-05-13T10:00:00Z';
-const { events } = await fulkruma.webhooks.listEvents({ limit: 100 });
-const since = events.filter((e: any) => e.createdAt >= cutoff);
-for (const e of since) await handleManually(e);
+const { events } = await fulkruma.webhooks.listEvents();
+const since = events.filter((e) => (e.createdAt as string) >= cutoff);
+for (const e of since) await handleManually(e.payload);
 
 // 4. Resume
 await fulkruma.webhooks.updateEndpoint('whe_01HX...', { active: true });
@@ -218,14 +213,12 @@ await fulkruma.webhooks.createEndpoint({
 
 | Code | Status | Cause |
 |---|---|---|
-| `validation_error` | 400 | Bad URL (must be HTTPS), unknown event type, too many events. |
-| `not_found` | 404 | Endpoint or event ID missing. |
-| `conflict` | 409 | Same URL already registered. |
-| `forbidden` | 403 | Key lacks `fulkruma:webhook:write` scope. |
+| `VALIDATION` | 400 | `url` isn't a URL, or `events` is an empty list. |
+| `NO_ACCOUNT` | 403 | The credentials resolve to no workspace. |
+| `NOT_FOUND` | 404 | No endpoint with that ID in this workspace (update / delete). |
 
 ## Next
 
-- [Verifying webhooks](/docs/sdk/node/verifying-webhooks) &mdash; how to use the `verifyWebhook` helper.
 - [Webhook events overview](/docs/api/webhooks/events/fulkruma.product.created) &mdash; per-event payload schemas.
 - [Audit log](/docs/sdk/node/resources/audit-log) &mdash; complementary on-side ledger of actions.
 - [API: Webhooks](/docs/api/resources/webhooks) &mdash; HTTP reference.

@@ -4,11 +4,11 @@ title: Audit log
 
 # Audit log
 
-The **audit log** is the append-only ledger of every meaningful action taken in a workspace &mdash; key mints, key revocations, stock adjustments, shipment bookings, integration toggles, plan changes. It's the same data the portal's "Activity" page renders. The Go SDK exposes one method behind `client.AuditLog`. For wire shapes, see [**API &rarr; Audit log**](/docs/api/resources/audit-log).
+The **audit log** is the ledger of workspace-changing actions &mdash; key mints and revocations, product and variant changes, deliveries, webhook endpoints, shipping settings, partner provisioning. It's the same data the portal's activity view renders. The Go SDK exposes one method behind `client.AuditLog`. For wire shapes, see [**API &rarr; Audit log**](/docs/api/resources/audit-log).
 
 ## Field on the Client
 
-`client.AuditLog` &mdash; type `*fulkruma.AuditLogResource`. One method. Audit entries are write-only from the system's side &mdash; you can't `Create` or `Delete` them via the SDK by design.
+`client.AuditLog` &mdash; type `*fulkruma.AuditLogResource`. One method. Audit entries are written by the system only &mdash; you can't `Create` or `Delete` them via the SDK by design.
 
 ## Methods
 
@@ -16,168 +16,126 @@ The **audit log** is the append-only ledger of every meaningful action taken in 
 
 **Signature.** `func (r *AuditLogResource) List(ctx context.Context, p AuditLogListParams) (*AuditLogListResult, error)`
 
-Returns audit entries newest-first, cursor-paginated. Filters: `Limit` (default 25, max 100), `Cursor`, `Since` (ISO-8601, exclusive), `EventType` (exact-match).
+Returns audit entries newest first. Filters:
+
+- `Action` &mdash; a **prefix** of the action name: `"api_key."` matches `api_key.created` and `api_key.revoked`; `"product"` matches every `product.*` action.
+- `TargetType` &mdash; the exact resource type, e.g. `"Product"`, `"ApiKey"`.
+- `Limit` &mdash; default 100, max 500.
+
+There is no cursor and no date filter: a call returns the newest `Limit` entries that match. To reach further back, narrow `Action` / `TargetType`.
 
 ```go
 result, err := client.AuditLog.List(ctx, fulkruma.AuditLogListParams{
-    Limit:     50,
-    Since:     "2026-05-01T00:00:00Z",
-    EventType: "apikey.created",
+    Action: "api_key.",
+    Limit:  50,
 })
 if err != nil {
     return err
 }
 for _, e := range result.Entries {
-    fmt.Println(e["createdAt"], e["actorId"], e["eventType"])
-}
-if result.NextCursor != "" {
-    more, err := client.AuditLog.List(ctx, fulkruma.AuditLogListParams{
-        Cursor: result.NextCursor, Limit: 50,
-    })
-    _ = more
-    _ = err
+    fmt.Println(e["createdAt"], e["actorType"], e["actorId"], e["action"], e["targetId"])
 }
 ```
 
-Common `EventType` values:
+Action names in use:
 
-- `apikey.created` / `apikey.revoked`
-- `warehouse.created` / `warehouse.updated` / `warehouse.archived`
+- `api_key.created` / `api_key.revoked`
 - `product.created` / `product.updated` / `product.archived`
-- `stock.adjusted`
-- `shipment.created`
-- `license.issued` / `license.revoked`
-- `delivery.created`
-- `integration.connected` / `integration.disconnected`
-- `subscription.changed`
+- `variant.created` / `variant.updated` / `variant.archived`
+- `delivery.created` / `delivery.extend` / `delivery.reset-downloads` / `delivery.revoke`
+- `webhook.created` / `webhook.updated` / `webhook.deleted`
+- `shipping.origin_updated` / `shipping.config_updated`
+- `partner.workspace_provisioned`
+- `storlaunch.product.synced`
 
-The full vocabulary lives in [**API &rarr; Audit log**](/docs/api/resources/audit-log).
+What triggers each is in [**API &rarr; Audit log**](/docs/api/resources/audit-log#actions).
 
 ## Types
 
 ```go
 type AuditLogListParams struct {
-    Limit     int
-    Cursor    string
-    Since     string
-    EventType string
+    Action     string // prefix match
+    TargetType string
+    Limit      int    // default 100, max 500
 }
 
 type AuditLogListResult struct {
-    Entries    []map[string]any `json:"entries"`
-    NextCursor string           `json:"nextCursor,omitempty"`
+    Entries []map[string]any `json:"entries"`
 }
 ```
 
-Entries are `map[string]any` because the `payload` field shape is event-type-specific. Per-entry keys:
+Each entry map has these keys:
 
-- `id` (string)
-- `accountId` (string, `"acc_..."`)
-- `actorId` (string, `"user_..."` or `"system"`)
-- `actorType` (string, `"user" | "apikey" | "system"`)
-- `eventType` (string)
-- `payload` (map &mdash; shape depends on `eventType`)
-- `requestId` (string or null)
-- `createdAt` (string, ISO-8601)
+- `id`, `accountId` (string)
+- `actorType` (`"user"`, `"api_key"` or `"system"`)
+- `actorId` (string or null) &mdash; Huudis user ID, or the workspace ID for an API-key call
+- `actorEmail` (string or null)
+- `action` (string)
+- `targetType`, `targetId` (string or null)
+- `ip`, `userAgent` (string or null)
+- `before`, `after` (map or null) &mdash; the fields the action changed; shape varies by action
+- `metadata` (map)
+- `createdAt` (RFC 3339 string)
 
-See [**API &rarr; Audit log**](/docs/api/resources/audit-log) for the per-event payload schemas.
+See [**API &rarr; Audit log**](/docs/api/resources/audit-log#the-audit-entry-object).
 
 ## Common patterns
 
 ### Tail the most recent activity
 
 ```go
-func recent(ctx context.Context, c *fulkruma.Client) ([]map[string]any, error) {
-    result, err := c.AuditLog.List(ctx, fulkruma.AuditLogListParams{Limit: 25})
-    if err != nil {
-        return nil, err
-    }
-    return result.Entries, nil
-}
+result, err := client.AuditLog.List(ctx, fulkruma.AuditLogListParams{Limit: 25})
+// result.Entries is already newest-first
 ```
 
-### Walk the full ledger
+### Export what the log holds for one resource type
 
-For an export-to-CSV job:
-
-```go
-func walkAll(ctx context.Context, c *fulkruma.Client, since string, fn func(map[string]any)) error {
-    var cursor string
-    for {
-        result, err := c.AuditLog.List(ctx, fulkruma.AuditLogListParams{
-            Limit: 100, Cursor: cursor, Since: since,
-        })
-        if err != nil {
-            return err
-        }
-        for _, e := range result.Entries {
-            fn(e)
-        }
-        if result.NextCursor == "" {
-            return nil
-        }
-        cursor = result.NextCursor
-    }
-}
-
-// Usage:
-walkAll(ctx, client, "2026-01-01T00:00:00Z", func(e map[string]any) {
-    writeRow(e)
-})
-```
-
-### Filter on event type
-
-For a security review focused on key management:
+Take the most the endpoint returns in one call:
 
 ```go
-sensitive := []string{"apikey.created", "apikey.revoked", "integration.connected"}
-for _, typ := range sensitive {
-    result, err := client.AuditLog.List(ctx, fulkruma.AuditLogListParams{
-        Limit: 100, EventType: typ,
-    })
+func exportProducts(ctx context.Context, c *fulkruma.Client, w *csv.Writer) error {
+    result, err := c.AuditLog.List(ctx, fulkruma.AuditLogListParams{TargetType: "Product", Limit: 500})
     if err != nil {
         return err
     }
-    fmt.Println(typ, len(result.Entries))
+    for _, e := range result.Entries {
+        _ = w.Write([]string{fmt.Sprint(e["createdAt"]), fmt.Sprint(e["actorId"]), fmt.Sprint(e["action"]), fmt.Sprint(e["targetId"])})
+    }
+    w.Flush()
+    return w.Error()
 }
 ```
 
-You can only pass one `EventType` per call &mdash; loop client-side if you need multiple.
+If a resource type has more than 500 entries, only the newest 500 come back; split the export by `Action` prefix to reach more.
 
-### Tie to a request ID
+### Several actions
 
-When investigating a customer issue, find every audit entry from a specific request:
+`Action` is a single prefix per call &mdash; loop client-side if you need several:
 
 ```go
-func entriesForRequest(ctx context.Context, c *fulkruma.Client, requestID string) ([]map[string]any, error) {
-    result, err := c.AuditLog.List(ctx, fulkruma.AuditLogListParams{Limit: 100})
-    if err != nil {
-        return nil, err
-    }
+func entriesForActions(ctx context.Context, c *fulkruma.Client, prefixes []string) ([]map[string]any, error) {
     var out []map[string]any
-    for _, e := range result.Entries {
-        if rid, _ := e["requestId"].(string); rid == requestID {
-            out = append(out, e)
+    for _, p := range prefixes {
+        result, err := c.AuditLog.List(ctx, fulkruma.AuditLogListParams{Action: p, Limit: 500})
+        if err != nil {
+            return nil, err
         }
+        out = append(out, result.Entries...)
     }
     return out, nil
 }
 ```
 
-Every Fulkruma response carries `meta.requestId`; the audit log copies it onto every entry that request generated.
-
 ## Errors
 
 | `Code` | `Status` | Cause |
 |---|---|---|
-| `validation_error` | 400 | Bad `Since` format, `Limit` out of range. |
-| `insufficient_scope` | 403 | Key lacks `fulkruma:auditlog:read`. |
+| `NO_ACCOUNT` | 403 | The credentials resolve to no workspace. |
 
-The audit log can't 404 individual entries &mdash; the SDK only exposes list. Use the filters to narrow down.
+Unknown `Action` / `TargetType` values aren't errors &mdash; they match nothing and return an empty list.
 
 ## Next
 
 - [**API keys**](/docs/sdk/go/resources/api-keys) &mdash; the most-audited resource.
-- [**Webhooks**](/docs/sdk/go/resources/webhooks) &mdash; subscribe to `fulkruma.audit.created` for real-time monitoring.
-- [**API &rarr; Audit log**](/docs/api/resources/audit-log) &mdash; HTTP reference, including the full `eventType` and `payload` catalog.
+- [**Webhooks**](/docs/sdk/go/resources/webhooks) &mdash; real-time events for shipments, stock and licenses (the audit log itself emits none).
+- [**API &rarr; Audit log**](/docs/api/resources/audit-log) &mdash; HTTP reference, including the full action table.

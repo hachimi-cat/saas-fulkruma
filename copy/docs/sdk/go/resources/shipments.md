@@ -81,7 +81,7 @@ shipments, err := client.Shipments.List(ctx, "in_transit")
 fmt.Printf("%d parcels currently moving\n", len(shipments))
 ```
 
-Status filter is exact-match. There's no date filter at the SDK layer &mdash; use the `Webhooks.ListEvents` ledger if you need a time-bounded scan.
+Status filter is exact-match. There's no date filter &mdash; filter the returned rows on `createdAt` if you need a time-bounded scan.
 
 ## Types
 
@@ -172,7 +172,7 @@ _, err := client.Webhooks.CreateEndpoint(ctx, fulkruma.WebhookEndpointCreateInpu
 })
 ```
 
-Then verify + handle in your endpoint. See [**Verifying webhooks**](/docs/sdk/go/verifying-webhooks).
+Then verify + handle in your endpoint. See [**Webhooks**](/docs/sdk/go/resources/webhooks#verify-inbound-deliveries).
 
 ### Idempotent re-booking after partial failure
 

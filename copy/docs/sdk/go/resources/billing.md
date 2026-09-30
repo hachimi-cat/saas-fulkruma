@@ -4,11 +4,11 @@ title: Billing
 
 # Billing
 
-The `billing` namespace is the **merchant's subscription to Fulkruma itself** &mdash; not the merchant's billing of their own end customers. Read plans, the current subscription, usage, and invoices; redirect to a hosted checkout to upgrade; cancel. Under the hood this is all powered by Plugipay (Pattern 2 partner-billing), but the SDK exposes a flat surface. For wire shapes, see [**API &rarr; Billing**](/docs/api/resources/billing).
+The `billing` namespace is the **merchant's subscription to Fulkruma itself** &mdash; not the merchant's billing of their own end customers. Read plans, the current plan and subscription, usage, and invoices; start a hosted checkout to upgrade; cancel. Under the hood this is all powered by Plugipay (Pattern 2 partner-billing), but the SDK exposes a flat surface. For wire shapes, see [**API &rarr; Billing**](/docs/api/resources/billing).
 
 ## Field on the Client
 
-`client.Billing` &mdash; type `*fulkruma.BillingResource`. Seven methods. Six reads + cancel + a checkout-redirect builder. There's no "upgrade in place" &mdash; every plan change goes through `Checkout`, which returns a hosted URL on `pay.plugipay.com`.
+`client.Billing` &mdash; type `*fulkruma.BillingResource`. Seven methods: five reads, a checkout and a cancel. There's no "upgrade in place" &mdash; every plan change goes through `Checkout`, which returns a hosted Plugipay URL.
 
 ## Methods
 
@@ -16,12 +16,12 @@ The `billing` namespace is the **merchant's subscription to Fulkruma itself** &m
 
 **Signature.** `func (r *BillingResource) Plans(ctx context.Context) ([]map[string]any, error)`
 
-Returns every plan Fulkruma offers. Each plan has an `id`, name, price, and feature/limit map. Cache for the process lifetime; plans change rarely.
+Every plan Fulkruma offers: `free`, `starter`, `growth`, `scale`. Each has an `id`, `name`, `price` (in IDR), `currency` (`"IDR"`) and `features` (display strings). No credentials needed.
 
 ```go
 plans, err := client.Billing.Plans(ctx)
 for _, p := range plans {
-    fmt.Printf("%v — Rp%v\n", p["name"], p["priceCents"])
+    fmt.Printf("%v — Rp%v/month\n", p["name"], p["price"])
 }
 ```
 
@@ -29,22 +29,18 @@ for _, p := range plans {
 
 **Signature.** `func (r *BillingResource) CurrentPlan(ctx context.Context) (map[string]any, error)`
 
-The merchant's current plan. Identical shape to one entry in `Plans()`, plus a `currentPeriodEnd` timestamp.
-
-```go
-current, err := client.Billing.CurrentPlan(ctx)
-```
+The workspace's plan and its limits: `plan`, `planName`, `ordersLimit`, `warehousesLimit`, `licenseKeysLimit`, `apiKeysLimit`, `webhookEndpointsLimit`, `rateLimit`, `biteshipShipmentsLimit` (each `-1` for unlimited) and `billingCycleEnd`.
 
 ### Subscription
 
 **Signature.** `func (r *BillingResource) Subscription(ctx context.Context) (map[string]any, error)`
 
-The full subscription object &mdash; status, period, cancel-at-end flag, Plugipay subscription ID, the merchant-side payment method ID.
+The subscription's state: `plan`, `planName`, `status` (lowercase: `active`, `canceling`, …), `currentPeriodStart`, `currentPeriodEnd`, `cancelAt`.
 
 ```go
 sub, err := client.Billing.Subscription(ctx)
-if status, _ := sub["status"].(string); status == "past_due" {
-    notifyMerchant()
+if err == nil && sub["status"] == "canceling" {
+    showRenewBanner(sub["currentPeriodEnd"])
 }
 ```
 
@@ -52,35 +48,28 @@ if status, _ := sub["status"].(string); status == "past_due" {
 
 **Signature.** `func (r *BillingResource) Usage(ctx context.Context) (map[string]any, error)`
 
-Current period's metered usage &mdash; shipment count, stock movement count, license issuance count &mdash; against the plan's caps.
-
-```go
-usage, err := client.Billing.Usage(ctx)
-```
+This month's counters against the plan: `ordersFulfilled` / `ordersLimit`, `shipmentsCreated`, `licensesIssued`, and `resetAt` (the start of next month).
 
 ### Invoices
 
 **Signature.** `func (r *BillingResource) Invoices(ctx context.Context, p BillingInvoicesParams) (*BillingInvoicesResult, error)`
 
-Cursor-paginated invoice list. `Limit` defaults to 25, max 100.
+Invoices for Fulkruma's own subscription, newest first. `Limit` defaults to 20, max 50. Pass the returned `Cursor` to get the next page while `HasMore`. Each invoice map has `id`, `plan`, `amount`, `currency`, `status`, `paidAt`, `receiptUrl`, `createdAt`.
 
 ```go
 var cursor string
 for {
-    result, err := client.Billing.Invoices(ctx, fulkruma.BillingInvoicesParams{
-        Limit:  50,
-        Cursor: cursor,
-    })
+    page, err := client.Billing.Invoices(ctx, fulkruma.BillingInvoicesParams{Limit: 50, Cursor: cursor})
     if err != nil {
         return err
     }
-    for _, inv := range result.Invoices {
-        fmt.Println(inv)
+    for _, inv := range page.Data {
+        fmt.Println(inv["id"], inv["amount"], inv["status"])
     }
-    if result.NextCursor == "" {
+    if !page.HasMore {
         break
     }
-    cursor = result.NextCursor
+    cursor = page.Cursor
 }
 ```
 
@@ -88,133 +77,103 @@ for {
 
 **Signature.** `func (r *BillingResource) Checkout(ctx context.Context, in BillingCheckoutInput) (*BillingCheckoutResult, error)`
 
-Creates a Plugipay-hosted checkout session for upgrading/changing plans.
+Starts a Plugipay subscription for the plan and returns the hosted page where the first payment is made. `Plan` is `"STARTER"`, `"GROWTH"` or `"SCALE"`. `Email` is **required** when you call with an API key (a key has no email of its own). `Currency` (`"IDR"` or `"USD"`) defaults by the caller's country &mdash; IDR in Indonesia, USD elsewhere.
 
 ```go
 result, err := client.Billing.Checkout(ctx, fulkruma.BillingCheckoutInput{
-    PlanID:     "plan_growth",
-    SuccessURL: "https://your-portal.example.com/billing?ok=1",
-    CancelURL:  "https://your-portal.example.com/billing?cancelled=1",
+    Plan:  "GROWTH",
+    Email: "owner@your-store.example",
 })
 if err != nil {
     return err
 }
-// Redirect the merchant's browser to result.URL
+// Redirect the merchant's browser to result.CheckoutURL
 ```
 
-The hosted URL handles card capture + 3DS + the partner-billing routing back to Fulkruma. On success, Plugipay calls our internal webhook which updates the subscription; the merchant lands on `SuccessURL`.
+The hosted page handles card capture, 3DS and the partner-billing routing back to Fulkruma. When the invoice is paid, Plugipay notifies Fulkruma and the plan changes.
 
 ### Cancel
 
 **Signature.** `func (r *BillingResource) Cancel(ctx context.Context) (map[string]any, error)`
 
-Cancels the subscription **at period end** &mdash; the merchant keeps access until the current period closes.
-
-```go
-_, err := client.Billing.Cancel(ctx)
-```
-
-Idempotent &mdash; calling on an already-cancelling subscription is a no-op. To un-cancel, run `Checkout` against the same plan again.
+Cancels the subscription **at period end** &mdash; the merchant keeps the plan until the current period closes. The request carries no body; the result is the updated subscription (as `Subscription` returns it, with `status` `"canceling"`). A workspace with no paid subscription gets its current state back unchanged.
 
 ## Types
 
 ```go
 type BillingInvoicesParams struct {
-    Limit  int
-    Cursor string
+    Limit  int    // default 20, max 50
+    Cursor string // from the previous page
 }
 
 type BillingInvoicesResult struct {
-    Invoices   []map[string]any `json:"invoices"`
-    NextCursor string           `json:"nextCursor,omitempty"`
+    Data    []map[string]any `json:"data"`
+    Cursor  string           `json:"cursor"`
+    HasMore bool             `json:"hasMore"`
 }
 
 type BillingCheckoutInput struct {
-    PlanID     string `json:"planId"`
-    SuccessURL string `json:"successUrl,omitempty"`
-    CancelURL  string `json:"cancelUrl,omitempty"`
+    Plan     string `json:"plan"`               // STARTER | GROWTH | SCALE
+    Email    string `json:"email,omitempty"`    // required for an API-key caller
+    Name     string `json:"name,omitempty"`
+    Currency string `json:"currency,omitempty"` // IDR | USD
 }
 
 type BillingCheckoutResult struct {
-    URL       string `json:"url"`
-    SessionID string `json:"sessionId"`
+    SubscriptionID    string `json:"subscriptionId"`
+    InvoiceID         string `json:"invoiceId"`
+    CheckoutSessionID string `json:"checkoutSessionId"`
+    CheckoutURL       string `json:"checkoutUrl"`
 }
 ```
-
-Plan and subscription endpoints return `map[string]any` because the per-plan feature map and per-subscription field shape evolve faster than the SDK release cycle. Stable fields:
-
-- `plans[].id`, `plans[].name`, `plans[].priceCents`
-- `subscription.status` &mdash; `"active" | "trialing" | "past_due" | "cancelled" | "incomplete"`
-- `subscription.currentPeriodEnd` &mdash; ISO-8601
-- `invoices[].id`, `invoices[].amountCents`, `invoices[].paidAt`
-
-See [**API &rarr; Billing**](/docs/api/resources/billing) for the per-version field map.
 
 ## Common patterns
 
 ### Render a billing dashboard
 
-Three independent reads &mdash; parallelize with `errgroup`:
-
 ```go
-import "golang.org/x/sync/errgroup"
-
 func billingDashboard(ctx context.Context, c *fulkruma.Client) (map[string]any, error) {
-    var sub, usage map[string]any
-    var plans []map[string]any
-    g, ctx := errgroup.WithContext(ctx)
-    g.Go(func() error { var err error; sub, err = c.Billing.Subscription(ctx); return err })
-    g.Go(func() error { var err error; usage, err = c.Billing.Usage(ctx); return err })
-    g.Go(func() error { var err error; plans, err = c.Billing.Plans(ctx); return err })
-    if err := g.Wait(); err != nil {
+    current, err := c.Billing.CurrentPlan(ctx)
+    if err != nil {
         return nil, err
     }
-    return map[string]any{"subscription": sub, "usage": usage, "plans": plans}, nil
+    sub, err := c.Billing.Subscription(ctx)
+    if err != nil {
+        return nil, err
+    }
+    usage, err := c.Billing.Usage(ctx)
+    if err != nil {
+        return nil, err
+    }
+    return map[string]any{"current": current, "subscription": sub, "usage": usage}, nil
 }
 ```
 
 ### Upgrade flow
 
 ```go
-func upgradeTo(ctx context.Context, c *fulkruma.Client, planID string) (string, error) {
-    portalURL := os.Getenv("PORTAL_URL")
-    result, err := c.Billing.Checkout(ctx, fulkruma.BillingCheckoutInput{
-        PlanID:     planID,
-        SuccessURL: portalURL + "/billing?upgrade=success",
-        CancelURL:  portalURL + "/billing?upgrade=cancelled",
-    })
+func upgradeTo(ctx context.Context, c *fulkruma.Client, plan, ownerEmail string) (string, error) {
+    result, err := c.Billing.Checkout(ctx, fulkruma.BillingCheckoutInput{Plan: plan, Email: ownerEmail})
     if err != nil {
         return "", err
     }
-    return result.URL, nil
+    return result.CheckoutURL, nil // your handler redirects here
 }
 ```
 
-### Listen for plan changes
-
-Don't poll `Subscription()`; subscribe to `fulkruma.subscription.updated`:
-
-```go
-_, err := client.Webhooks.CreateEndpoint(ctx, fulkruma.WebhookEndpointCreateInput{
-    URL:    "https://your-portal.example.com/webhooks/fulkruma",
-    Events: []string{"fulkruma.subscription.updated"},
-})
-```
+Fulkruma sends no webhook event for plan changes; re-read `Subscription` when the merchant comes back from the hosted page.
 
 ## Errors
 
 | `Code` | `Status` | Cause |
 |---|---|---|
-| `validation_error` | 400 | Unknown `PlanID`, bad URL format on checkout. |
-| `not_found` | 404 | Plan ID doesn't exist; merchant has no subscription yet. |
-| `conflict` | 409 | Checkout on a plan the merchant already has; cancel on an already-cancelled sub. |
-| `insufficient_scope` | 403 | Key lacks `fulkruma:billing:read` / `:write`. |
-| `plugipay_error` | 502 | Upstream Plugipay returned an error. |
-
-`plugipay_error` is the retry candidate.
+| `VALIDATION` | 400 | `Plan` not one of `STARTER` / `GROWTH` / `SCALE`, a malformed `Email`, or no email at all for an API-key caller. |
+| `NO_ACCOUNT` | 403 | The credentials resolve to no workspace. |
+| `CHECKOUT_FAILED` | 500 | Plugipay refused to start the subscription. |
+| `CANCEL_FAILED` | 500 | Plugipay refused the cancellation. |
+| `PLAN_NOT_CONFIGURED` | 503 | The plan has no Plugipay price set up yet. |
 
 ## Next
 
 - [**Integrations**](/docs/sdk/go/resources/integrations) &mdash; check the Plugipay link status if billing isn't working.
 - [**API &rarr; Billing**](/docs/api/resources/billing) &mdash; HTTP reference.
-- [**Webhooks**](/docs/sdk/go/resources/webhooks) &mdash; subscribe to `subscription.updated`.

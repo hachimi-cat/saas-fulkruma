@@ -10,7 +10,7 @@ This page is about **managing** keys. For the signing recipe, see [**Authenticat
 
 <blockquote class="callout-warn">
 
-**The secret is shown exactly once, on creation.** Fulkruma stores only a one-way SHA-256 hash of the secret. If you lose it, the only recovery is to revoke the key and mint a new one &mdash; there is no fetch-secret endpoint and there never will be.
+**The secret is shown exactly once, on creation.** Fulkruma keeps it server-side to verify your signatures (HMAC needs the same secret on both ends) but never returns it again. If you lose it, the only recovery is to revoke the key and mint a new one &mdash; there is no fetch-secret endpoint and there never will be.
 
 </blockquote>
 
@@ -19,7 +19,7 @@ This page is about **managing** keys. For the signing recipe, see [**Authenticat
 | Component | Format | Visibility |
 |---|---|---|
 | Access key ID | `AKIAFULK<random hex>` &mdash; 24 chars total | Public. Safe to log; appears in audit-log entries. |
-| Secret | `fulksk_<random>` &mdash; ~50 chars base64url | Secret. Shown once on `201 Created`; only a hash is stored. |
+| Secret | `fulksk_<random>` &mdash; ~50 chars base64url | Secret. Shown once on `201 Created`; never returned again. |
 | Secret preview | First 8 + `…` + last 4 of the secret | Returned on every list/retrieve. Safe to display in the dashboard for human key recognition. |
 
 Fulkruma uses a **single environment** &mdash; no test/live split. The first integration is against staging at `staging.fulkruma.com`; production keys are minted separately. Mixing staging and production keys is currently up to operational hygiene; the test/live prefix split lands later.
@@ -49,7 +49,7 @@ Returns every key in the workspace, newest first. Includes both active and revok
   "data": {
     "apiKeys": [
       {
-        "id": "akey_01HXAB7K3M9N2P5QRS8TVWXY3Z",
+        "id": "clx4q8k2b0001vwxyz9876abcd",
         "name": "Production server",
         "keyId": "AKIAFULK1234567890ABCDEF",
         "secretPreview": "fulksk_a…b3z9",
@@ -83,7 +83,7 @@ Mints a new key under the calling workspace and returns the plaintext secret. Th
 | Field | Type | Required | Description |
 |---|---|---|---|
 | `name` | string (1&ndash;120) | yes | Human label. Use something specific (`Production server`, `CI &mdash; GitHub Actions`). |
-| `scopes` | string[] | no | Subset of `["read", "write", "admin"]`. Default `["read", "write"]`. `admin` is required for `X-Fulkruma-On-Behalf-Of` partner calls. |
+| `scopes` | string[] | no | Subset of `["read", "write", "admin"]`. Default `["read", "write"]`. See [Scopes](#scopes). |
 
 **Response** &mdash; `201 Created`. The response includes the [API key object](#the-api-key-object) **plus** a top-level `secret` field with the plaintext.
 
@@ -91,7 +91,7 @@ Mints a new key under the calling workspace and returns the plaintext secret. Th
 {
   "data": {
     "apiKey": {
-      "id": "akey_01HX...",
+      "id": "clx4q8k2b0001...",
       "name": "Production server",
       "keyId": "AKIAFULK1234567890ABCDEF",
       "scopes": ["read", "write"],
@@ -130,7 +130,17 @@ fulkruma_curl POST '/api/v1/api-keys' \
 POST /api/v1/api-keys/:id/revoke
 ```
 
-Revokes a key immediately. Any request signed with it starts returning `401 invalid_key` within a few seconds &mdash; no grace period.
+Revokes a key immediately; send no body. Any request signed with it is refused from then on with `401 REVOKED_KEY` &mdash; no grace period.
+
+**Response** &mdash; `200 OK`:
+
+```json
+{
+  "data": { "apiKey": { "id": "clx4q8k2b0001...", "revokedAt": "2026-05-12T12:00:00.000Z" } },
+  "error": null,
+  "meta": { ... }
+}
+```
 
 **Errors**
 
@@ -140,7 +150,7 @@ Revokes a key immediately. Any request signed with it starts returning `401 inva
 | `409` | `ALREADY_REVOKED` | The key has already been revoked. |
 
 ```bash
-fulkruma_curl POST '/api/v1/api-keys/akey_01HX.../revoke' ''
+fulkruma_curl POST '/api/v1/api-keys/clx4q8k2b0001.../revoke' ''
 ```
 
 <blockquote class="callout-warn">
@@ -153,7 +163,7 @@ fulkruma_curl POST '/api/v1/api-keys/akey_01HX.../revoke' ''
 
 | Field | Type | Notes |
 |---|---|---|
-| `id` | string (`akey_…`) | Internal ID. Use this in URLs. |
+| `id` | string | Internal record ID. Use this in URLs. |
 | `name` | string | Whatever you passed on create. |
 | `keyId` | string | Public access key ID (`AKIAFULK*`). Goes in the `Authorization` header. Safe to log. |
 | `secretPreview` | string | First 8 + last 4 of the secret. Safe to display. |
@@ -161,19 +171,13 @@ fulkruma_curl POST '/api/v1/api-keys/akey_01HX.../revoke' ''
 | `createdAt` | string (ISO 8601 UTC) | Creation timestamp. |
 | `lastUsedAt` | string \| null | Most recent signed request. Updates within seconds. `null` until first use. |
 | `revokedAt` | string \| null | Revocation timestamp. `null` for active keys. |
-| `createdBy` | string \| null | User ID (`usr_…`) of the creator. |
+| `createdBy` | string \| null | Who minted it: the Huudis user ID, or the workspace ID when an API key did. |
 
 ## Scopes
 
-Fulkruma's scope model is intentionally simple in v1. Three values, allowed in combination:
+A key carries a list of scopes, any of `read`, `write` and `admin` (default `["read", "write"]`). They are recorded on the key and shown in the dashboard, but the API does **not** yet check them route by route: any active key can read and write everything in its workspace. Keep keys to the services that need them and revoke what you no longer use.
 
-| Scope | What it grants |
-|---|---|
-| `read` | Every `GET` endpoint in the workspace. |
-| `write` | All `POST`/`PATCH`/`DELETE` endpoints. |
-| `admin` | Required for `X-Fulkruma-On-Behalf-Of` &mdash; Pattern 2 partner calls. Partner-only; merchants don't usually mint admin keys. |
-
-A `403 INSUFFICIENT_SCOPE` from any endpoint means the calling key lacks the necessary scope.
+Partner calls that act for another workspace (`X-Fulkruma-On-Behalf-Of`) need a different scope, `fulkruma:platform:admin`. It isn't one this endpoint mints: Fulkruma issues such keys to partner platforms (Storlaunch and the other Forjio products) directly. A key without it that sends the header gets `403 FORBIDDEN_ONBEHALF`.
 
 ## Programmatic rotation
 

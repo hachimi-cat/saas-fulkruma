@@ -6,7 +6,7 @@ title: Billing
 
 The **billing** resource is Fulkruma's own subscription surface &mdash; it tells you what plan the merchant is on, how much they've used in the current period, recent invoices, and how to launch the Plugipay-hosted checkout for a plan change. It's not about charging the merchant's buyers; it's about charging the merchant for Fulkruma itself.
 
-Plans are billed through Plugipay (see `project_forjio_plugipay_storlaunch_integration.md` for the Pattern 2 partner-billing design). Fulkruma never holds card data; Plugipay does.
+Plans are billed through Plugipay (Pattern 2 partner billing). Fulkruma never holds card data; Plugipay does.
 
 The `/billing/plans` endpoint is **public**; everything else requires a signed request. See [**Authentication**](/docs/api/authentication).
 
@@ -28,31 +28,25 @@ The `/billing/plans` endpoint is **public**; everything else requires a signed r
 GET /api/v1/billing/plans
 ```
 
-Public &mdash; no auth. Returns the available plan catalog with limits and pricing. Used by the marketing site's pricing section and the dashboard's plan picker.
+Public &mdash; no auth. Returns the plan catalog as an array: `free`, `starter`, `growth`, `scale`. Used by the marketing site's pricing section and the dashboard's plan picker.
 
 ```json
 {
-  "data": {
-    "plans": [
-      {
-        "key": "STARTER",
-        "name": "Starter",
-        "priceCents": 990000,
-        "currency": "IDR",
-        "interval": "month",
-        "limits": {
-          "warehousesMax": 1,
-          "skusMax": 100,
-          "shipmentsPerMonth": 200,
-          "licensesPerMonth": 50
-        }
-      }
-    ]
-  },
+  "data": [
+    {
+      "id": "starter",
+      "name": "Starter",
+      "price": 299000,
+      "currency": "IDR",
+      "features": ["500 orders/month", "3 warehouses", "Reservations + low-stock alerts", "100 license keys"]
+    }
+  ],
   "error": null,
   "meta": { ... }
 }
 ```
+
+`price` is per month, in IDR; `features` are display strings. The limits themselves are on [`GET /billing/plan`](#read-current-plan).
 
 ### Read current plan
 
@@ -60,7 +54,7 @@ Public &mdash; no auth. Returns the available plan catalog with limits and prici
 GET /api/v1/billing/plan
 ```
 
-Returns the merchant's current plan, with derived "approaching limit" flags for dashboard surfacing.
+Returns the merchant's plan and its limits: `plan`, `planName`, `isForjioInternal`, `ordersLimit`, `warehousesLimit`, `licenseKeysLimit`, `apiKeysLimit`, `webhookEndpointsLimit`, `rateLimit`, `biteshipShipmentsLimit` (each `-1` for unlimited), and `billingCycleEnd`.
 
 ### Read subscription
 
@@ -68,7 +62,7 @@ Returns the merchant's current plan, with derived "approaching limit" flags for 
 GET /api/v1/billing/subscription
 ```
 
-Returns the Plugipay-side view: status (`active`, `past_due`, `cancelled`), current period end, next-bill amount.
+Returns `plan`, `planName`, `isForjioInternal`, `status` (lowercase: `active`, `canceling`, …), `currentPeriodStart`, `currentPeriodEnd` and `cancelAt`.
 
 ### Current-period usage
 
@@ -76,7 +70,7 @@ Returns the Plugipay-side view: status (`active`, `past_due`, `cancelled`), curr
 GET /api/v1/billing/usage
 ```
 
-Returns counters for the current billing period: shipments created, licenses issued, deliveries created. Resets on period boundary. Powers the dashboard's "X of Y used" widgets.
+Returns this calendar month's counters: `plan`, `ordersFulfilled`, `ordersLimit`, `shipmentsCreated`, `licensesIssued`, and `resetAt` (the first day of next month). Powers the dashboard's "X of Y used" widgets.
 
 ### List invoices
 
@@ -84,14 +78,32 @@ Returns counters for the current billing period: shipments created, licenses iss
 GET /api/v1/billing/invoices
 ```
 
-Cursor-paginated; up to `limit=50` per page (default 20). Lists the merchant's past Fulkruma invoices, mirrored from Plugipay's invoice resource.
+Cursor-paginated, newest first; up to `limit=50` per page (default 20). Lists the merchant's past Fulkruma invoices, mirrored from Plugipay's invoice resource.
 
 **Query parameters**
 
 | Param | Type | Description |
 |---|---|---|
 | `limit` | integer | Page size. Capped at `50`. |
-| `cursor` | string | The previous page's `meta.cursor`. |
+| `cursor` | string | The previous page's `data.cursor`. |
+
+**Response**
+
+```json
+{
+  "data": {
+    "data": [
+      { "id": "inv_...", "plan": "growth", "amount": 799000, "currency": "IDR", "status": "paid", "paidAt": "...", "receiptUrl": "...", "createdAt": "..." }
+    ],
+    "cursor": "inv_...",
+    "hasMore": true
+  },
+  "error": null,
+  "meta": { ... }
+}
+```
+
+`cursor` is `null` on the last page.
 
 ### Start a checkout
 
@@ -99,24 +111,26 @@ Cursor-paginated; up to `limit=50` per page (default 20). Lists the merchant's p
 POST /api/v1/billing/checkout
 ```
 
-Creates a Plugipay [checkout session](https://plugipay.com/docs/api/resources/checkout-sessions) for the chosen plan and returns the hosted-checkout URL to redirect the merchant to.
+Starts a Plugipay subscription for the chosen plan and returns the hosted [checkout session](https://plugipay.com/docs/api/resources/checkout-sessions) where the first invoice is paid.
 
 **Request body**
 
 | Field | Type | Required | Description |
 |---|---|---|---|
 | `plan` | `STARTER` \| `GROWTH` \| `SCALE` | yes | The plan to subscribe to. |
-| `email` | string | conditional | Required if not present in the JWT claim. The Plugipay-side customer is keyed off this. |
+| `email` | string | conditional | Required for an API-key (HMAC) caller, which has no email of its own; a signed-in session's email is used otherwise. The Plugipay-side customer is keyed off this. |
 | `name` | string | no | Display name on the Plugipay receipt. |
+| `currency` | `IDR` \| `USD` | no | Defaults by the caller's country: IDR in Indonesia, USD elsewhere. |
 
 **Response** &mdash; `200 OK`
 
 ```json
 {
   "data": {
-    "url": "https://plugipay.com/c/cs_01HX...",
+    "subscriptionId": "sub_01HX...",
+    "invoiceId": "inv_01HX...",
     "checkoutSessionId": "cs_01HX...",
-    "subscriptionId": null
+    "checkoutUrl": "https://plugipay.com/c/cs_01HX..."
   },
   "error": null,
   "meta": { ... }
@@ -137,7 +151,7 @@ Creates a Plugipay [checkout session](https://plugipay.com/docs/api/resources/ch
 POST /api/v1/billing/cancel
 ```
 
-Cancels the current Plugipay subscription. The subscription stays active until the end of the current period, then drops to `cancelled`. No body.
+Cancels the current Plugipay subscription at the end of the current period. No body. Returns the subscription as [`GET /billing/subscription`](#read-subscription) does, now with `status: "canceling"`; a workspace with no paid subscription gets its state back unchanged. A Plugipay-side failure is `500 CANCEL_FAILED`.
 
 ## Events
 

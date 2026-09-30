@@ -4,7 +4,7 @@ title: Webhooks
 
 # Webhooks
 
-Webhooks let Fulkruma push event notifications to your server in real time, so you don't have to poll. Use them to know when a shipment moves through carrier states, when a stock movement was logged, when a license was revoked, when a subscription changed. The Python SDK wraps five endpoints behind `fulkruma.webhooks`. For HTTP shapes, see [**API &rarr; Webhooks**](/docs/api/resources/webhooks); for the per-event payload schemas, see [**Webhook events**](/docs/api/webhooks/events/fulkruma.product.created).
+Webhooks let Fulkruma push event notifications to your server in real time, so you don't have to poll. Use them to know when a shipment moves through carrier states, when a stock movement was logged, when a license was issued or revoked. The Python SDK wraps five endpoints behind `fulkruma.webhooks`. For HTTP shapes, see [**API &rarr; Webhooks**](/docs/api/resources/webhooks); for the per-event payload schemas, see [**Webhook events**](/docs/api/webhooks/events/fulkruma.product.created).
 
 ## Namespace
 
@@ -12,7 +12,7 @@ Webhooks let Fulkruma push event notifications to your server in real time, so y
 fulkruma.webhooks     # WebhooksResources
 ```
 
-Five methods. Four manage delivery endpoints; one (`list_events`) reads the cursor-paginated event ledger &mdash; useful for catching up after a downtime or backfilling state.
+Five methods. Four manage delivery endpoints; one (`list_events`) reads the most recent delivery records.
 
 ## Methods
 
@@ -22,26 +22,22 @@ Five methods. Four manage delivery endpoints; one (`list_events`) reads the curs
 fulkruma.webhooks.create_endpoint(body: dict, *, on_behalf_of: str | None = None) -> dict
 ```
 
-Registers a URL to receive event deliveries. Optionally narrow the event types (default: all). The response includes the endpoint's `signingSecret` &mdash; **this is the only call that returns it**. The SDK auto-mints an idempotency key.
+Registers a URL to receive event deliveries. `events` narrows the types (`["*"]`, every event, when omitted); patterns like `"fulkruma.shipment.*"` are allowed. The result is `{"endpoint": {...}, "secret": "whsec_..."}` &mdash; **this is the only call that returns the secret**. The SDK auto-mints an idempotency key.
 
 ```python
 result = fulkruma.webhooks.create_endpoint({
     "url": "https://your-app.example.com/webhooks/fulkruma",
-    "events": [
-        "fulkruma.shipment.updated",
-        "fulkruma.shipment.delivered",
-        "fulkruma.license.issued",
-    ],
+    "events": ["fulkruma.shipment.*", "fulkruma.license.issued.v1"],
     "description": "Production receiver",
 })
 
-e = result["endpoint"]
-print(e["id"], e["signingSecret"])  # STASH signingSecret NOW
+print(result["endpoint"]["id"])
+secret = result["secret"]   # STASH NOW
 ```
 
 <blockquote class="callout-warn">
 
-**The signing secret appears once.** Just like API keys, the webhook signing secret is only returned on create. You'll use it to verify the `X-Fulkruma-Signature` header on every inbound delivery (see [**Verifying webhooks**](/docs/sdk/python/verifying-webhooks)). Store it before the function returns.
+**The signing secret appears once.** Just like API keys, the webhook signing secret is only returned on create. You'll use it to verify the `Fulkruma-Signature` header on every inbound delivery (see **Verify inbound deliveries** below). Store it before the function returns.
 
 </blockquote>
 
@@ -51,7 +47,7 @@ print(e["id"], e["signingSecret"])  # STASH signingSecret NOW
 fulkruma.webhooks.list_endpoints(*, on_behalf_of: str | None = None) -> dict
 ```
 
-Returns every endpoint in the workspace. `signingSecret` is **not** included; only `create` returns it.
+Returns every endpoint in the workspace, newest first. The secret is **not** included &mdash; only a `secretPreview` (`whsec_…` plus its last 4 characters); `create_endpoint` alone returns the secret.
 
 ```python
 result = fulkruma.webhooks.list_endpoints()
@@ -84,7 +80,7 @@ You can also rewrite the URL or the events list:
 ```python
 fulkruma.webhooks.update_endpoint("whe_01HX...", {
     "url": "https://new-app.example.com/webhooks/fulkruma",
-    "events": ["fulkruma.shipment.updated", "fulkruma.shipment.delivered"],
+    "events": ["fulkruma.shipment.status_updated.v1", "fulkruma.shipment.cancelled.v1"],
 })
 ```
 
@@ -107,50 +103,47 @@ fulkruma.webhooks.delete_endpoint("whe_01HX...")
 ### `list_events`
 
 ```python
-fulkruma.webhooks.list_events(
-    *,
-    limit: int | None = None,
-    cursor: str | None = None,
-    type: str | None = None,
-    on_behalf_of: str | None = None,
-) -> dict
+fulkruma.webhooks.list_events(*, on_behalf_of: str | None = None) -> dict
 ```
 
-Cursor-paginated read of every event emitted in the workspace, regardless of whether any endpoint successfully received it. Filters: `limit` (default 25, max 100), `cursor`, `type` (event type).
+The workspace's 50 most recent delivery records, newest first: `{"events": [...]}`, one per event per endpoint, with its delivery `status` (`pending`, `sent`, `failed`), `attempts` and the receiver's `responseCode`. It takes no filters and has no pagination; filter the rows yourself.
 
 ```python
-result = fulkruma.webhooks.list_events(
-    limit=100, type="fulkruma.shipment.delivered",
-)
+events = fulkruma.webhooks.list_events()["events"]
+failed = [e for e in events if e["status"] == "failed"]
 ```
-
-Use this to:
-- backfill after your receiver was down,
-- replay an event for debugging,
-- audit "did we actually emit X?".
 
 ## Types
 
 ```python
 # endpoint
 {
-    "id": "whe_...",
-    "accountId": "acc_...",
+    "id": "...",
+    "accountId": "...",
     "url": "https://...",
-    "events": ["fulkruma.shipment.updated", ...],  # [] means "all events"
+    "events": ["*"],                    # ["*"] means every event
     "description": "..." | None,
     "active": bool,
-    "signingSecret": "..." | None,    # only on create
-    "createdAt": "..."
+    "secretPreview": "whsec_…abcd",     # list only
+    "createdAt": "...",
+    "updatedAt": "...",
 }
 
-# event
+# delivery record (list_events)
 {
-    "id": "evt_...",
-    "accountId": "acc_...",
-    "type": "fulkruma.shipment.updated",
-    "payload": {...},                  # event-type-specific
-    "createdAt": "..."
+    "id": "...",
+    "accountId": "...",
+    "endpointId": "...",
+    "type": "fulkruma.shipment.status_updated.v1",
+    "payload": {...},                   # the event envelope sent
+    "status": "pending" | "sent" | "failed",
+    "attempts": 1,
+    "lastAttemptAt": "..." | None,
+    "nextRetryAt": "..." | None,
+    "responseCode": 200 | None,
+    "responseBody": "..." | None,
+    "createdAt": "...",
+    "updatedAt": "...",
 }
 ```
 
@@ -167,12 +160,12 @@ def ensure_endpoint(fulkruma, url: str, events: list, secret_manager) -> dict:
     if existing:
         return existing
     created = fulkruma.webhooks.create_endpoint({"url": url, "events": events})
-    e = created["endpoint"]
-    secret_manager.put(f"FULKRUMA_WEBHOOK_SECRET/{e['id']}", e["signingSecret"])
-    return e
+    endpoint = created["endpoint"]
+    secret_manager.put(f"FULKRUMA_WEBHOOK_SECRET/{endpoint['id']}", created["secret"])
+    return endpoint
 ```
 
-**Verify inbound deliveries.** The SDK ships a `verify_webhook` helper:
+**Verify inbound deliveries.** The SDK ships a `verify_webhook` helper. It checks the `Fulkruma-Signature: t=<unix>,v1=<hex>` header &mdash; an HMAC-SHA256 of `<t>.<raw body>` with the endpoint's secret &mdash; and rejects a timestamp more than 5 minutes off:
 
 ```python
 import os
@@ -185,9 +178,8 @@ app = Flask(__name__)
 def fulkruma_webhook():
     try:
         event = verify_webhook(
-            payload=request.get_data(),
-            signature=request.headers["X-Fulkruma-Signature"],
-            timestamp=request.headers["X-Fulkruma-Timestamp"],
+            raw_body=request.get_data(),
+            signature=request.headers.get("Fulkruma-Signature"),
             secret=os.environ["FULKRUMA_WEBHOOK_SECRET"],
         )
     except FulkrumaError:
@@ -195,8 +187,6 @@ def fulkruma_webhook():
     # event is the typed delivery; handle by type
     return "", 200
 ```
-
-See [**Verifying webhooks**](/docs/sdk/python/verifying-webhooks) for the full helper.
 
 **Pause-replay-resume during a release.** For a risky deploy you want to ingest events synchronously:
 
@@ -206,12 +196,12 @@ fulkruma.webhooks.update_endpoint("whe_01HX...", {"active": False})
 
 # 2. Deploy your new handler.
 
-# 3. Catch up on missed events from the ledger
+# 3. Catch up on what was queued meanwhile (the 50 most recent deliveries)
 cutoff = "2026-05-13T10:00:00Z"
-result = fulkruma.webhooks.list_events(limit=100)
+result = fulkruma.webhooks.list_events()
 since = [e for e in result["events"] if e["createdAt"] >= cutoff]
 for e in since:
-    handle_manually(e)
+    handle_manually(e["payload"])
 
 # 4. Resume
 fulkruma.webhooks.update_endpoint("whe_01HX...", {"active": True})
@@ -234,14 +224,12 @@ fulkruma.webhooks.create_endpoint({
 
 | `err.status` | `err.code` | Cause |
 |---|---|---|
-| `400` | `validation_error` | Bad URL (must be HTTPS), unknown event type, too many events. |
-| `404` | `not_found` | Endpoint or event ID missing. |
-| `409` | `conflict` | Same URL already registered. |
-| `403` | `insufficient_scope` | Key lacks `fulkruma:webhook:write`. |
+| `400` | `VALIDATION` | `url` isn't a URL, or `events` is an empty list. |
+| `403` | `NO_ACCOUNT` | The credentials resolve to no workspace. |
+| `404` | `NOT_FOUND` | No endpoint with that ID in this workspace (update / delete). |
 
 ## Next
 
-- [**Verifying webhooks**](/docs/sdk/python/verifying-webhooks) &mdash; how to use the `verify_webhook` helper.
 - [**Webhook events overview**](/docs/api/webhooks/events/fulkruma.product.created) &mdash; per-event payload schemas.
 - [**Audit log**](/docs/sdk/python/resources/audit-log) &mdash; complementary on-side ledger of actions.
 - [**API &rarr; Webhooks**](/docs/api/resources/webhooks) &mdash; HTTP reference.

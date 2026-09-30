@@ -82,7 +82,7 @@ const { shipments } = await fulkruma.shipments.list({ status: 'in_transit' });
 console.log(`${shipments.length} parcels currently moving`);
 ```
 
-Status filter is exact-match. There's no date filter at the SDK layer &mdash; use the `webhooks.listEvents` ledger if you need a time-bounded scan.
+Status filter is exact-match. There's no date filter &mdash; filter the returned rows on `createdAt` if you need a time-bounded scan.
 
 ## Types
 

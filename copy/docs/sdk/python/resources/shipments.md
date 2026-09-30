@@ -87,7 +87,7 @@ result = fulkruma.shipments.list(status="in_transit")
 print(f"{len(result['shipments'])} parcels currently moving")
 ```
 
-Status filter is exact-match. There's no date filter at the SDK layer &mdash; use the `webhooks.list_events` ledger if you need a time-bounded scan.
+Status filter is exact-match. There's no date filter &mdash; filter the returned rows on `createdAt` if you need a time-bounded scan.
 
 ## Types
 
@@ -159,7 +159,7 @@ fulkruma.webhooks.create_endpoint({
 })
 ```
 
-Then verify + handle in your endpoint. See [**Verifying webhooks**](/docs/sdk/python/verifying-webhooks).
+Then verify + handle in your endpoint. See [**Webhooks**](/docs/sdk/python/resources/webhooks) for `verify_webhook`.
 
 **Idempotent re-booking after partial failure.** If the courier API timed out and you don't know whether the shipment was created, retry with the same `externalRef`:
 

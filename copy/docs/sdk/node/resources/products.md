@@ -29,7 +29,7 @@ Eight methods &mdash; four for products, three for variants, plus `archive`. The
 
 **Signature.** `fulkruma.products.create(input): Promise<{ product: Product }>`
 
-Creates a product. Only `name` is required. `type` defaults to `physical`; pass `digital` for download-only goods (which then unlock the deliveries + licenses surfaces) or `service` for non-stocked offerings. The SDK auto-mints an `Idempotency-Key`, so retries against transient network errors are safe.
+Creates a product. Only `name` is required. `type` defaults to `physical`; pass `digital` for download-only goods (which then unlock the deliveries + licenses surfaces) or `license` for software sold as a key. The SDK auto-mints an `Idempotency-Key`, so retries against transient network errors are safe.
 
 ```ts
 const { product } = await fulkruma.products.create({
@@ -38,12 +38,11 @@ const { product } = await fulkruma.products.create({
   description: 'GPU portal — 12-month subscription',
   licenseEnabled: true,
   maxActivations: 3,
-  externalRef: 'sku-pawpado-premium-12m',
-  externalSource: 'storlaunch',
+  sku: 'pawpado-premium-12m',
 });
 ```
 
-The `externalRef` + `externalSource` pair is your handle into your own catalog &mdash; Storlaunch sets these so it can map Fulkruma products back to its storefront listings.
+`sku` is your handle into your own catalog. Products that Storlaunch mirrors into Fulkruma also carry `externalRef` + `externalSource` (`"storlaunch"`); those are set by that sync only &mdash; `create` and `update` don't accept them.
 
 ### `products.get`
 
@@ -126,7 +125,7 @@ Archiving the last live variant on a product is allowed but unusual &mdash; you 
 ## Types
 
 ```ts
-type ProductType = 'physical' | 'digital' | 'service';
+type ProductType = 'physical' | 'digital' | 'license';
 
 interface Product {
   id: string;              // 'prod_...'
@@ -188,20 +187,19 @@ async function createSimple(name: string, sku: string, priceCents: number) {
 
 ### Sync from your own catalog
 
-If Storlaunch (or another upstream) owns the source-of-truth catalog, use `externalRef` to dedupe:
+If your own system owns the source-of-truth catalog, use `sku` to dedupe:
 
 ```ts
-async function upsertProduct(extRef: string, attrs: { name: string; priceCents: number }) {
+async function upsertProduct(sku: string, attrs: { name: string; priceCents: number }) {
   const { products } = await fulkruma.products.list();
-  const existing = products.find((p) => p.externalRef === extRef);
+  const existing = products.find((p) => p.sku === sku);
   if (existing) {
     await fulkruma.products.update(existing.id, { name: attrs.name });
     return existing.id;
   }
   const { product } = await fulkruma.products.create({
     name: attrs.name,
-    externalRef: extRef,
-    externalSource: 'storlaunch',
+    sku,
   });
   await fulkruma.products.addVariant(product.id, {
     name: 'Default',
@@ -216,12 +214,9 @@ async function upsertProduct(extRef: string, attrs: { name: string; priceCents: 
 
 | Code | Status | Cause |
 |---|---|---|
-| `validation_error` | 400 | Missing `name`, bad `type`, negative `priceCents`. |
-| `not_found` | 404 | Product or variant ID missing or in another workspace. |
-| `conflict` | 409 | Archive with live stock; duplicate `externalRef`+`externalSource`. |
-| `forbidden` | 403 | Key lacks `fulkruma:product:write` scope. |
-
-See [Errors](/docs/sdk/node/errors) for the full hierarchy.
+| `VALIDATION` | 400 | Missing `name`, bad `type`, a negative dimension or price. |
+| `NO_ACCOUNT` | 403 | The credentials resolve to no workspace. |
+| `NOT_FOUND` | 404 | Product or variant ID missing or in another workspace. |
 
 ## Next
 

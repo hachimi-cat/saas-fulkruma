@@ -4,7 +4,7 @@ title: Audit log
 
 # Audit log
 
-The **audit log** is the append-only ledger of every meaningful action taken in a workspace &mdash; key mints, key revocations, stock adjustments, shipment bookings, integration toggles, plan changes. It's the same data the portal's "Activity" page renders, and the same data you'd hand to a compliance reviewer asking "who did what when?". This page covers the `fulkruma.auditLog` namespace. For HTTP fields, see [API: Audit log](/docs/api/resources/audit-log).
+The **audit log** is the ledger of workspace-changing actions &mdash; key mints and revocations, product and variant changes, deliveries, webhook endpoints, shipping settings, partner provisioning. It's the same data the portal's activity view renders, and the same data you'd hand to a compliance reviewer asking "who did what when?". This page covers the `fulkruma.auditLog` namespace. For HTTP fields, see [API: Audit log](/docs/api/resources/audit-log).
 
 ## Namespace
 
@@ -14,45 +14,42 @@ The **audit log** is the append-only ledger of every meaningful action taken in 
 fulkruma.auditLog.list(params?)
 ```
 
-One method. Audit entries are write-only from the system's side &mdash; you can't `create` or `delete` them via the SDK by design.
+One method. Audit entries are written by the system only &mdash; you can't `create` or `delete` them via the SDK by design.
 
 ## Methods
 
 ### `auditLog.list`
 
-**Signature.** `fulkruma.auditLog.list(params?): Promise<{ entries: Array<Record<string, unknown>>; nextCursor?: string }>`
+**Signature.** `fulkruma.auditLog.list(params?: { action?: string; target_type?: string; limit?: number }): Promise<{ entries: AuditEntry[] }>`
 
-Returns audit entries newest-first, cursor-paginated. Filters: `limit` (default 25, max 100), `cursor`, `since` (ISO-8601, exclusive), `eventType` (exact-match on the audit event type).
+Returns audit entries newest-first. Filters:
+
+- `action` &mdash; a **prefix** of the action name: `'api_key.'` matches `api_key.created` and `api_key.revoked`; `'product'` matches every `product.*` action.
+- `target_type` &mdash; the exact resource type, e.g. `'Product'`, `'ApiKey'`.
+- `limit` &mdash; default 100, max 500.
+
+There is no cursor and no date filter: a call returns the newest `limit` entries that match. To reach further back, narrow `action` / `target_type`.
 
 ```ts
-const { entries, nextCursor } = await fulkruma.auditLog.list({
-  limit: 50,
-  since: '2026-05-01T00:00:00Z',
-  eventType: 'apikey.created',
-});
+const { entries } = await fulkruma.auditLog.list({ action: 'api_key.', limit: 50 });
 
-for (const e of entries as Array<{ eventType: string; actorId: string; createdAt: string; payload: any }>) {
-  console.log(e.createdAt, e.actorId, e.eventType, JSON.stringify(e.payload));
-}
-
-if (nextCursor) {
-  const more = await fulkruma.auditLog.list({ cursor: nextCursor, limit: 50 });
+for (const e of entries) {
+  console.log(e.createdAt, e.actorType, e.actorId, e.action, e.targetId, JSON.stringify(e.after));
 }
 ```
 
-Common `eventType` values:
+Action names in use:
 
-- `apikey.created` / `apikey.revoked`
-- `warehouse.created` / `warehouse.updated` / `warehouse.archived`
+- `api_key.created` / `api_key.revoked`
 - `product.created` / `product.updated` / `product.archived`
-- `stock.adjusted`
-- `shipment.created`
-- `license.issued` / `license.revoked`
-- `delivery.created`
-- `integration.connected` / `integration.disconnected`
-- `subscription.changed`
+- `variant.created` / `variant.updated` / `variant.archived`
+- `delivery.created` / `delivery.extend` / `delivery.reset-downloads` / `delivery.revoke`
+- `webhook.created` / `webhook.updated` / `webhook.deleted`
+- `shipping.origin_updated` / `shipping.config_updated`
+- `partner.workspace_provisioned`
+- `storlaunch.product.synced`
 
-The full vocabulary lives in [API: Audit log](/docs/api/resources/audit-log#event-types).
+The table of what triggers each lives in [API: Audit log](/docs/api/resources/audit-log#actions).
 
 ## Types
 
@@ -60,16 +57,22 @@ The full vocabulary lives in [API: Audit log](/docs/api/resources/audit-log#even
 interface AuditEntry {
   id: string;
   accountId: string;
-  actorId: string;           // huudis user id or 'system'
-  actorType: 'user' | 'apikey' | 'system';
-  eventType: string;
-  payload: Record<string, unknown>;  // event-type-specific
-  requestId: string | null;  // tie back to the request that caused it
+  actorType: 'user' | 'api_key' | 'system';
+  actorId: string | null;      // Huudis user ID, or the workspace ID for an API-key call
+  actorEmail: string | null;
+  action: string;
+  targetType: string | null;
+  targetId: string | null;
+  ip: string | null;
+  userAgent: string | null;
+  before: Record<string, unknown> | null;
+  after: Record<string, unknown> | null;
+  metadata: Record<string, unknown>;
   createdAt: string;
 }
 ```
 
-`payload` shapes vary by `eventType` &mdash; treat as unknown-typed and pick fields out at the per-type call site. See [API: Audit log](/docs/api/resources/audit-log#payloads) for the per-event schema.
+`before` / `after` carry the fields the action changed and vary by action &mdash; treat them as unknown-typed and pick fields out at the per-action call site. See [API: Audit log](/docs/api/resources/audit-log#the-audit-entry-object).
 
 ## Common patterns
 
@@ -79,57 +82,29 @@ For a "what just happened?" pane:
 
 ```ts
 const { entries } = await fulkruma.auditLog.list({ limit: 25 });
-return entries.slice(0, 25);  // already newest-first
+return entries;  // already newest-first
 ```
 
-### Walk the full ledger
+### Export what the log holds for one resource type
 
-For an export-to-CSV job:
+For an export-to-CSV job, take the most the endpoint returns in one call:
 
 ```ts
-async function* allEntries(since?: string) {
-  let cursor: string | undefined;
-  while (true) {
-    const { entries, nextCursor } = await fulkruma.auditLog.list({
-      limit: 100, cursor, since,
-    });
-    for (const e of entries) yield e;
-    if (!nextCursor) return;
-    cursor = nextCursor;
-  }
-}
-
-for await (const e of allEntries('2026-01-01T00:00:00Z')) {
-  writeRow(e);
-}
+const { entries } = await fulkruma.auditLog.list({ target_type: 'Product', limit: 500 });
+for (const e of entries) writeRow(e);
 ```
 
-### Filter on event type
+If a resource type has more than 500 entries, only the newest 500 come back; split the export by `action` prefix to reach more.
+
+### Filter on action
 
 For a security review focused on key management:
 
 ```ts
-const sensitive = ['apikey.created', 'apikey.revoked', 'integration.connected'];
-for (const type of sensitive) {
-  const { entries } = await fulkruma.auditLog.list({ limit: 100, eventType: type });
-  console.log(type, entries.length, 'recent');
-}
+const { entries } = await fulkruma.auditLog.list({ action: 'api_key.', limit: 500 });
+const minted = entries.filter((e) => e.action === 'api_key.created').length;
+console.log(`${minted} keys minted, ${entries.length - minted} revoked (newest 500)`);
 ```
-
-You can only pass one `eventType` per call &mdash; loop client-side if you need multiple.
-
-### Tie to a request ID
-
-When investigating a customer issue, find every audit entry from a specific request:
-
-```ts
-async function entriesForRequest(requestId: string) {
-  const { entries } = await fulkruma.auditLog.list({ limit: 100 });
-  return entries.filter((e) => (e as any).requestId === requestId);
-}
-```
-
-Every Fulkruma response carries `meta.requestId`; the audit log copies it onto every entry that request generated. Same `requestId` &rarr; same upstream call.
 
 ### Reconcile against your own logs
 
@@ -137,8 +112,8 @@ If your service also keeps an audit trail, you can cross-check against Fulkruma'
 
 ```ts
 async function reconcile(actorId: string, fromIso: string) {
-  const { entries } = await fulkruma.auditLog.list({ limit: 100, since: fromIso });
-  return entries.filter((e) => (e as any).actorId === actorId);
+  const { entries } = await fulkruma.auditLog.list({ limit: 500 });
+  return entries.filter((e) => e.actorId === actorId && e.createdAt >= fromIso);
 }
 ```
 
@@ -146,13 +121,12 @@ async function reconcile(actorId: string, fromIso: string) {
 
 | Code | Status | Cause |
 |---|---|---|
-| `validation_error` | 400 | Bad `since` format, `limit` out of range. |
-| `forbidden` | 403 | Key lacks `fulkruma:auditlog:read` scope. |
+| `NO_ACCOUNT` | 403 | The credentials resolve to no workspace. |
 
-The audit log can't 404 individual entries &mdash; the SDK only exposes list. Use the filters to narrow down.
+Unknown `action` / `target_type` values aren't errors &mdash; they match nothing and return an empty list.
 
 ## Next
 
 - [API keys](/docs/sdk/node/resources/api-keys) &mdash; the most-audited resource.
-- [Webhooks](/docs/sdk/node/resources/webhooks) &mdash; subscribe to `fulkruma.audit.created` for real-time monitoring.
-- [API: Audit log](/docs/api/resources/audit-log) &mdash; HTTP reference, including the full `eventType` and `payload` catalog.
+- [Webhooks](/docs/sdk/node/resources/webhooks) &mdash; real-time events for shipments, stock and licenses (the audit log itself emits none).
+- [API: Audit log](/docs/api/resources/audit-log) &mdash; HTTP reference, including the full action table.
