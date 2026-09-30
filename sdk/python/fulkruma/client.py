@@ -99,6 +99,10 @@ class FulkrumaClient:
         self.stats = StatsResources(self)
         self.webhooks = WebhooksResources(self)
         self.admin = AdminResources(self)
+        # Every feature route, one method each (generated from the API spec).
+        from .api_generated import GeneratedApi
+
+        self.api = GeneratedApi(self)
 
     # ─── Lifecycle ───────────────────────────────────────────────────────
 
@@ -160,6 +164,25 @@ class FulkrumaClient:
             hashlib.sha256,
         ).hexdigest()
         return {"signature": signature, "timestamp": ts}
+
+    def _apigen_request(
+        self,
+        method: str,
+        path: str,
+        *,
+        query: Optional[Dict[str, Any]] = None,
+        body: Any = None,
+    ) -> Any:
+        """The call behind ``client.api.*`` (api_generated.py): signed like every other
+        request, with an idempotency key on writes. An empty body is not sent: the server
+        hashes ``{}`` as the empty string (backend middleware/hmac-auth.ts), ``request``
+        as ``"{}"``, and the signatures would not agree."""
+        return self.request(
+            method,
+            path + self._qs(dict(query or {})),
+            body=body if body else None,
+            idempotency_key=None if method.upper() == "GET" else self._gen_idem(),
+        )
 
     # ─── Low-level request ───────────────────────────────────────────────
 

@@ -1,4 +1,5 @@
 import crypto from 'node:crypto';
+import { GeneratedApi } from './api.generated.js';
 import {
   ApiEnvelope,
   Product,
@@ -188,6 +189,27 @@ export class FulkrumaClient {
 
   private genIdem(): string {
     return `idem_${crypto.randomUUID()}`;
+  }
+
+  /** Every feature route, one method each (generated from the API spec: api.generated.ts). */
+  readonly api: GeneratedApi = new GeneratedApi(this);
+
+  /** The call behind `client.api.*`: signed like every other request. */
+  async apigenRequest(method: string, path: string, query: Record<string, unknown> | undefined, body: unknown): Promise<unknown> {
+    const qs = query
+      ? new URLSearchParams(
+          Object.entries(query).map(([k, v]): [string, string] => [k, typeof v === 'string' ? v : JSON.stringify(v)]),
+        ).toString()
+      : '';
+    // The server hashes an empty JSON body as '' (backend middleware/hmac-auth.ts) while
+    // request() hashes '{}': send no body when no field was given, so the signatures agree.
+    const empty = body !== null && typeof body === 'object' && !Array.isArray(body) && Object.keys(body).length === 0;
+    return this.request<unknown>({
+      method: method as FetchArgs['method'],
+      path: qs ? `${path}?${qs}` : path,
+      body: empty ? undefined : body,
+      idempotencyKey: method === 'GET' ? undefined : this.genIdem(),
+    });
   }
 
   // ─── Resources ──────────────────────────────────────────────

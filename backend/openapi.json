@@ -1,0 +1,3917 @@
+{
+ "openapi": "3.1.0",
+ "info": {
+  "title": "fulkruma",
+  "version": "0.0.1"
+ },
+ "paths": {
+  "/api/v1/addresses": {
+   "get": {
+    "operationId": "getAddresses",
+    "summary": "List addresses",
+    "tags": [
+     "addresses"
+    ],
+    "parameters": [
+     {
+      "name": "customer_id",
+      "in": "query",
+      "required": false,
+      "schema": {}
+     }
+    ],
+    "x-forjio": {
+     "source": "src/routes/addresses.ts:25",
+     "guards": [
+      "requireAuth"
+     ]
+    }
+   },
+   "post": {
+    "operationId": "postAddresses",
+    "summary": "Create an address",
+    "tags": [
+     "addresses"
+    ],
+    "parameters": [],
+    "x-forjio": {
+     "source": "src/routes/addresses.ts:38",
+     "guards": [
+      "requireAuth"
+     ],
+     "body": "validated",
+     "bodySchema": "createSchema"
+    },
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object",
+        "properties": {
+         "customerId": {
+          "type": "string",
+          "minLength": 1
+         },
+         "label": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+         },
+         "contactName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+         },
+         "contactPhone": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 40
+         },
+         "email": {
+          "type": "string",
+          "format": "email"
+         },
+         "address": {
+          "type": "string",
+          "minLength": 1
+         },
+         "note": {
+          "type": "string"
+         },
+         "postalCode": {
+          "type": "string"
+         },
+         "areaId": {
+          "type": "string"
+         },
+         "lat": {
+          "type": "number"
+         },
+         "lng": {
+          "type": "number"
+         },
+         "isDefault": {
+          "type": "boolean"
+         }
+        },
+        "required": [
+         "customerId",
+         "label",
+         "contactName",
+         "contactPhone",
+         "address"
+        ],
+        "additionalProperties": false
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/addresses/{id}": {
+   "patch": {
+    "operationId": "patchAddressesId",
+    "summary": "Update an address",
+    "tags": [
+     "addresses"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "x-forjio": {
+     "source": "src/routes/addresses.ts:65",
+     "guards": [
+      "requireAuth"
+     ],
+     "body": "validated",
+     "bodySchema": "updateSchema"
+    },
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object",
+        "properties": {
+         "label": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+         },
+         "contactName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+         },
+         "contactPhone": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 40
+         },
+         "email": {
+          "type": "string",
+          "format": "email"
+         },
+         "address": {
+          "type": "string",
+          "minLength": 1
+         },
+         "note": {
+          "type": "string"
+         },
+         "postalCode": {
+          "type": "string"
+         },
+         "areaId": {
+          "type": "string"
+         },
+         "lat": {
+          "type": "number"
+         },
+         "lng": {
+          "type": "number"
+         },
+         "isDefault": {
+          "type": "boolean"
+         }
+        },
+        "additionalProperties": false
+       }
+      }
+     }
+    }
+   },
+   "delete": {
+    "operationId": "deleteAddressesId",
+    "summary": "Delete an address",
+    "tags": [
+     "addresses"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "x-forjio": {
+     "source": "src/routes/addresses.ts:87",
+     "guards": [
+      "requireAuth"
+     ]
+    }
+   }
+  },
+  "/api/v1/admin/crm/customers": {
+   "get": {
+    "operationId": "getAdminCrmCustomers",
+    "summary": "List customers",
+    "tags": [
+     "admin"
+    ],
+    "parameters": [],
+    "x-forjio": {
+     "source": "src/routes/admin-crm.ts:178",
+     "guards": [
+      "adminGuard"
+     ]
+    }
+   }
+  },
+  "/api/v1/admin/crm/stats": {
+   "get": {
+    "operationId": "getAdminCrmStats",
+    "summary": "List stats",
+    "tags": [
+     "admin"
+    ],
+    "parameters": [],
+    "x-forjio": {
+     "source": "src/routes/admin-crm.ts:135",
+     "guards": [
+      "adminGuard"
+     ]
+    }
+   }
+  },
+  "/api/v1/admin/crm/transactions": {
+   "get": {
+    "operationId": "getAdminCrmTransactions",
+    "summary": "List transactions",
+    "tags": [
+     "admin"
+    ],
+    "parameters": [
+     {
+      "name": "limit",
+      "in": "query",
+      "required": false,
+      "schema": {}
+     }
+    ],
+    "x-forjio": {
+     "source": "src/routes/admin-crm.ts:248",
+     "guards": [
+      "adminGuard"
+     ]
+    }
+   }
+  },
+  "/api/v1/admin/customers": {
+   "get": {
+    "operationId": "getAdminCustomers",
+    "summary": "List customers",
+    "tags": [
+     "admin"
+    ],
+    "parameters": [
+     {
+      "name": "cursor",
+      "in": "query",
+      "required": false,
+      "schema": {}
+     },
+     {
+      "name": "limit",
+      "in": "query",
+      "required": false,
+      "schema": {}
+     },
+     {
+      "name": "q",
+      "in": "query",
+      "required": false,
+      "schema": {}
+     },
+     {
+      "name": "status",
+      "in": "query",
+      "required": false,
+      "schema": {}
+     }
+    ],
+    "x-forjio": {
+     "source": "src/routes/admin-customers.ts:49",
+     "guards": [
+      "adminGuard"
+     ]
+    }
+   }
+  },
+  "/api/v1/admin/feature-flags": {
+   "get": {
+    "operationId": "getAdminFeatureFlags",
+    "summary": "List feature flags",
+    "tags": [
+     "admin"
+    ],
+    "parameters": [],
+    "x-forjio": {
+     "source": "src/routes/admin-feature-flags.ts:27",
+     "guards": [
+      "adminGuard"
+     ]
+    }
+   }
+  },
+  "/api/v1/admin/feature-flags/{key}": {
+   "patch": {
+    "operationId": "patchAdminFeatureFlagsKey",
+    "summary": "Update a feature flag",
+    "tags": [
+     "admin"
+    ],
+    "parameters": [
+     {
+      "name": "key",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "x-forjio": {
+     "source": "src/routes/admin-feature-flags.ts:42",
+     "guards": [
+      "adminGuard"
+     ],
+     "body": "read-unknown"
+    },
+    "requestBody": {
+     "required": false,
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object",
+        "properties": {}
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/admin/metrics": {
+   "get": {
+    "operationId": "getAdminMetrics",
+    "summary": "List metrics",
+    "tags": [
+     "admin"
+    ],
+    "parameters": [
+     {
+      "name": "days",
+      "in": "query",
+      "required": false,
+      "schema": {}
+     }
+    ],
+    "x-forjio": {
+     "source": "src/routes/admin-metrics.ts:96",
+     "guards": [
+      "adminGuard"
+     ]
+    }
+   }
+  },
+  "/api/v1/admin/partner/usage": {
+   "get": {
+    "operationId": "getAdminPartnerUsage",
+    "summary": "List usage",
+    "tags": [
+     "admin"
+    ],
+    "parameters": [
+     {
+      "name": "from",
+      "in": "query",
+      "required": false,
+      "schema": {}
+     },
+     {
+      "name": "partner",
+      "in": "query",
+      "required": false,
+      "schema": {}
+     },
+     {
+      "name": "to",
+      "in": "query",
+      "required": false,
+      "schema": {}
+     }
+    ],
+    "x-forjio": {
+     "source": "src/routes/admin.ts:98",
+     "guards": [
+      "adminGuard",
+      "requireAuth"
+     ]
+    }
+   }
+  },
+  "/api/v1/admin/system-health": {
+   "get": {
+    "operationId": "getAdminSystemHealth",
+    "summary": "List system health",
+    "tags": [
+     "admin"
+    ],
+    "parameters": [],
+    "x-forjio": {
+     "source": "src/routes/admin-system-health.ts:20",
+     "guards": [
+      "adminGuard"
+     ]
+    }
+   }
+  },
+  "/api/v1/admin/transactions": {
+   "get": {
+    "operationId": "getAdminTransactions",
+    "summary": "List transactions",
+    "tags": [
+     "admin"
+    ],
+    "parameters": [
+     {
+      "name": "days",
+      "in": "query",
+      "required": false,
+      "schema": {}
+     }
+    ],
+    "x-forjio": {
+     "source": "src/routes/admin-transactions.ts:39",
+     "guards": [
+      "adminGuard"
+     ]
+    }
+   }
+  },
+  "/api/v1/admin/workspaces": {
+   "post": {
+    "operationId": "postAdminWorkspaces",
+    "summary": "Create a workspace",
+    "tags": [
+     "admin"
+    ],
+    "parameters": [],
+    "x-forjio": {
+     "source": "src/routes/admin.ts:43",
+     "guards": [
+      "adminGuard",
+      "requireAuth"
+     ],
+     "body": "validated",
+     "bodySchema": "provisionSchema"
+    },
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object",
+        "properties": {
+         "accountId": {
+          "type": "string",
+          "minLength": 1
+         },
+         "partner": {
+          "type": "string",
+          "enum": [
+           "storlaunch",
+           "ripllo",
+           "malapos"
+          ]
+         },
+         "discountRate": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 0.5
+         },
+         "brandName": {
+          "type": "string"
+         },
+         "businessEmail": {
+          "type": "string",
+          "format": "email"
+         }
+        },
+        "required": [
+         "accountId",
+         "partner",
+         "discountRate"
+        ],
+        "additionalProperties": false
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/admin/workspaces/{accountId}": {
+   "get": {
+    "operationId": "getAdminWorkspacesAccountId",
+    "summary": "Get a workspace",
+    "tags": [
+     "admin"
+    ],
+    "parameters": [
+     {
+      "name": "accountId",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "x-forjio": {
+     "source": "src/routes/admin.ts:88",
+     "guards": [
+      "adminGuard",
+      "requireAuth"
+     ]
+    }
+   }
+  },
+  "/api/v1/api-keys": {
+   "get": {
+    "operationId": "getApiKeys",
+    "summary": "List api keys",
+    "tags": [
+     "api-keys"
+    ],
+    "parameters": [],
+    "x-forjio": {
+     "source": "src/routes/api-keys.ts:30",
+     "guards": [
+      "requireAuth"
+     ]
+    }
+   },
+   "post": {
+    "operationId": "postApiKeys",
+    "summary": "Create an api key",
+    "tags": [
+     "api-keys"
+    ],
+    "parameters": [],
+    "x-forjio": {
+     "source": "src/routes/api-keys.ts:44",
+     "guards": [
+      "requireAuth"
+     ],
+     "body": "validated",
+     "bodySchema": "createSchema"
+    },
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object",
+        "properties": {
+         "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+         },
+         "scopes": {
+          "type": "array",
+          "items": {
+           "type": "string",
+           "enum": [
+            "read",
+            "write",
+            "admin"
+           ]
+          },
+          "minItems": 1,
+          "default": [
+           "read",
+           "write"
+          ]
+         }
+        },
+        "required": [
+         "name"
+        ],
+        "additionalProperties": false
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/api-keys/{id}/revoke": {
+   "post": {
+    "operationId": "postApiKeysIdRevoke",
+    "summary": "Revoke an api key",
+    "tags": [
+     "api-keys"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "x-forjio": {
+     "source": "src/routes/api-keys.ts:88",
+     "guards": [
+      "requireAuth"
+     ],
+     "body": "none"
+    }
+   }
+  },
+  "/api/v1/audit-log": {
+   "get": {
+    "operationId": "getAuditLog",
+    "summary": "List audit log",
+    "tags": [
+     "audit-log"
+    ],
+    "parameters": [
+     {
+      "name": "action",
+      "in": "query",
+      "required": false,
+      "schema": {}
+     },
+     {
+      "name": "limit",
+      "in": "query",
+      "required": false,
+      "schema": {}
+     },
+     {
+      "name": "target_type",
+      "in": "query",
+      "required": false,
+      "schema": {}
+     }
+    ],
+    "x-forjio": {
+     "source": "src/routes/audit-log.ts:9",
+     "guards": [
+      "requireAuth"
+     ]
+    }
+   }
+  },
+  "/api/v1/auth/huudis/callback": {
+   "get": {
+    "operationId": "getAuthHuudisCallback",
+    "summary": "List callback",
+    "tags": [
+     "auth"
+    ],
+    "parameters": [],
+    "x-forjio": {
+     "source": null,
+     "guards": []
+    }
+   }
+  },
+  "/api/v1/auth/huudis/start": {
+   "get": {
+    "operationId": "getAuthHuudisStart",
+    "summary": "List start",
+    "tags": [
+     "auth"
+    ],
+    "parameters": [],
+    "x-forjio": {
+     "source": null,
+     "guards": []
+    }
+   }
+  },
+  "/api/v1/auth/login": {
+   "post": {
+    "operationId": "postAuthLogin",
+    "summary": "Create a login",
+    "tags": [
+     "auth"
+    ],
+    "parameters": [],
+    "x-forjio": {
+     "source": null,
+     "guards": [],
+     "body": "unknown"
+    }
+   }
+  },
+  "/api/v1/auth/logout": {
+   "post": {
+    "operationId": "postAuthLogout",
+    "summary": "Create a logout",
+    "tags": [
+     "auth"
+    ],
+    "parameters": [],
+    "x-forjio": {
+     "source": null,
+     "guards": [],
+     "body": "unknown"
+    }
+   }
+  },
+  "/api/v1/auth/me": {
+   "get": {
+    "operationId": "getAuthMe",
+    "summary": "List me",
+    "tags": [
+     "auth"
+    ],
+    "parameters": [],
+    "x-forjio": {
+     "source": null,
+     "guards": []
+    }
+   }
+  },
+  "/api/v1/auth/password-reset/complete": {
+   "post": {
+    "operationId": "postAuthPasswordResetComplete",
+    "summary": "Create a complete",
+    "tags": [
+     "auth"
+    ],
+    "parameters": [],
+    "x-forjio": {
+     "source": null,
+     "guards": [],
+     "body": "unknown"
+    }
+   }
+  },
+  "/api/v1/auth/password-reset/request": {
+   "post": {
+    "operationId": "postAuthPasswordResetRequest",
+    "summary": "Create a request",
+    "tags": [
+     "auth"
+    ],
+    "parameters": [],
+    "x-forjio": {
+     "source": null,
+     "guards": [],
+     "body": "unknown"
+    }
+   }
+  },
+  "/api/v1/auth/signup": {
+   "post": {
+    "operationId": "postAuthSignup",
+    "summary": "Create a signup",
+    "tags": [
+     "auth"
+    ],
+    "parameters": [],
+    "x-forjio": {
+     "source": null,
+     "guards": [],
+     "body": "unknown"
+    }
+   }
+  },
+  "/api/v1/billing/cancel": {
+   "post": {
+    "operationId": "postBillingCancel",
+    "summary": "Create a cancel",
+    "tags": [
+     "billing"
+    ],
+    "parameters": [],
+    "x-forjio": {
+     "source": "src/routes/billing.ts:86",
+     "guards": [
+      "adminGuard",
+      "requireAuth"
+     ],
+     "body": "read-unknown"
+    },
+    "requestBody": {
+     "required": false,
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object",
+        "properties": {}
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/billing/checkout": {
+   "post": {
+    "operationId": "postBillingCheckout",
+    "summary": "Create a checkout",
+    "tags": [
+     "billing"
+    ],
+    "parameters": [],
+    "x-forjio": {
+     "source": "src/routes/billing.ts:55",
+     "guards": [
+      "adminGuard",
+      "requireAuth"
+     ],
+     "body": "validated",
+     "bodySchema": "checkoutSchema"
+    },
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object",
+        "properties": {
+         "plan": {
+          "type": "string",
+          "enum": [
+           "STARTER",
+           "GROWTH",
+           "SCALE"
+          ]
+         },
+         "email": {
+          "type": "string",
+          "format": "email"
+         },
+         "name": {
+          "type": "string"
+         }
+        },
+        "required": [
+         "plan"
+        ],
+        "additionalProperties": false
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/billing/invoices": {
+   "get": {
+    "operationId": "getBillingInvoices",
+    "summary": "List invoices",
+    "tags": [
+     "billing"
+    ],
+    "parameters": [
+     {
+      "name": "cursor",
+      "in": "query",
+      "required": false,
+      "schema": {}
+     },
+     {
+      "name": "limit",
+      "in": "query",
+      "required": false,
+      "schema": {}
+     }
+    ],
+    "x-forjio": {
+     "source": "src/routes/billing.ts:40",
+     "guards": [
+      "adminGuard",
+      "requireAuth"
+     ]
+    }
+   }
+  },
+  "/api/v1/billing/plan": {
+   "get": {
+    "operationId": "getBillingPlan",
+    "summary": "List plan",
+    "tags": [
+     "billing"
+    ],
+    "parameters": [],
+    "x-forjio": {
+     "source": "src/routes/billing.ts:19",
+     "guards": [
+      "adminGuard",
+      "requireAuth"
+     ]
+    }
+   }
+  },
+  "/api/v1/billing/plans": {
+   "get": {
+    "operationId": "getBillingPlans",
+    "summary": "Public, no auth.",
+    "description": "GET /billing/plans — public, no auth. Powers the landing-page Pricing\nsection + the /dashboard/billing plan picker.",
+    "tags": [
+     "billing"
+    ],
+    "parameters": [],
+    "x-forjio": {
+     "source": "src/routes/billing.ts:15",
+     "guards": [
+      "adminGuard"
+     ]
+    }
+   }
+  },
+  "/api/v1/billing/subscription": {
+   "get": {
+    "operationId": "getBillingSubscription",
+    "summary": "List subscription",
+    "tags": [
+     "billing"
+    ],
+    "parameters": [],
+    "x-forjio": {
+     "source": "src/routes/billing.ts:26",
+     "guards": [
+      "adminGuard",
+      "requireAuth"
+     ]
+    }
+   }
+  },
+  "/api/v1/billing/usage": {
+   "get": {
+    "operationId": "getBillingUsage",
+    "summary": "List usage",
+    "tags": [
+     "billing"
+    ],
+    "parameters": [],
+    "x-forjio": {
+     "source": "src/routes/billing.ts:33",
+     "guards": [
+      "adminGuard",
+      "requireAuth"
+     ]
+    }
+   }
+  },
+  "/api/v1/catentio/chat": {
+   "post": {
+    "operationId": "postCatentioChat",
+    "summary": "Create a chat",
+    "tags": [
+     "catentio"
+    ],
+    "parameters": [],
+    "x-forjio": {
+     "source": null,
+     "guards": [],
+     "body": "unknown"
+    }
+   }
+  },
+  "/api/v1/catentio/chat/attachments": {
+   "post": {
+    "operationId": "postCatentioChatAttachments",
+    "summary": "Create an attachment",
+    "tags": [
+     "catentio"
+    ],
+    "parameters": [],
+    "x-forjio": {
+     "source": null,
+     "guards": [],
+     "body": "unknown"
+    }
+   }
+  },
+  "/api/v1/catentio/chat/media": {
+   "get": {
+    "operationId": "getCatentioChatMedia",
+    "summary": "List media",
+    "tags": [
+     "catentio"
+    ],
+    "parameters": [],
+    "x-forjio": {
+     "source": null,
+     "guards": []
+    }
+   }
+  },
+  "/api/v1/catentio/chat/runs/{runId}": {
+   "get": {
+    "operationId": "getCatentioChatRunsRunId",
+    "summary": "Get a run",
+    "tags": [
+     "catentio"
+    ],
+    "parameters": [
+     {
+      "name": "runId",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "x-forjio": {
+     "source": null,
+     "guards": []
+    }
+   }
+  },
+  "/api/v1/catentio/chat/sessions": {
+   "get": {
+    "operationId": "getCatentioChatSessions",
+    "summary": "List sessions",
+    "tags": [
+     "catentio"
+    ],
+    "parameters": [],
+    "x-forjio": {
+     "source": null,
+     "guards": []
+    }
+   }
+  },
+  "/api/v1/catentio/chat/sessions/{id}": {
+   "get": {
+    "operationId": "getCatentioChatSessionsId",
+    "summary": "Get a session",
+    "tags": [
+     "catentio"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "x-forjio": {
+     "source": null,
+     "guards": []
+    }
+   },
+   "put": {
+    "operationId": "putCatentioChatSessionsId",
+    "summary": "Replace a session",
+    "tags": [
+     "catentio"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "x-forjio": {
+     "source": null,
+     "guards": [],
+     "body": "unknown"
+    }
+   },
+   "delete": {
+    "operationId": "deleteCatentioChatSessionsId",
+    "summary": "Delete a session",
+    "tags": [
+     "catentio"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "x-forjio": {
+     "source": null,
+     "guards": []
+    }
+   }
+  },
+  "/api/v1/catentio/credits": {
+   "get": {
+    "operationId": "getCatentioCredits",
+    "summary": "List credits",
+    "tags": [
+     "catentio"
+    ],
+    "parameters": [],
+    "x-forjio": {
+     "source": null,
+     "guards": []
+    }
+   }
+  },
+  "/api/v1/catentio/credits/topup": {
+   "post": {
+    "operationId": "postCatentioCreditsTopup",
+    "summary": "Create a topup",
+    "tags": [
+     "catentio"
+    ],
+    "parameters": [],
+    "x-forjio": {
+     "source": null,
+     "guards": [],
+     "body": "unknown"
+    }
+   }
+  },
+  "/api/v1/catentio/plan": {
+   "post": {
+    "operationId": "postCatentioPlan",
+    "summary": "Create a plan",
+    "tags": [
+     "catentio"
+    ],
+    "parameters": [],
+    "x-forjio": {
+     "source": null,
+     "guards": [],
+     "body": "unknown"
+    }
+   }
+  },
+  "/api/v1/catentio/runs/{runId}/media/{filename}": {
+   "get": {
+    "operationId": "getCatentioRunsRunIdMediaFilename",
+    "summary": "Get a media",
+    "tags": [
+     "catentio"
+    ],
+    "parameters": [
+     {
+      "name": "runId",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     },
+     {
+      "name": "filename",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "x-forjio": {
+     "source": null,
+     "guards": []
+    }
+   }
+  },
+  "/api/v1/catentio/settings": {
+   "get": {
+    "operationId": "getCatentioSettings",
+    "summary": "List settings",
+    "tags": [
+     "catentio"
+    ],
+    "parameters": [],
+    "x-forjio": {
+     "source": null,
+     "guards": []
+    }
+   },
+   "patch": {
+    "operationId": "patchCatentioSettings",
+    "summary": "Update settings",
+    "tags": [
+     "catentio"
+    ],
+    "parameters": [],
+    "x-forjio": {
+     "source": null,
+     "guards": [],
+     "body": "unknown"
+    }
+   }
+  },
+  "/api/v1/catentio/status": {
+   "get": {
+    "operationId": "getCatentioStatus",
+    "summary": "List status",
+    "tags": [
+     "catentio"
+    ],
+    "parameters": [],
+    "x-forjio": {
+     "source": "src/routes/integrations.ts:23",
+     "guards": []
+    }
+   }
+  },
+  "/api/v1/deliveries": {
+   "get": {
+    "operationId": "getDeliveries",
+    "summary": "List deliveries",
+    "tags": [
+     "deliveries"
+    ],
+    "parameters": [],
+    "x-forjio": {
+     "source": "src/routes/deliveries.ts:23",
+     "guards": [
+      "requireAuth"
+     ]
+    }
+   },
+   "post": {
+    "operationId": "postDeliveries",
+    "summary": "Create a delivery",
+    "tags": [
+     "deliveries"
+    ],
+    "parameters": [],
+    "x-forjio": {
+     "source": "src/routes/deliveries.ts:44",
+     "guards": [
+      "requireAuth"
+     ],
+     "body": "validated",
+     "bodySchema": "createSchema"
+    },
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object",
+        "properties": {
+         "productId": {
+          "type": "string",
+          "minLength": 1
+         },
+         "customerId": {
+          "type": "string",
+          "minLength": 1
+         },
+         "checkoutSessionId": {
+          "type": "string",
+          "minLength": 1
+         },
+         "maxDownloads": {
+          "type": "integer",
+          "exclusiveMinimum": true,
+          "minimum": 0,
+          "maximum": 100
+         },
+         "expiresAt": {
+          "type": "string",
+          "format": "date-time"
+         },
+         "externalSource": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 50
+         },
+         "externalRef": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255
+         }
+        },
+        "required": [
+         "productId",
+         "customerId",
+         "checkoutSessionId"
+        ],
+        "additionalProperties": false
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/deliveries/{id}": {
+   "get": {
+    "operationId": "getDeliveriesId",
+    "summary": "Get a delivery",
+    "tags": [
+     "deliveries"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "x-forjio": {
+     "source": "src/routes/deliveries.ts:34",
+     "guards": [
+      "requireAuth"
+     ]
+    }
+   }
+  },
+  "/api/v1/deliveries/{id}/extend": {
+   "post": {
+    "operationId": "postDeliveriesIdExtend",
+    "summary": "Extend the download window 30 days (from now, or the current expiry).",
+    "description": "Extend the download window 30 days (from now, or the current expiry).",
+    "tags": [
+     "deliveries"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "x-forjio": {
+     "source": "src/routes/deliveries.ts:137",
+     "guards": [
+      "requireAuth"
+     ],
+     "body": "none"
+    }
+   }
+  },
+  "/api/v1/deliveries/{id}/reset-downloads": {
+   "post": {
+    "operationId": "postDeliveriesIdResetDownloads",
+    "summary": "Reset the download counter so the buyer can download again.",
+    "description": "Reset the download counter so the buyer can download again.",
+    "tags": [
+     "deliveries"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "x-forjio": {
+     "source": "src/routes/deliveries.ts:144",
+     "guards": [
+      "requireAuth"
+     ],
+     "body": "none"
+    }
+   }
+  },
+  "/api/v1/deliveries/{id}/revoke": {
+   "post": {
+    "operationId": "postDeliveriesIdRevoke",
+    "summary": "Revoke: expire the delivery now.",
+    "description": "Revoke: expire the delivery now.",
+    "tags": [
+     "deliveries"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "x-forjio": {
+     "source": "src/routes/deliveries.ts:149",
+     "guards": [
+      "requireAuth"
+     ],
+     "body": "none"
+    }
+   }
+  },
+  "/api/v1/health": {
+   "get": {
+    "operationId": "getHealth",
+    "summary": "List health",
+    "tags": [
+     "health"
+    ],
+    "parameters": [],
+    "x-forjio": {
+     "source": "src/routes/index.ts:33",
+     "guards": []
+    }
+   }
+  },
+  "/api/v1/huudis*": {
+   "get": {
+    "operationId": "getHuudis",
+    "summary": "List huudis*",
+    "tags": [
+     "huudis*"
+    ],
+    "parameters": [],
+    "x-forjio": {
+     "source": null,
+     "guards": []
+    }
+   },
+   "post": {
+    "operationId": "postHuudis",
+    "summary": "Create a huudis*",
+    "tags": [
+     "huudis*"
+    ],
+    "parameters": [],
+    "x-forjio": {
+     "source": null,
+     "guards": [],
+     "body": "unknown"
+    }
+   },
+   "patch": {
+    "operationId": "patchHuudis",
+    "summary": "Update huudis*",
+    "tags": [
+     "huudis*"
+    ],
+    "parameters": [],
+    "x-forjio": {
+     "source": null,
+     "guards": [],
+     "body": "unknown"
+    }
+   },
+   "delete": {
+    "operationId": "deleteHuudis",
+    "summary": "Delete huudis*",
+    "tags": [
+     "huudis*"
+    ],
+    "parameters": [],
+    "x-forjio": {
+     "source": null,
+     "guards": []
+    }
+   }
+  },
+  "/api/v1/integrations/status": {
+   "get": {
+    "operationId": "getIntegrationsStatus",
+    "summary": "List status",
+    "tags": [
+     "integrations"
+    ],
+    "parameters": [],
+    "x-forjio": {
+     "source": "src/routes/integrations.ts:23",
+     "guards": [
+      "adminGuard",
+      "requireAuth"
+     ]
+    }
+   }
+  },
+  "/api/v1/licenses": {
+   "get": {
+    "operationId": "getLicenses",
+    "summary": "List licenses",
+    "tags": [
+     "licenses"
+    ],
+    "parameters": [],
+    "x-forjio": {
+     "source": "src/routes/licenses.ts:166",
+     "guards": [
+      "requireAuth"
+     ]
+    }
+   },
+   "post": {
+    "operationId": "postLicenses",
+    "summary": "Create a licens",
+    "tags": [
+     "licenses"
+    ],
+    "parameters": [],
+    "x-forjio": {
+     "source": "src/routes/licenses.ts:199",
+     "guards": [
+      "requireAuth"
+     ],
+     "body": "validated",
+     "bodySchema": "issueSchema"
+    },
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object",
+        "properties": {
+         "productId": {
+          "type": "string",
+          "minLength": 1
+         },
+         "customerId": {
+          "type": "string",
+          "minLength": 1
+         },
+         "maxActivations": {
+          "type": "integer",
+          "exclusiveMinimum": true,
+          "minimum": 0
+         },
+         "expiresAt": {
+          "type": "string",
+          "format": "date-time"
+         },
+         "externalSource": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 50
+         },
+         "externalRef": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255
+         },
+         "key": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 120
+         }
+        },
+        "required": [
+         "productId",
+         "customerId"
+        ],
+        "additionalProperties": false
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/licenses/{id}/revoke": {
+   "post": {
+    "operationId": "postLicensesIdRevoke",
+    "summary": "Revoke a licens",
+    "tags": [
+     "licenses"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "x-forjio": {
+     "source": "src/routes/licenses.ts:247",
+     "guards": [
+      "requireAuth"
+     ],
+     "body": "none"
+    }
+   }
+  },
+  "/api/v1/licenses/activate": {
+   "post": {
+    "operationId": "postLicensesActivate",
+    "summary": "/v1/licenses/activate is unauthenticated — buyers' apps call this with the license key directly.",
+    "description": "/v1/licenses/activate is unauthenticated — buyers' apps call this\nwith the license key directly. Mount BEFORE requireAuth.",
+    "tags": [
+     "licenses"
+    ],
+    "parameters": [],
+    "x-forjio": {
+     "source": "src/routes/licenses.ts:121",
+     "guards": [],
+     "body": "validated",
+     "bodySchema": "activateSchema"
+    },
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object",
+        "properties": {
+         "key": {
+          "type": "string",
+          "minLength": 8
+         },
+         "instanceId": {
+          "type": "string",
+          "minLength": 1
+         }
+        },
+        "required": [
+         "key",
+         "instanceId"
+        ],
+        "additionalProperties": false
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/licenses/deactivate": {
+   "post": {
+    "operationId": "postLicensesDeactivate",
+    "summary": "Release a previously-activated instance.",
+    "description": "POST /licenses/deactivate — release a previously-activated instance.\nBuyers' apps call this when uninstalling. Idempotent on repeat calls.",
+    "tags": [
+     "licenses"
+    ],
+    "parameters": [],
+    "x-forjio": {
+     "source": "src/routes/licenses.ts:90",
+     "guards": [],
+     "body": "validated",
+     "bodySchema": "deactivateSchema"
+    },
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object",
+        "properties": {
+         "key": {
+          "type": "string",
+          "minLength": 8
+         },
+         "instanceId": {
+          "type": "string",
+          "minLength": 1
+         }
+        },
+        "required": [
+         "key",
+         "instanceId"
+        ],
+        "additionalProperties": false
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/licenses/lookup": {
+   "get": {
+    "operationId": "getLicensesLookup",
+    "summary": "Full license + its activation rows, resolved by key within the merchant's account.",
+    "description": "GET /licenses/lookup?key=<key> — full license + its activation rows,\nresolved by key within the merchant's account. Backs partner order-\ndetail UIs (e.g. Storlaunch's License panel): they hold the key and\nneed the license id (for revoke) plus the per-device activation list\nthat `validate` (counts only) doesn't carry.",
+    "tags": [
+     "licenses"
+    ],
+    "parameters": [
+     {
+      "name": "key",
+      "in": "query",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "minLength": 1
+      }
+     }
+    ],
+    "x-forjio": {
+     "source": "src/routes/licenses.ts:182",
+     "guards": [
+      "requireAuth"
+     ]
+    }
+   }
+  },
+  "/api/v1/licenses/validate": {
+   "get": {
+    "operationId": "getLicensesValidate",
+    "summary": "Public unauthenticated endpoints — buyers' software calls these with just the license key.",
+    "description": "Public unauthenticated endpoints — buyers' software calls these with\njust the license key. Mount BEFORE requireAuth.\nGET /licenses/validate?key=<key>&productId=<optional>\n  Returns `{ valid, status, productId, productName, activations,\n            maxActivations, expiresAt }`. Never errors on bad keys —\n  just returns valid:false. Used by license-protected software to\n  check whether a key is still good.",
+    "tags": [
+     "licenses"
+    ],
+    "parameters": [
+     {
+      "name": "key",
+      "in": "query",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "minLength": 1
+      }
+     },
+     {
+      "name": "productId",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "x-forjio": {
+     "source": "src/routes/licenses.ts:61",
+     "guards": []
+    }
+   }
+  },
+  "/api/v1/products": {
+   "get": {
+    "operationId": "getProducts",
+    "summary": "List products",
+    "tags": [
+     "products"
+    ],
+    "parameters": [
+     {
+      "name": "archived",
+      "in": "query",
+      "required": false,
+      "schema": {}
+     }
+    ],
+    "x-forjio": {
+     "source": "src/routes/products.ts:36",
+     "guards": [
+      "requireAuth"
+     ]
+    }
+   },
+   "post": {
+    "operationId": "postProducts",
+    "summary": "Create a product",
+    "tags": [
+     "products"
+    ],
+    "parameters": [],
+    "x-forjio": {
+     "source": "src/routes/products.ts:65",
+     "guards": [
+      "requireAuth"
+     ],
+     "body": "validated",
+     "bodySchema": "productSchema"
+    },
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object",
+        "properties": {
+         "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+         },
+         "sku": {
+          "type": "string"
+         },
+         "description": {
+          "type": "string"
+         },
+         "type": {
+          "type": "string",
+          "enum": [
+           "physical",
+           "digital",
+           "license"
+          ],
+          "default": "physical"
+         },
+         "weight": {
+          "type": "integer",
+          "minimum": 0
+         },
+         "length": {
+          "type": "integer",
+          "minimum": 0
+         },
+         "width": {
+          "type": "integer",
+          "minimum": 0
+         },
+         "height": {
+          "type": "integer",
+          "minimum": 0
+         },
+         "licenseEnabled": {
+          "type": "boolean"
+         },
+         "maxActivations": {
+          "type": "integer",
+          "exclusiveMinimum": true,
+          "minimum": 0
+         }
+        },
+        "required": [
+         "name"
+        ],
+        "additionalProperties": false
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/products/{id}": {
+   "get": {
+    "operationId": "getProductsId",
+    "summary": "Get a product",
+    "tags": [
+     "products"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "x-forjio": {
+     "source": "src/routes/products.ts:51",
+     "guards": [
+      "requireAuth"
+     ]
+    }
+   },
+   "patch": {
+    "operationId": "patchProductsId",
+    "summary": "Update a product",
+    "tags": [
+     "products"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "x-forjio": {
+     "source": "src/routes/products.ts:100",
+     "guards": [
+      "requireAuth"
+     ],
+     "body": "validated",
+     "bodySchema": "productSchema.partial()"
+    },
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object",
+        "properties": {
+         "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+         },
+         "sku": {
+          "type": "string"
+         },
+         "description": {
+          "type": "string"
+         },
+         "type": {
+          "type": "string",
+          "enum": [
+           "physical",
+           "digital",
+           "license"
+          ],
+          "default": "physical"
+         },
+         "weight": {
+          "type": "integer",
+          "minimum": 0
+         },
+         "length": {
+          "type": "integer",
+          "minimum": 0
+         },
+         "width": {
+          "type": "integer",
+          "minimum": 0
+         },
+         "height": {
+          "type": "integer",
+          "minimum": 0
+         },
+         "licenseEnabled": {
+          "type": "boolean"
+         },
+         "maxActivations": {
+          "type": "integer",
+          "exclusiveMinimum": true,
+          "minimum": 0
+         }
+        },
+        "additionalProperties": false
+       }
+      }
+     }
+    }
+   },
+   "delete": {
+    "operationId": "deleteProductsId",
+    "summary": "Delete a product",
+    "tags": [
+     "products"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "x-forjio": {
+     "source": "src/routes/products.ts:118",
+     "guards": [
+      "requireAuth"
+     ]
+    }
+   }
+  },
+  "/api/v1/products/{id}/variants": {
+   "post": {
+    "operationId": "postProductsIdVariants",
+    "summary": "Variants a product",
+    "tags": [
+     "products"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "x-forjio": {
+     "source": "src/routes/products.ts:135",
+     "guards": [
+      "requireAuth"
+     ],
+     "body": "validated",
+     "bodySchema": "variantSchema"
+    },
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object",
+        "properties": {
+         "sku": {
+          "type": "string"
+         },
+         "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+         },
+         "priceCents": {
+          "type": "integer",
+          "minimum": 0
+         },
+         "costCents": {
+          "type": "integer",
+          "minimum": 0
+         },
+         "lowStockThreshold": {
+          "type": "integer",
+          "minimum": 0
+         },
+         "weight": {
+          "type": "integer",
+          "minimum": 0
+         },
+         "isDefault": {
+          "type": "boolean"
+         }
+        },
+        "required": [
+         "name"
+        ],
+        "additionalProperties": false
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/products/{id}/variants/{variantId}": {
+   "patch": {
+    "operationId": "patchProductsIdVariantsVariantId",
+    "summary": "Update a variant",
+    "tags": [
+     "products"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     },
+     {
+      "name": "variantId",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "x-forjio": {
+     "source": "src/routes/products.ts:161",
+     "guards": [
+      "requireAuth"
+     ],
+     "body": "validated",
+     "bodySchema": "variantSchema.partial()"
+    },
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object",
+        "properties": {
+         "sku": {
+          "type": "string"
+         },
+         "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+         },
+         "priceCents": {
+          "type": "integer",
+          "minimum": 0
+         },
+         "costCents": {
+          "type": "integer",
+          "minimum": 0
+         },
+         "lowStockThreshold": {
+          "type": "integer",
+          "minimum": 0
+         },
+         "weight": {
+          "type": "integer",
+          "minimum": 0
+         },
+         "isDefault": {
+          "type": "boolean"
+         }
+        },
+        "additionalProperties": false
+       }
+      }
+     }
+    }
+   },
+   "delete": {
+    "operationId": "deleteProductsIdVariantsVariantId",
+    "summary": "Delete a variant",
+    "tags": [
+     "products"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     },
+     {
+      "name": "variantId",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "x-forjio": {
+     "source": "src/routes/products.ts:189",
+     "guards": [
+      "requireAuth"
+     ]
+    }
+   }
+  },
+  "/api/v1/shipments": {
+   "get": {
+    "operationId": "getShipments",
+    "summary": "List shipments",
+    "tags": [
+     "shipments"
+    ],
+    "parameters": [
+     {
+      "name": "status",
+      "in": "query",
+      "required": false,
+      "schema": {}
+     }
+    ],
+    "x-forjio": {
+     "source": "src/routes/shipments.ts:59",
+     "guards": [
+      "requireAuth"
+     ]
+    }
+   },
+   "post": {
+    "operationId": "postShipments",
+    "summary": "Create a shipment",
+    "tags": [
+     "shipments"
+    ],
+    "parameters": [],
+    "x-forjio": {
+     "source": "src/routes/shipments.ts:166",
+     "guards": [
+      "requireAuth"
+     ],
+     "body": "validated",
+     "bodySchema": "createSchema"
+    },
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object",
+        "properties": {
+         "productId": {
+          "type": "string"
+         },
+         "checkoutSessionId": {
+          "type": "string"
+         },
+         "customerId": {
+          "type": "string"
+         },
+         "customerEmail": {
+          "type": "string",
+          "format": "email"
+         },
+         "courierCode": {
+          "type": "string",
+          "minLength": 1
+         },
+         "courierServiceCode": {
+          "type": "string",
+          "minLength": 1
+         },
+         "courierType": {
+          "type": "string",
+          "minLength": 1
+         },
+         "price": {
+          "type": "integer",
+          "minimum": 0
+         },
+         "insurance": {
+          "type": "integer",
+          "minimum": 0
+         },
+         "insured": {
+          "type": "boolean"
+         },
+         "origin": {
+          "type": "object",
+          "additionalProperties": {}
+         },
+         "destination": {
+          "type": "object",
+          "additionalProperties": {}
+         },
+         "items": {
+          "type": "array",
+          "items": {
+           "type": "object",
+           "additionalProperties": {}
+          },
+          "minItems": 1
+         },
+         "externalSource": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 50
+         },
+         "externalRef": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255
+         }
+        },
+        "required": [
+         "courierCode",
+         "courierServiceCode",
+         "courierType",
+         "price",
+         "origin",
+         "destination",
+         "items"
+        ],
+        "additionalProperties": false
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/shipments/{id}": {
+   "get": {
+    "operationId": "getShipmentsId",
+    "summary": "Get a shipment",
+    "tags": [
+     "shipments"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "x-forjio": {
+     "source": "src/routes/shipments.ts:72",
+     "guards": [
+      "requireAuth"
+     ]
+    }
+   }
+  },
+  "/api/v1/shipments/{id}/cancel": {
+   "post": {
+    "operationId": "postShipmentsIdCancel",
+    "summary": "Cancel a booking the courier hasn't collected yet, and give back the shipping credit confirm-pickup consumed.",
+    "description": "Cancel a booking the courier hasn't collected yet, and give back the\nshipping credit confirm-pickup consumed. All of the behaviour lives in\ncancelShipment() so this route and the legacy /shipping/shipments/:id/\ncancel one can't drift — see the doc comment there.",
+    "tags": [
+     "shipments"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "x-forjio": {
+     "source": "src/routes/shipments.ts:433",
+     "guards": [
+      "requireAuth"
+     ],
+     "body": "read-unvalidated"
+    },
+    "requestBody": {
+     "required": false,
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object",
+        "properties": {
+         "reason": {}
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/shipments/{id}/confirm-pickup": {
+   "post": {
+    "operationId": "postShipmentsIdConfirmPickup",
+    "summary": "F-004: Merchant clicks \"Book courier\" once the parcel is actually ready.",
+    "description": "F-004: Merchant clicks \"Book courier\" once the parcel is actually\nready. Confirms the Biteship draft, which creates the real order +\ndispatches the driver. Returns the updated shipment with the\nfreshly-allocated biteshipOrderId, waybillId, etc.",
+    "tags": [
+     "shipments"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "x-forjio": {
+     "source": "src/routes/shipments.ts:293",
+     "guards": [
+      "requireAuth"
+     ],
+     "body": "none"
+    }
+   }
+  },
+  "/api/v1/shipments/{id}/label": {
+   "get": {
+    "operationId": "getShipmentsIdLabel",
+    "summary": "Biteship deliberately has no shipping-label API.",
+    "description": "Biteship deliberately has no shipping-label API. Generate the PDF from\nFulkruma's authoritative shipment snapshot so every Forjio product prints\nthe same document. If an older confirmed row missed the nested\ncourier.waybill_id response shape, refresh once before declaring it unready.",
+    "tags": [
+     "shipments"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     },
+     {
+      "name": "size",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "string",
+       "enum": [
+        "a4",
+        "thermal-80x100",
+        "thermal-100x150"
+       ],
+       "default": "thermal-100x150"
+      }
+     },
+     {
+      "name": "showSenderPhone",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "string",
+       "enum": [
+        "true",
+        "false"
+       ],
+       "default": "true"
+      }
+     },
+     {
+      "name": "showRecipientPhone",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "string",
+       "enum": [
+        "true",
+        "false"
+       ],
+       "default": "true"
+      }
+     },
+     {
+      "name": "maskRecipientName",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "string",
+       "enum": [
+        "true",
+        "false"
+       ],
+       "default": "true"
+      }
+     },
+     {
+      "name": "maskRecipientPhone",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "string",
+       "enum": [
+        "true",
+        "false"
+       ],
+       "default": "true"
+      }
+     },
+     {
+      "name": "showShippingCost",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "string",
+       "enum": [
+        "true",
+        "false"
+       ],
+       "default": "true"
+      }
+     },
+     {
+      "name": "showInsurance",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "string",
+       "enum": [
+        "true",
+        "false"
+       ],
+       "default": "true"
+      }
+     },
+     {
+      "name": "showItems",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "string",
+       "enum": [
+        "true",
+        "false"
+       ],
+       "default": "true"
+      }
+     },
+     {
+      "name": "showItemDescriptions",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "string",
+       "enum": [
+        "true",
+        "false"
+       ],
+       "default": "true"
+      }
+     },
+     {
+      "name": "showItemSkus",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "string",
+       "enum": [
+        "true",
+        "false"
+       ],
+       "default": "true"
+      }
+     }
+    ],
+    "x-forjio": {
+     "source": "src/routes/shipments.ts:128",
+     "guards": [
+      "requireAuth"
+     ]
+    }
+   }
+  },
+  "/api/v1/shipments/{id}/rebook": {
+   "post": {
+    "operationId": "postShipmentsIdRebook",
+    "summary": "Rebook a shipment",
+    "tags": [
+     "shipments"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "x-forjio": {
+     "source": "src/routes/shipments.ts:474",
+     "guards": [
+      "requireAuth"
+     ],
+     "body": "validated",
+     "bodySchema": "rebookSchema"
+    },
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object",
+        "properties": {
+         "courierCode": {
+          "type": "string",
+          "minLength": 1
+         },
+         "courierServiceCode": {
+          "type": "string",
+          "minLength": 1
+         },
+         "courierType": {
+          "type": "string",
+          "minLength": 1
+         },
+         "price": {
+          "type": "integer",
+          "minimum": 0
+         },
+         "insured": {
+          "type": "boolean"
+         },
+         "insurance": {
+          "type": "integer",
+          "minimum": 0
+         }
+        },
+        "additionalProperties": false
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/shipments/{id}/tracking": {
+   "get": {
+    "operationId": "getShipmentsIdTracking",
+    "summary": "F-008: live tracking detail (driver, status history, ETA) from Biteship.",
+    "description": "F-008: live tracking detail (driver, status history, ETA) from Biteship.\nReads biteshipTrackingId off the local shipment then calls\n/v1/trackings/:id which returns the richer data including instant-courier\ndriver info. Used by storlaunch's order detail (merchant + buyer portal).",
+    "tags": [
+     "shipments"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "x-forjio": {
+     "source": "src/routes/shipments.ts:87",
+     "guards": [
+      "requireAuth"
+     ]
+    }
+   }
+  },
+  "/api/v1/shipping-credits": {
+   "get": {
+    "operationId": "getShippingCredits",
+    "summary": "Balance for the calling merchant.",
+    "description": "GET /shipping-credits — balance for the calling merchant.",
+    "tags": [
+     "shipping-credits"
+    ],
+    "parameters": [],
+    "x-forjio": {
+     "source": "src/routes/shipping-credits.ts:25",
+     "guards": [
+      "requireAuth"
+     ]
+    }
+   }
+  },
+  "/api/v1/shipping-credits/adjust": {
+   "post": {
+    "operationId": "postShippingCreditsAdjust",
+    "summary": "Create an adjust",
+    "tags": [
+     "shipping-credits"
+    ],
+    "parameters": [],
+    "x-forjio": {
+     "source": "src/routes/shipping-credits.ts:86",
+     "guards": [
+      "requireAuth"
+     ],
+     "body": "validated",
+     "bodySchema": "adjustSchema"
+    },
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object",
+        "properties": {
+         "amount": {
+          "type": "integer"
+         },
+         "kind": {
+          "type": "string",
+          "enum": [
+           "manual_adjustment",
+           "shipment_refund"
+          ]
+         },
+         "shipmentId": {
+          "type": "string"
+         },
+         "externalRef": {
+          "type": "string"
+         },
+         "memo": {
+          "type": "string",
+          "maxLength": 500
+         }
+        },
+        "required": [
+         "amount",
+         "kind"
+        ],
+        "additionalProperties": false
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/shipping-credits/checkout": {
+   "post": {
+    "operationId": "postShippingCreditsCheckout",
+    "summary": "Create a checkout",
+    "tags": [
+     "shipping-credits"
+    ],
+    "parameters": [],
+    "x-forjio": {
+     "source": "src/routes/shipping-credits.ts:116",
+     "guards": [
+      "requireAuth"
+     ],
+     "body": "validated",
+     "bodySchema": "checkoutSchema"
+    },
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object",
+        "properties": {
+         "amount": {
+          "type": "integer",
+          "minimum": 10000,
+          "maximum": 10000000
+         },
+         "email": {
+          "type": "string",
+          "format": "email"
+         },
+         "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+         }
+        },
+        "required": [
+         "amount"
+        ],
+        "additionalProperties": false
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/shipping-credits/topup": {
+   "post": {
+    "operationId": "postShippingCreditsTopup",
+    "summary": "Create a topup",
+    "tags": [
+     "shipping-credits"
+    ],
+    "parameters": [],
+    "x-forjio": {
+     "source": "src/routes/shipping-credits.ts:58",
+     "guards": [
+      "requireAuth"
+     ],
+     "body": "validated",
+     "bodySchema": "topupSchema"
+    },
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object",
+        "properties": {
+         "amount": {
+          "type": "integer",
+          "exclusiveMinimum": true,
+          "minimum": 0
+         },
+         "externalRef": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255
+         },
+         "memo": {
+          "type": "string",
+          "maxLength": 500
+         }
+        },
+        "required": [
+         "amount"
+        ],
+        "additionalProperties": false
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/shipping-credits/transactions": {
+   "get": {
+    "operationId": "getShippingCreditsTransactions",
+    "summary": "List transactions",
+    "tags": [
+     "shipping-credits"
+    ],
+    "parameters": [
+     {
+      "name": "limit",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "integer",
+       "minimum": 1,
+       "maximum": 200
+      }
+     },
+     {
+      "name": "cursor",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "x-forjio": {
+     "source": "src/routes/shipping-credits.ts:38",
+     "guards": [
+      "requireAuth"
+     ]
+    }
+   }
+  },
+  "/api/v1/shipping/areas": {
+   "get": {
+    "operationId": "getShippingAreas",
+    "summary": "List areas",
+    "tags": [
+     "shipping"
+    ],
+    "parameters": [
+     {
+      "name": "q",
+      "in": "query",
+      "required": false,
+      "schema": {}
+     }
+    ],
+    "x-forjio": {
+     "source": "src/routes/shipping.ts:299",
+     "guards": [
+      "requireAuth"
+     ]
+    }
+   }
+  },
+  "/api/v1/shipping/config": {
+   "get": {
+    "operationId": "getShippingConfig",
+    "summary": "List config",
+    "tags": [
+     "shipping"
+    ],
+    "parameters": [],
+    "x-forjio": {
+     "source": "src/routes/shipping.ts:569",
+     "guards": [
+      "requireAuth"
+     ]
+    }
+   },
+   "put": {
+    "operationId": "putShippingConfig",
+    "summary": "Set config",
+    "tags": [
+     "shipping"
+    ],
+    "parameters": [],
+    "x-forjio": {
+     "source": "src/routes/shipping.ts:587",
+     "guards": [
+      "requireAuth"
+     ],
+     "body": "validated",
+     "bodySchema": "configSchema"
+    },
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object",
+        "properties": {
+         "apiKey": {
+          "type": "string",
+          "nullable": true
+         },
+         "defaultOriginId": {
+          "type": "string",
+          "nullable": true
+         },
+         "enabledCouriers": {
+          "type": "array",
+          "items": {
+           "type": "string"
+          }
+         },
+         "defaultCourier": {
+          "type": "string",
+          "nullable": true
+         },
+         "active": {
+          "type": "boolean"
+         }
+        },
+        "additionalProperties": false
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/shipping/couriers": {
+   "get": {
+    "operationId": "getShippingCouriers",
+    "summary": "In Fulkruma we still gate this behind requireAuth: the dashboard always has a session, and we want per-merchant API key resolution.",
+    "description": "In Fulkruma we still gate this behind requireAuth: the dashboard always\nhas a session, and we want per-merchant API key resolution.",
+    "tags": [
+     "shipping"
+    ],
+    "parameters": [],
+    "x-forjio": {
+     "source": "src/routes/shipping.ts:287",
+     "guards": [
+      "requireAuth"
+     ]
+    }
+   }
+  },
+  "/api/v1/shipping/origin": {
+   "get": {
+    "operationId": "getShippingOrigin",
+    "summary": "List origin",
+    "tags": [
+     "shipping"
+    ],
+    "parameters": [],
+    "x-forjio": {
+     "source": "src/routes/shipping.ts:105",
+     "guards": [
+      "requireAuth"
+     ]
+    }
+   },
+   "patch": {
+    "operationId": "patchShippingOrigin",
+    "summary": "Update origin",
+    "tags": [
+     "shipping"
+    ],
+    "parameters": [],
+    "x-forjio": {
+     "source": "src/routes/shipping.ts:140",
+     "guards": [
+      "requireAuth"
+     ],
+     "body": "validated",
+     "bodySchema": "originSchema"
+    },
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object",
+        "properties": {
+         "address": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+         },
+         "province": {
+          "type": "string",
+          "maxLength": 100,
+          "nullable": true
+         },
+         "city": {
+          "type": "string",
+          "maxLength": 100,
+          "nullable": true
+         },
+         "district": {
+          "type": "string",
+          "maxLength": 100,
+          "nullable": true
+         },
+         "village": {
+          "type": "string",
+          "maxLength": 100,
+          "nullable": true
+         },
+         "postal": {
+          "type": "string",
+          "maxLength": 20,
+          "nullable": true
+         },
+         "areaId": {
+          "type": "string",
+          "maxLength": 100,
+          "nullable": true
+         },
+         "lat": {
+          "type": "number",
+          "nullable": true
+         },
+         "lng": {
+          "type": "number",
+          "nullable": true
+         },
+         "note": {
+          "type": "string",
+          "maxLength": 500,
+          "nullable": true
+         },
+         "contactName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+         },
+         "contactPhone": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 30
+         },
+         "couriers": {
+          "type": "array",
+          "items": {
+           "type": "string"
+          }
+         }
+        },
+        "required": [
+         "address",
+         "contactName",
+         "contactPhone"
+        ],
+        "additionalProperties": false
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/shipping/rates": {
+   "post": {
+    "operationId": "postShippingRates",
+    "summary": "Create a rate",
+    "tags": [
+     "shipping"
+    ],
+    "parameters": [],
+    "x-forjio": {
+     "source": "src/routes/shipping.ts:312",
+     "guards": [
+      "requireAuth"
+     ],
+     "body": "validated",
+     "bodySchema": "rateQuoteSchema"
+    },
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object",
+        "properties": {
+         "destination": {
+          "type": "object",
+          "properties": {
+           "contactName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+           },
+           "contactPhone": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 30
+           },
+           "email": {
+            "type": "string",
+            "format": "email"
+           },
+           "address": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+           },
+           "note": {
+            "type": "string",
+            "maxLength": 500
+           },
+           "postalCode": {
+            "type": "string",
+            "maxLength": 20
+           },
+           "areaId": {
+            "type": "string"
+           },
+           "lat": {
+            "type": "number"
+           },
+           "lng": {
+            "type": "number"
+           }
+          },
+          "required": [
+           "contactName",
+           "contactPhone",
+           "address"
+          ],
+          "additionalProperties": false
+         },
+         "items": {
+          "type": "array",
+          "items": {
+           "type": "object",
+           "properties": {
+            "name": {
+             "type": "string",
+             "minLength": 1,
+             "maxLength": 200
+            },
+            "description": {
+             "type": "string"
+            },
+            "category": {
+             "type": "string"
+            },
+            "value": {
+             "type": "integer",
+             "minimum": 0
+            },
+            "weight": {
+             "type": "integer",
+             "minimum": 1
+            },
+            "length": {
+             "type": "integer",
+             "exclusiveMinimum": true,
+             "minimum": 0
+            },
+            "width": {
+             "type": "integer",
+             "exclusiveMinimum": true,
+             "minimum": 0
+            },
+            "height": {
+             "type": "integer",
+             "exclusiveMinimum": true,
+             "minimum": 0
+            },
+            "quantity": {
+             "type": "integer",
+             "minimum": 1
+            },
+            "productId": {
+             "type": "string"
+            }
+           },
+           "required": [
+            "name",
+            "value",
+            "weight",
+            "quantity"
+           ],
+           "additionalProperties": false
+          },
+          "minItems": 1
+         },
+         "insurance": {
+          "type": "boolean"
+         }
+        },
+        "required": [
+         "destination",
+         "items"
+        ],
+        "additionalProperties": false
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/shipping/shipments": {
+   "get": {
+    "operationId": "getShippingShipments",
+    "summary": "List shipments",
+    "tags": [
+     "shipping"
+    ],
+    "parameters": [
+     {
+      "name": "cursor",
+      "in": "query",
+      "required": false,
+      "schema": {}
+     },
+     {
+      "name": "limit",
+      "in": "query",
+      "required": false,
+      "schema": {}
+     },
+     {
+      "name": "status",
+      "in": "query",
+      "required": false,
+      "schema": {}
+     }
+    ],
+    "x-forjio": {
+     "source": "src/routes/shipping.ts:341",
+     "guards": [
+      "requireAuth"
+     ]
+    }
+   }
+  },
+  "/api/v1/shipping/shipments/{id}": {
+   "get": {
+    "operationId": "getShippingShipmentsId",
+    "summary": "Get a shipment",
+    "tags": [
+     "shipping"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "x-forjio": {
+     "source": "src/routes/shipping.ts:383",
+     "guards": [
+      "requireAuth"
+     ]
+    }
+   }
+  },
+  "/api/v1/shipping/shipments/{id}/cancel": {
+   "post": {
+    "operationId": "postShippingShipmentsIdCancel",
+    "summary": "Legacy namespace.",
+    "description": "Legacy namespace. Same cancelShipment() call as /shipments/:id/cancel,\nso both paths refund the shipping credit and emit the same events.",
+    "tags": [
+     "shipping"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "x-forjio": {
+     "source": "src/routes/shipping.ts:403",
+     "guards": [
+      "requireAuth"
+     ],
+     "body": "read-unvalidated"
+    },
+    "requestBody": {
+     "required": false,
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object",
+        "properties": {
+         "reason": {}
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/shipping/shipments/{id}/label": {
+   "get": {
+    "operationId": "getShippingShipmentsIdLabel",
+    "summary": "Legacy shipping namespace.",
+    "description": "Legacy shipping namespace. Keep it functional, but generate the same\nFulkruma-owned PDF as the canonical /shipments/:id/label route.",
+    "tags": [
+     "shipping"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     },
+     {
+      "name": "size",
+      "in": "query",
+      "required": false,
+      "schema": {}
+     }
+    ],
+    "x-forjio": {
+     "source": "src/routes/shipping.ts:458",
+     "guards": [
+      "requireAuth"
+     ]
+    }
+   }
+  },
+  "/api/v1/shipping/shipments/{id}/rebook": {
+   "post": {
+    "operationId": "postShippingShipmentsIdRebook",
+    "summary": "Legacy-namespace twin of /shipments/:id/rebook.",
+    "description": "Legacy-namespace twin of /shipments/:id/rebook.",
+    "tags": [
+     "shipping"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "x-forjio": {
+     "source": "src/routes/shipping.ts:431",
+     "guards": [
+      "requireAuth"
+     ],
+     "body": "validated",
+     "bodySchema": "rebookSchema"
+    },
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object",
+        "properties": {
+         "courierCode": {
+          "type": "string",
+          "minLength": 1
+         },
+         "courierServiceCode": {
+          "type": "string",
+          "minLength": 1
+         },
+         "courierType": {
+          "type": "string",
+          "minLength": 1
+         },
+         "price": {
+          "type": "integer",
+          "minimum": 0
+         },
+         "insured": {
+          "type": "boolean"
+         },
+         "insurance": {
+          "type": "integer",
+          "minimum": 0
+         }
+        },
+        "additionalProperties": false
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/shipping/track/{waybillId}": {
+   "get": {
+    "operationId": "getShippingTrackWaybillId",
+    "summary": "─── GET /shipping/track/:waybillId (public — gated by requireAuth in Fulkruma) ─",
+    "description": "─── GET /shipping/track/:waybillId (public — gated by requireAuth in Fulkruma) ─",
+    "tags": [
+     "shipping"
+    ],
+    "parameters": [
+     {
+      "name": "waybillId",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     },
+     {
+      "name": "courier",
+      "in": "query",
+      "required": false,
+      "schema": {}
+     }
+    ],
+    "x-forjio": {
+     "source": "src/routes/shipping.ts:495",
+     "guards": [
+      "requireAuth"
+     ]
+    }
+   }
+  },
+  "/api/v1/stats/overview": {
+   "get": {
+    "operationId": "getStatsOverview",
+    "summary": "Powers the /dashboard overview tiles.",
+    "description": "Powers the /dashboard overview tiles.",
+    "tags": [
+     "stats"
+    ],
+    "parameters": [],
+    "x-forjio": {
+     "source": "src/routes/stats.ts:11",
+     "guards": [
+      "requireAuth"
+     ]
+    }
+   }
+  },
+  "/api/v1/stock/adjust": {
+   "post": {
+    "operationId": "postStockAdjust",
+    "summary": "Create an adjust",
+    "tags": [
+     "stock"
+    ],
+    "parameters": [],
+    "x-forjio": {
+     "source": "src/routes/stock.ts:70",
+     "guards": [
+      "requireAuth"
+     ],
+     "body": "validated",
+     "bodySchema": "adjustSchema"
+    },
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object",
+        "properties": {
+         "variantId": {
+          "type": "string",
+          "minLength": 1
+         },
+         "warehouseId": {
+          "type": "string",
+          "minLength": 1
+         },
+         "delta": {
+          "type": "integer"
+         },
+         "reason": {
+          "type": "string",
+          "enum": [
+           "manual_adjust",
+           "initial_stock",
+           "transfer_in",
+           "transfer_out",
+           "damaged",
+           "returned_to_supplier",
+           "refund_restock",
+           "import"
+          ]
+         },
+         "note": {
+          "type": "string"
+         }
+        },
+        "required": [
+         "variantId",
+         "warehouseId",
+         "delta",
+         "reason"
+        ],
+        "additionalProperties": false
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/stock/levels": {
+   "get": {
+    "operationId": "getStockLevels",
+    "summary": "List levels",
+    "tags": [
+     "stock"
+    ],
+    "parameters": [
+     {
+      "name": "variant_id",
+      "in": "query",
+      "required": false,
+      "schema": {}
+     }
+    ],
+    "x-forjio": {
+     "source": "src/routes/stock.ts:28",
+     "guards": [
+      "requireAuth"
+     ]
+    }
+   }
+  },
+  "/api/v1/stock/movements": {
+   "get": {
+    "operationId": "getStockMovements",
+    "summary": "List movements",
+    "tags": [
+     "stock"
+    ],
+    "parameters": [
+     {
+      "name": "variant_id",
+      "in": "query",
+      "required": false,
+      "schema": {}
+     }
+    ],
+    "x-forjio": {
+     "source": "src/routes/stock.ts:55",
+     "guards": [
+      "requireAuth"
+     ]
+    }
+   }
+  },
+  "/api/v1/stock/reservations": {
+   "get": {
+    "operationId": "getStockReservations",
+    "summary": "List reservations",
+    "tags": [
+     "stock"
+    ],
+    "parameters": [],
+    "x-forjio": {
+     "source": "src/routes/stock.ts:44",
+     "guards": [
+      "requireAuth"
+     ]
+    }
+   }
+  },
+  "/api/v1/warehouses": {
+   "get": {
+    "operationId": "getWarehouses",
+    "summary": "List warehouses",
+    "tags": [
+     "warehouses"
+    ],
+    "parameters": [],
+    "x-forjio": {
+     "source": "src/routes/warehouses.ts:24",
+     "guards": [
+      "requireAuth"
+     ]
+    }
+   },
+   "post": {
+    "operationId": "postWarehouses",
+    "summary": "Create a warehous",
+    "tags": [
+     "warehouses"
+    ],
+    "parameters": [],
+    "x-forjio": {
+     "source": "src/routes/warehouses.ts:34",
+     "guards": [
+      "requireAuth"
+     ],
+     "body": "validated",
+     "bodySchema": "createSchema"
+    },
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object",
+        "properties": {
+         "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+         },
+         "address": {
+          "type": "string",
+          "nullable": true
+         },
+         "city": {
+          "type": "string",
+          "nullable": true
+         },
+         "postal": {
+          "type": "string",
+          "nullable": true
+         },
+         "lat": {
+          "type": "number",
+          "nullable": true
+         },
+         "lng": {
+          "type": "number",
+          "nullable": true
+         },
+         "phone": {
+          "type": "string",
+          "nullable": true
+         },
+         "isDefault": {
+          "type": "boolean"
+         }
+        },
+        "required": [
+         "name"
+        ],
+        "additionalProperties": false
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/warehouses/{id}": {
+   "patch": {
+    "operationId": "patchWarehousesId",
+    "summary": "Update a warehous",
+    "tags": [
+     "warehouses"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "x-forjio": {
+     "source": "src/routes/warehouses.ts:49",
+     "guards": [
+      "requireAuth"
+     ],
+     "body": "validated",
+     "bodySchema": "createSchema.partial()"
+    },
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object",
+        "properties": {
+         "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+         },
+         "address": {
+          "type": "string",
+          "nullable": true
+         },
+         "city": {
+          "type": "string",
+          "nullable": true
+         },
+         "postal": {
+          "type": "string",
+          "nullable": true
+         },
+         "lat": {
+          "type": "number",
+          "nullable": true
+         },
+         "lng": {
+          "type": "number",
+          "nullable": true
+         },
+         "phone": {
+          "type": "string",
+          "nullable": true
+         },
+         "isDefault": {
+          "type": "boolean"
+         }
+        },
+        "additionalProperties": false
+       }
+      }
+     }
+    }
+   },
+   "delete": {
+    "operationId": "deleteWarehousesId",
+    "summary": "Delete a warehous",
+    "tags": [
+     "warehouses"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "x-forjio": {
+     "source": "src/routes/warehouses.ts:62",
+     "guards": [
+      "requireAuth"
+     ]
+    }
+   }
+  },
+  "/api/v1/webhooks/endpoints": {
+   "get": {
+    "operationId": "getWebhooksEndpoints",
+    "summary": "List endpoints",
+    "tags": [
+     "webhooks"
+    ],
+    "parameters": [],
+    "x-forjio": {
+     "source": "src/routes/webhooks.ts:18",
+     "guards": [
+      "requireAuth"
+     ]
+    }
+   },
+   "post": {
+    "operationId": "postWebhooksEndpoints",
+    "summary": "Create an endpoint",
+    "tags": [
+     "webhooks"
+    ],
+    "parameters": [],
+    "x-forjio": {
+     "source": "src/routes/webhooks.ts:34",
+     "guards": [
+      "requireAuth"
+     ],
+     "body": "validated",
+     "bodySchema": "createSchema"
+    },
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object",
+        "properties": {
+         "url": {
+          "type": "string",
+          "format": "uri"
+         },
+         "events": {
+          "type": "array",
+          "items": {
+           "type": "string",
+           "minLength": 1
+          },
+          "minItems": 1,
+          "default": [
+           "*"
+          ]
+         },
+         "description": {
+          "type": "string"
+         }
+        },
+        "required": [
+         "url"
+        ],
+        "additionalProperties": false
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/webhooks/endpoints/{id}": {
+   "patch": {
+    "operationId": "patchWebhooksEndpointsId",
+    "summary": "Update an endpoint",
+    "tags": [
+     "webhooks"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "x-forjio": {
+     "source": "src/routes/webhooks.ts:55",
+     "guards": [
+      "requireAuth"
+     ],
+     "body": "read-unknown"
+    },
+    "requestBody": {
+     "required": false,
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object",
+        "properties": {}
+       }
+      }
+     }
+    }
+   },
+   "delete": {
+    "operationId": "deleteWebhooksEndpointsId",
+    "summary": "Delete an endpoint",
+    "tags": [
+     "webhooks"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "x-forjio": {
+     "source": "src/routes/webhooks.ts:74",
+     "guards": [
+      "requireAuth"
+     ]
+    }
+   }
+  },
+  "/api/v1/webhooks/events": {
+   "get": {
+    "operationId": "getWebhooksEvents",
+    "summary": "List events",
+    "tags": [
+     "webhooks"
+    ],
+    "parameters": [],
+    "x-forjio": {
+     "source": "src/routes/webhooks.ts:90",
+     "guards": [
+      "requireAuth"
+     ]
+    }
+   }
+  },
+  "/api/v1/webhooks/plugipay": {
+   "post": {
+    "operationId": "postWebhooksPlugipay",
+    "summary": "Create a plugipay",
+    "tags": [
+     "webhooks"
+    ],
+    "parameters": [],
+    "x-forjio": {
+     "source": "src/routes/plugipay-webhooks.ts:45",
+     "guards": [
+      "adminGuard",
+      "express.raw"
+     ],
+     "body": "read-unknown"
+    },
+    "requestBody": {
+     "required": false,
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object",
+        "properties": {}
+       }
+      }
+     }
+    }
+   }
+  }
+ },
+ "x-apigen": {
+  "routes": 118,
+  "matched": 92,
+  "bodies": {
+   "validated": 26,
+   "fieldsOnly": 2,
+   "takesBody": 32
+  }
+ }
+}

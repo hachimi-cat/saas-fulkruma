@@ -26,6 +26,7 @@ import { integrationsCommand } from './commands/integrations.js';
 import { statsCommand } from './commands/stats.js';
 import { webhooksCommand } from './commands/webhooks.js';
 import { auditLogCommand } from './commands/audit-log.js';
+import { buildApiCommand } from './commands/api.generated.js';
 
 const brand = process.env['FORJIO_BRAND'] ?? 'fulkruma';
 
@@ -33,7 +34,7 @@ export function buildProgram(): Command {
   const program = new Command()
     .name(brand)
     .description(`CLI for ${brand} — part of the Forjio commerce suite.`)
-    .version('0.3.0')
+    .version('0.3.1')
     .option('--json', 'emit JSON instead of human-readable tables')
     .option('--profile <name>', 'credential profile name (default: "default")')
     .option('--base-url <url>', 'override the Fulkruma API base URL')
@@ -54,6 +55,7 @@ export function buildProgram(): Command {
   program.addCommand(statsCommand);
   program.addCommand(webhooksCommand);
   program.addCommand(auditLogCommand);
+  program.addCommand(buildApiCommand());
 
   return program;
 }

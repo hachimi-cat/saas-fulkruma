@@ -11,3 +11,6 @@ coverage/
 playwright-report/
 test-results/
 tsconfig.tsbuildinfo
+
+# apigen scratch copy (scripts/apigen.sh)
+backend/.apigen/

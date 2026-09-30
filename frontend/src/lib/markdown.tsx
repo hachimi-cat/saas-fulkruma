@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { marked } from 'marked';
 import matter from 'gray-matter';
+import { REFERENCE_NAV } from './docs-reference.generated';
 
 const COPY_ROOT = (() => {
   const candidates = [
@@ -119,6 +120,8 @@ export const DOC_NAV: DocMeta[] = [
   { slug: 'sdk/go/resources/audit-log', title: 'Audit log', group: 'Go SDK', href: '/docs/sdk/go/resources/audit-log' },
   { slug: 'sdk/go/resources/billing', title: 'Billing', group: 'Go SDK', href: '/docs/sdk/go/resources/billing' },
   { slug: 'sdk/go/resources/integrations', title: 'Integrations', group: 'Go SDK', href: '/docs/sdk/go/resources/integrations' },
+  // Every route, generated from the API spec (scripts/apigen.sh)
+  ...REFERENCE_NAV,
 ];
 
 export function docsGroups(): Array<{ heading: string; items: DocMeta[] }> {

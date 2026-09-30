@@ -86,6 +86,15 @@ sdk-cli:
     - (
     - "  python3 scripts/check-cli-sdk-dep.py"
     - )
+apigen-check:
+  stage: test
+  image: node:22-bookworm
+  script:
+    - "# -- The API spec (backend/openapi.json) is made from the backend's own code;"
+    - "# -- the API reference docs, the CLI's `fulkruma api` commands and the SDKs'"
+    - "# -- client.api are made from the spec. Fail when any of them is out of date:"
+    - "# -- run ./scripts/apigen.sh and commit."
+    - ./scripts/apigen.sh --check
 build-staging:
   stage: build
   image: node:22-bookworm
@@ -93,6 +102,7 @@ build-staging:
     - lint
     - test
     - sdk-cli
+    - apigen-check
   timeout: 30m
   artifacts:
     paths:
@@ -122,6 +132,7 @@ build-production:
     - lint
     - test
     - sdk-cli
+    - apigen-check
   timeout: 30m
   artifacts:
     paths:
