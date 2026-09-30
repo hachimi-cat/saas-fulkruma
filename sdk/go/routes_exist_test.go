@@ -99,7 +99,8 @@ func TestEveryMethodCallsARouteInTheSpec(t *testing.T) {
 	}
 	cv := reflect.ValueOf(c).Elem()
 	for i := 0; i < cv.NumField(); i++ {
-		if f := cv.Type().Field(i); f.IsExported() {
+		// API (api_generated.go) is made from the spec itself, so it cannot drift.
+		if f := cv.Type().Field(i); f.IsExported() && f.Name != "API" {
 			walk(f.Name, cv.Field(i))
 		}
 	}

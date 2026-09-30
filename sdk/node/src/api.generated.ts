@@ -17,7 +17,7 @@ export class GeneratedApi {
   }
 
   /** Create an address (POST /api/v1/addresses) */
-  addressesCreate(input: { "customerId": string; "label": string; "contactName": string; "contactPhone": string; "email"?: string; "address": string; "note"?: string; "postalCode"?: string; "areaId"?: string; "lat"?: number; "lng"?: number; "isDefault"?: boolean }): Promise<unknown> {
+  addressesCreate(input: { "customerId": string; "label": string; "contactName": string; "contactPhone": string; "email"?: string; "address": string; "note"?: string; "postalCode"?: string; "areaId"?: string; "lat"?: number; "lng"?: number; "isDefault"?: boolean; [field: string]: unknown }): Promise<unknown> {
     const all: Record<string, unknown> = { ...(input ?? {}) };
     const query: Record<string, unknown> = {};
     return this.call("POST", `/api/v1/addresses`, query, all);
@@ -37,14 +37,14 @@ export class GeneratedApi {
   }
 
   /** Update an address (PATCH /api/v1/addresses/{id}) */
-  addressesUpdate(id: string, input?: { "label"?: string; "contactName"?: string; "contactPhone"?: string; "email"?: string; "address"?: string; "note"?: string; "postalCode"?: string; "areaId"?: string; "lat"?: number; "lng"?: number; "isDefault"?: boolean }): Promise<unknown> {
+  addressesUpdate(id: string, input?: { "label"?: string; "contactName"?: string; "contactPhone"?: string; "email"?: string; "address"?: string; "note"?: string; "postalCode"?: string; "areaId"?: string; "lat"?: number; "lng"?: number; "isDefault"?: boolean; [field: string]: unknown }): Promise<unknown> {
     const all: Record<string, unknown> = { ...(input ?? {}) };
     const query: Record<string, unknown> = {};
     return this.call("PATCH", `/api/v1/addresses/${encodeURIComponent(id)}`, query, all);
   }
 
   /** Create an api key (POST /api/v1/api-keys) */
-  apiKeysCreate(input: { "name": string; "scopes"?: unknown[] }): Promise<unknown> {
+  apiKeysCreate(input: { "name": string; "scopes"?: unknown[]; [field: string]: unknown }): Promise<unknown> {
     const all: Record<string, unknown> = { ...(input ?? {}) };
     const query: Record<string, unknown> = {};
     return this.call("POST", `/api/v1/api-keys`, query, all);
@@ -71,12 +71,14 @@ export class GeneratedApi {
   }
 
   /** Create a cancel (POST /api/v1/billing/cancel) */
-  billingCancel(): Promise<unknown> {
-    return this.call("POST", `/api/v1/billing/cancel`, {}, undefined);
+  billingCancel(input?: { [field: string]: unknown }): Promise<unknown> {
+    const all: Record<string, unknown> = { ...(input ?? {}) };
+    const query: Record<string, unknown> = {};
+    return this.call("POST", `/api/v1/billing/cancel`, query, all);
   }
 
   /** Create a checkout (POST /api/v1/billing/checkout) */
-  billingCheckout(input: { "plan": "STARTER" | "GROWTH" | "SCALE"; "email"?: string; "name"?: string }): Promise<unknown> {
+  billingCheckout(input: { "plan": "STARTER" | "GROWTH" | "SCALE"; "email"?: string; "name"?: string; [field: string]: unknown }): Promise<unknown> {
     const all: Record<string, unknown> = { ...(input ?? {}) };
     const query: Record<string, unknown> = {};
     return this.call("POST", `/api/v1/billing/checkout`, query, all);
@@ -112,7 +114,7 @@ export class GeneratedApi {
   }
 
   /** Create a delivery (POST /api/v1/deliveries) */
-  deliveriesCreate(input: { "productId": string; "customerId": string; "checkoutSessionId": string; "maxDownloads"?: number; "expiresAt"?: string; "externalSource"?: string; "externalRef"?: string }): Promise<unknown> {
+  deliveriesCreate(input: { "productId": string; "customerId": string; "checkoutSessionId": string; "maxDownloads"?: number; "expiresAt"?: string; "externalSource"?: string; "externalRef"?: string; [field: string]: unknown }): Promise<unknown> {
     const all: Record<string, unknown> = { ...(input ?? {}) };
     const query: Record<string, unknown> = {};
     return this.call("POST", `/api/v1/deliveries`, query, all);
@@ -149,21 +151,21 @@ export class GeneratedApi {
   }
 
   /** /v1/licenses/activate is unauthenticated — buyers' apps call this with the license key directly. (POST /api/v1/licenses/activate) */
-  licensesActivate(input: { "key": string; "instanceId": string }): Promise<unknown> {
+  licensesActivate(input: { "key": string; "instanceId": string; [field: string]: unknown }): Promise<unknown> {
     const all: Record<string, unknown> = { ...(input ?? {}) };
     const query: Record<string, unknown> = {};
     return this.call("POST", `/api/v1/licenses/activate`, query, all);
   }
 
   /** Create a license (POST /api/v1/licenses) */
-  licensesCreate(input: { "productId": string; "customerId": string; "maxActivations"?: number; "expiresAt"?: string; "externalSource"?: string; "externalRef"?: string; "key"?: string }): Promise<unknown> {
+  licensesCreate(input: { "productId": string; "customerId": string; "maxActivations"?: number; "expiresAt"?: string; "externalSource"?: string; "externalRef"?: string; "key"?: string; [field: string]: unknown }): Promise<unknown> {
     const all: Record<string, unknown> = { ...(input ?? {}) };
     const query: Record<string, unknown> = {};
     return this.call("POST", `/api/v1/licenses`, query, all);
   }
 
   /** Release a previously-activated instance. (POST /api/v1/licenses/deactivate) */
-  licensesDeactivate(input: { "key": string; "instanceId": string }): Promise<unknown> {
+  licensesDeactivate(input: { "key": string; "instanceId": string; [field: string]: unknown }): Promise<unknown> {
     const all: Record<string, unknown> = { ...(input ?? {}) };
     const query: Record<string, unknown> = {};
     return this.call("POST", `/api/v1/licenses/deactivate`, query, all);
@@ -197,14 +199,14 @@ export class GeneratedApi {
   }
 
   /** Create a product (POST /api/v1/products) */
-  productsCreate(input: { "name": string; "sku"?: string; "description"?: string; "type"?: "physical" | "digital" | "license"; "weight"?: number; "length"?: number; "width"?: number; "height"?: number; "licenseEnabled"?: boolean; "maxActivations"?: number }): Promise<unknown> {
+  productsCreate(input: { "name": string; "sku"?: string; "description"?: string; "type"?: "physical" | "digital" | "license"; "weight"?: number; "length"?: number; "width"?: number; "height"?: number; "licenseEnabled"?: boolean; "maxActivations"?: number; [field: string]: unknown }): Promise<unknown> {
     const all: Record<string, unknown> = { ...(input ?? {}) };
     const query: Record<string, unknown> = {};
     return this.call("POST", `/api/v1/products`, query, all);
   }
 
   /** Variants a product (POST /api/v1/products/{id}/variants) */
-  productsCreateVariants(id: string, input: { "sku"?: string; "name": string; "priceCents"?: number; "costCents"?: number; "lowStockThreshold"?: number; "weight"?: number; "isDefault"?: boolean }): Promise<unknown> {
+  productsCreateVariants(id: string, input: { "sku"?: string; "name": string; "priceCents"?: number; "costCents"?: number; "lowStockThreshold"?: number; "weight"?: number; "isDefault"?: boolean; [field: string]: unknown }): Promise<unknown> {
     const all: Record<string, unknown> = { ...(input ?? {}) };
     const query: Record<string, unknown> = {};
     return this.call("POST", `/api/v1/products/${encodeURIComponent(id)}/variants`, query, all);
@@ -234,21 +236,21 @@ export class GeneratedApi {
   }
 
   /** Update a product (PATCH /api/v1/products/{id}) */
-  productsUpdate(id: string, input?: { "name"?: string; "sku"?: string; "description"?: string; "type"?: "physical" | "digital" | "license"; "weight"?: number; "length"?: number; "width"?: number; "height"?: number; "licenseEnabled"?: boolean; "maxActivations"?: number }): Promise<unknown> {
+  productsUpdate(id: string, input?: { "name"?: string; "sku"?: string; "description"?: string; "type"?: "physical" | "digital" | "license"; "weight"?: number; "length"?: number; "width"?: number; "height"?: number; "licenseEnabled"?: boolean; "maxActivations"?: number; [field: string]: unknown }): Promise<unknown> {
     const all: Record<string, unknown> = { ...(input ?? {}) };
     const query: Record<string, unknown> = {};
     return this.call("PATCH", `/api/v1/products/${encodeURIComponent(id)}`, query, all);
   }
 
   /** Update a variant (PATCH /api/v1/products/{id}/variants/{variantId}) */
-  productsUpdateVariants(id: string, variantId: string, input?: { "sku"?: string; "name"?: string; "priceCents"?: number; "costCents"?: number; "lowStockThreshold"?: number; "weight"?: number; "isDefault"?: boolean }): Promise<unknown> {
+  productsUpdateVariants(id: string, variantId: string, input?: { "sku"?: string; "name"?: string; "priceCents"?: number; "costCents"?: number; "lowStockThreshold"?: number; "weight"?: number; "isDefault"?: boolean; [field: string]: unknown }): Promise<unknown> {
     const all: Record<string, unknown> = { ...(input ?? {}) };
     const query: Record<string, unknown> = {};
     return this.call("PATCH", `/api/v1/products/${encodeURIComponent(id)}/variants/${encodeURIComponent(variantId)}`, query, all);
   }
 
   /** Cancel a booking the courier hasn't collected yet, and give back the shipping credit confirm-pickup consumed. (POST /api/v1/shipments/{id}/cancel) */
-  shipmentsCancel(id: string, input?: { "reason"?: unknown }): Promise<unknown> {
+  shipmentsCancel(id: string, input?: { "reason"?: unknown; [field: string]: unknown }): Promise<unknown> {
     const all: Record<string, unknown> = { ...(input ?? {}) };
     const query: Record<string, unknown> = {};
     return this.call("POST", `/api/v1/shipments/${encodeURIComponent(id)}/cancel`, query, all);
@@ -260,7 +262,7 @@ export class GeneratedApi {
   }
 
   /** Create a shipment (POST /api/v1/shipments) */
-  shipmentsCreate(input: { "productId"?: string; "checkoutSessionId"?: string; "customerId"?: string; "customerEmail"?: string; "courierCode": string; "courierServiceCode": string; "courierType": string; "price": number; "insurance"?: number; "insured"?: boolean; "origin": Record<string, unknown>; "destination": Record<string, unknown>; "items": unknown[]; "externalSource"?: string; "externalRef"?: string }): Promise<unknown> {
+  shipmentsCreate(input: { "productId"?: string; "checkoutSessionId"?: string; "customerId"?: string; "customerEmail"?: string; "courierCode": string; "courierServiceCode": string; "courierType": string; "price": number; "insurance"?: number; "insured"?: boolean; "origin": Record<string, unknown>; "destination": Record<string, unknown>; "items": unknown[]; "externalSource"?: string; "externalRef"?: string; [field: string]: unknown }): Promise<unknown> {
     const all: Record<string, unknown> = { ...(input ?? {}) };
     const query: Record<string, unknown> = {};
     return this.call("POST", `/api/v1/shipments`, query, all);
@@ -297,7 +299,7 @@ export class GeneratedApi {
   }
 
   /** Rebook a shipment (POST /api/v1/shipments/{id}/rebook) */
-  shipmentsRebook(id: string, input?: { "courierCode"?: string; "courierServiceCode"?: string; "courierType"?: string; "price"?: number; "insured"?: boolean; "insurance"?: number }): Promise<unknown> {
+  shipmentsRebook(id: string, input?: { "courierCode"?: string; "courierServiceCode"?: string; "courierType"?: string; "price"?: number; "insured"?: boolean; "insurance"?: number; [field: string]: unknown }): Promise<unknown> {
     const all: Record<string, unknown> = { ...(input ?? {}) };
     const query: Record<string, unknown> = {};
     return this.call("POST", `/api/v1/shipments/${encodeURIComponent(id)}/rebook`, query, all);
@@ -332,14 +334,14 @@ export class GeneratedApi {
   }
 
   /** Create a rate (POST /api/v1/shipping/rates) */
-  shippingRates(input: { "destination": Record<string, unknown>; "items": unknown[]; "insurance"?: boolean }): Promise<unknown> {
+  shippingRates(input: { "destination": Record<string, unknown>; "items": unknown[]; "insurance"?: boolean; [field: string]: unknown }): Promise<unknown> {
     const all: Record<string, unknown> = { ...(input ?? {}) };
     const query: Record<string, unknown> = {};
     return this.call("POST", `/api/v1/shipping/rates`, query, all);
   }
 
   /** Set config (PUT /api/v1/shipping/config) */
-  shippingSetConfig(input?: { "apiKey"?: string; "defaultOriginId"?: string; "enabledCouriers"?: unknown[]; "defaultCourier"?: string; "active"?: boolean }): Promise<unknown> {
+  shippingSetConfig(input?: { "apiKey"?: string; "defaultOriginId"?: string; "enabledCouriers"?: unknown[]; "defaultCourier"?: string; "active"?: boolean; [field: string]: unknown }): Promise<unknown> {
     const all: Record<string, unknown> = { ...(input ?? {}) };
     const query: Record<string, unknown> = {};
     return this.call("PUT", `/api/v1/shipping/config`, query, all);
@@ -361,7 +363,7 @@ export class GeneratedApi {
   }
 
   /** Legacy namespace. (POST /api/v1/shipping/shipments/{id}/cancel) */
-  shippingShipmentsCancel(id: string, input?: { "reason"?: unknown }): Promise<unknown> {
+  shippingShipmentsCancel(id: string, input?: { "reason"?: unknown; [field: string]: unknown }): Promise<unknown> {
     const all: Record<string, unknown> = { ...(input ?? {}) };
     const query: Record<string, unknown> = {};
     return this.call("POST", `/api/v1/shipping/shipments/${encodeURIComponent(id)}/cancel`, query, all);
@@ -376,7 +378,7 @@ export class GeneratedApi {
   }
 
   /** Legacy-namespace twin of /shipments/:id/rebook. (POST /api/v1/shipping/shipments/{id}/rebook) */
-  shippingShipmentsRebook(id: string, input?: { "courierCode"?: string; "courierServiceCode"?: string; "courierType"?: string; "price"?: number; "insured"?: boolean; "insurance"?: number }): Promise<unknown> {
+  shippingShipmentsRebook(id: string, input?: { "courierCode"?: string; "courierServiceCode"?: string; "courierType"?: string; "price"?: number; "insured"?: boolean; "insurance"?: number; [field: string]: unknown }): Promise<unknown> {
     const all: Record<string, unknown> = { ...(input ?? {}) };
     const query: Record<string, unknown> = {};
     return this.call("POST", `/api/v1/shipping/shipments/${encodeURIComponent(id)}/rebook`, query, all);
@@ -391,21 +393,21 @@ export class GeneratedApi {
   }
 
   /** Update origin (PATCH /api/v1/shipping/origin) */
-  shippingUpdateOrigin(input: { "address": string; "province"?: string; "city"?: string; "district"?: string; "village"?: string; "postal"?: string; "areaId"?: string; "lat"?: number; "lng"?: number; "note"?: string; "contactName": string; "contactPhone": string; "couriers"?: unknown[] }): Promise<unknown> {
+  shippingUpdateOrigin(input: { "address": string; "province"?: string; "city"?: string; "district"?: string; "village"?: string; "postal"?: string; "areaId"?: string; "lat"?: number; "lng"?: number; "note"?: string; "contactName": string; "contactPhone": string; "couriers"?: unknown[]; [field: string]: unknown }): Promise<unknown> {
     const all: Record<string, unknown> = { ...(input ?? {}) };
     const query: Record<string, unknown> = {};
     return this.call("PATCH", `/api/v1/shipping/origin`, query, all);
   }
 
   /** Create an adjust (POST /api/v1/shipping-credits/adjust) */
-  shippingCreditsAdjust(input: { "amount": number; "kind": "manual_adjustment" | "shipment_refund"; "shipmentId"?: string; "externalRef"?: string; "memo"?: string }): Promise<unknown> {
+  shippingCreditsAdjust(input: { "amount": number; "kind": "manual_adjustment" | "shipment_refund"; "shipmentId"?: string; "externalRef"?: string; "memo"?: string; [field: string]: unknown }): Promise<unknown> {
     const all: Record<string, unknown> = { ...(input ?? {}) };
     const query: Record<string, unknown> = {};
     return this.call("POST", `/api/v1/shipping-credits/adjust`, query, all);
   }
 
   /** Create a checkout (POST /api/v1/shipping-credits/checkout) */
-  shippingCreditsCheckout(input: { "amount": number; "email"?: string; "name"?: string }): Promise<unknown> {
+  shippingCreditsCheckout(input: { "amount": number; "email"?: string; "name"?: string; [field: string]: unknown }): Promise<unknown> {
     const all: Record<string, unknown> = { ...(input ?? {}) };
     const query: Record<string, unknown> = {};
     return this.call("POST", `/api/v1/shipping-credits/checkout`, query, all);
@@ -417,7 +419,7 @@ export class GeneratedApi {
   }
 
   /** Create a topup (POST /api/v1/shipping-credits/topup) */
-  shippingCreditsTopup(input: { "amount": number; "externalRef"?: string; "memo"?: string }): Promise<unknown> {
+  shippingCreditsTopup(input: { "amount": number; "externalRef"?: string; "memo"?: string; [field: string]: unknown }): Promise<unknown> {
     const all: Record<string, unknown> = { ...(input ?? {}) };
     const query: Record<string, unknown> = {};
     return this.call("POST", `/api/v1/shipping-credits/topup`, query, all);
@@ -438,7 +440,7 @@ export class GeneratedApi {
   }
 
   /** Create an adjust (POST /api/v1/stock/adjust) */
-  stockAdjust(input: { "variantId": string; "warehouseId": string; "delta": number; "reason": "manual_adjust" | "initial_stock" | "transfer_in" | "transfer_out" | "damaged" | "returned_to_supplier" | "refund_restock" | "import"; "note"?: string }): Promise<unknown> {
+  stockAdjust(input: { "variantId": string; "warehouseId": string; "delta": number; "reason": "manual_adjust" | "initial_stock" | "transfer_in" | "transfer_out" | "damaged" | "returned_to_supplier" | "refund_restock" | "import"; "note"?: string; [field: string]: unknown }): Promise<unknown> {
     const all: Record<string, unknown> = { ...(input ?? {}) };
     const query: Record<string, unknown> = {};
     return this.call("POST", `/api/v1/stock/adjust`, query, all);
@@ -466,7 +468,7 @@ export class GeneratedApi {
   }
 
   /** Create a warehouse (POST /api/v1/warehouses) */
-  warehousesCreate(input: { "name": string; "address"?: string; "city"?: string; "postal"?: string; "lat"?: number; "lng"?: number; "phone"?: string; "isDefault"?: boolean }): Promise<unknown> {
+  warehousesCreate(input: { "name": string; "address"?: string; "city"?: string; "postal"?: string; "lat"?: number; "lng"?: number; "phone"?: string; "isDefault"?: boolean; [field: string]: unknown }): Promise<unknown> {
     const all: Record<string, unknown> = { ...(input ?? {}) };
     const query: Record<string, unknown> = {};
     return this.call("POST", `/api/v1/warehouses`, query, all);
@@ -483,14 +485,14 @@ export class GeneratedApi {
   }
 
   /** Update a warehouse (PATCH /api/v1/warehouses/{id}) */
-  warehousesUpdate(id: string, input?: { "name"?: string; "address"?: string; "city"?: string; "postal"?: string; "lat"?: number; "lng"?: number; "phone"?: string; "isDefault"?: boolean }): Promise<unknown> {
+  warehousesUpdate(id: string, input?: { "name"?: string; "address"?: string; "city"?: string; "postal"?: string; "lat"?: number; "lng"?: number; "phone"?: string; "isDefault"?: boolean; [field: string]: unknown }): Promise<unknown> {
     const all: Record<string, unknown> = { ...(input ?? {}) };
     const query: Record<string, unknown> = {};
     return this.call("PATCH", `/api/v1/warehouses/${encodeURIComponent(id)}`, query, all);
   }
 
   /** Create an endpoint (POST /api/v1/webhooks/endpoints) */
-  webhooksCreateEndpoints(input: { "url": string; "events"?: unknown[]; "description"?: string }): Promise<unknown> {
+  webhooksCreateEndpoints(input: { "url": string; "events"?: unknown[]; "description"?: string; [field: string]: unknown }): Promise<unknown> {
     const all: Record<string, unknown> = { ...(input ?? {}) };
     const query: Record<string, unknown> = {};
     return this.call("POST", `/api/v1/webhooks/endpoints`, query, all);
@@ -512,7 +514,9 @@ export class GeneratedApi {
   }
 
   /** Update an endpoint (PATCH /api/v1/webhooks/endpoints/{id}) */
-  webhooksUpdateEndpoints(id: string): Promise<unknown> {
-    return this.call("PATCH", `/api/v1/webhooks/endpoints/${encodeURIComponent(id)}`, {}, undefined);
+  webhooksUpdateEndpoints(id: string, input?: { [field: string]: unknown }): Promise<unknown> {
+    const all: Record<string, unknown> = { ...(input ?? {}) };
+    const query: Record<string, unknown> = {};
+    return this.call("PATCH", `/api/v1/webhooks/endpoints/${encodeURIComponent(id)}`, query, all);
   }
 }
