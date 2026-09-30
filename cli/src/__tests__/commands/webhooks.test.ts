@@ -79,11 +79,12 @@ describe('webhooks', () => {
     fake.on('webhooks.listEvents', { events: [] });
     const s = silenceStdio();
     try {
-      await runCli(buildProgram, ['webhooks', 'events', 'list', '--type', 'shipment.created']);
+      await runCli(buildProgram, ['webhooks', 'events', 'list']);
     } finally {
       s.restore();
     }
     const call = fake.calls.find((c) => c.method === 'listEvents');
-    expect(call!.args[0]).toMatchObject({ type: 'shipment.created' });
+    // the server returns the 50 most recent events and takes no filters
+    expect(call!.args).toEqual([]);
   });
 });

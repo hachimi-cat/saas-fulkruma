@@ -17,12 +17,12 @@ apiKeysCommand
     const g = getGlobalOpts(cmd);
     try {
       const client = getClient(g);
-      const { keys } = await client.apiKeys.list();
+      const { apiKeys: keys } = await client.apiKeys.list();
       const columns: readonly Column<KeyRow>[] = [
         { header: 'ID', accessor: (k) => k['id'] as string },
         { header: 'Key ID', accessor: (k) => k['keyId'] as string },
-        { header: 'Description', accessor: (k) => k['description'] as string | undefined },
-        { header: 'Scope', accessor: (k) => k['scope'] as string | undefined },
+        { header: 'Name', accessor: (k) => k['name'] as string | undefined },
+        { header: 'Scopes', accessor: (k) => ((k['scopes'] as string[] | undefined) ?? []).join(',') },
         { header: 'Revoked', accessor: (k) => k['revokedAt'] as string | undefined },
         { header: 'Created', accessor: (k) => k['createdAt'] as string | undefined },
       ];
@@ -36,22 +36,23 @@ apiKeysCommand
 apiKeysCommand
   .command('create')
   .description('Issue a new API key')
-  .option('--description <text>', 'human-readable description')
-  .option('--scope <scope>', 'scope (defaults to merchant)')
-  .action(async (options: { description?: string; scope?: string }, cmd) => {
+  .requiredOption('--name <text>', 'a name for the key')
+  .option('--scopes <list>', 'comma-separated: read, write, admin (default: the server\'s)')
+  .action(async (options: { name: string; scopes?: string }, cmd) => {
     const g = getGlobalOpts(cmd);
     try {
       const client = getClient(g);
-      const { key } = await client.apiKeys.create({
-        description: options.description,
-        scope: options.scope,
-      });
+      const scopes = options.scopes
+        ? (options.scopes.split(',').map((x) => x.trim()).filter(Boolean) as Array<'read' | 'write' | 'admin'>)
+        : undefined;
+      const { apiKey, secret } = await client.apiKeys.create({ name: options.name, ...(scopes ? { scopes } : {}) });
+      const key: KeyRow = { ...apiKey, secret };
       const columns: readonly Column<KeyRow>[] = [
         { header: 'ID', accessor: (k) => k['id'] as string },
         { header: 'Key ID', accessor: (k) => k['keyId'] as string },
-        { header: 'Secret', accessor: (k) => k['secret'] as string | undefined },
-        { header: 'Description', accessor: (k) => k['description'] as string | undefined },
-        { header: 'Scope', accessor: (k) => k['scope'] as string | undefined },
+        { header: 'Secret (shown once)', accessor: (k) => k['secret'] as string | undefined },
+        { header: 'Name', accessor: (k) => k['name'] as string | undefined },
+        { header: 'Scopes', accessor: (k) => ((k['scopes'] as string[] | undefined) ?? []).join(',') },
       ];
       printResult(key, columns, formatOpts(g));
       process.exit(0);
@@ -69,7 +70,7 @@ apiKeysCommand
       const client = getClient(g);
       const result = await client.apiKeys.revoke(id);
       printResult(
-        { id, revoked: result.revoked },
+        { id, revoked: Boolean(result.apiKey?.revokedAt) },
         [
           { header: 'ID', accessor: (r) => r.id },
           { header: 'Revoked', accessor: (r) => r.revoked },

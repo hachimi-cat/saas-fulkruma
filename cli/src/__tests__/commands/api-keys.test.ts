@@ -17,7 +17,7 @@ afterEach(() => {
 
 describe('api-keys', () => {
   it('list calls apiKeys.list', async () => {
-    fake.on('apiKeys.list', { keys: [] });
+    fake.on('apiKeys.list', { apiKeys: [] });
     const s = silenceStdio();
     try {
       await runCli(buildProgram, ['api-keys', 'list']);
@@ -27,20 +27,20 @@ describe('api-keys', () => {
     expect(fake.calls.some((c) => c.group === 'apiKeys' && c.method === 'list')).toBe(true);
   });
 
-  it('create forwards description', async () => {
-    fake.on('apiKeys.create', { key: { id: 'k_1', keyId: 'AKIA', secret: 'x' } });
+  it('create sends the name and scopes the server takes', async () => {
+    fake.on('apiKeys.create', { apiKey: { id: 'k_1', keyId: 'AKIA', name: 'CI', scopes: ['read'] }, secret: 'x' });
     const s = silenceStdio();
     try {
-      await runCli(buildProgram, ['api-keys', 'create', '--description', 'CI']);
+      await runCli(buildProgram, ['api-keys', 'create', '--name', 'CI', '--scopes', 'read,write']);
     } finally {
       s.restore();
     }
     const call = fake.calls.find((c) => c.method === 'create');
-    expect(call!.args[0]).toMatchObject({ description: 'CI' });
+    expect(call!.args[0]).toEqual({ name: 'CI', scopes: ['read', 'write'] });
   });
 
   it('revoke <id> calls apiKeys.revoke', async () => {
-    fake.on('apiKeys.revoke', { revoked: true });
+    fake.on('apiKeys.revoke', { apiKey: { id: 'k_1', revokedAt: '2026-09-30T00:00:00Z' } });
     const s = silenceStdio();
     try {
       await runCli(buildProgram, ['api-keys', 'revoke', 'k_1']);

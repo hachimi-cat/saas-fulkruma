@@ -83,7 +83,7 @@ billingCommand
         printJson(result);
       } else {
         printResult(
-          result.invoices,
+          result.data,
           [
             { header: 'ID', accessor: (i) => i['id'] as string },
             { header: 'Status', accessor: (i) => i['status'] as string },
@@ -101,24 +101,32 @@ billingCommand
   });
 
 billingCommand
-  .command('checkout <planId>')
-  .description('Start a checkout flow for a plan')
-  .option('--success-url <url>', 'redirect URL on success')
-  .option('--cancel-url <url>', 'redirect URL on cancel')
-  .action(async (planId: string, options: { successUrl?: string; cancelUrl?: string }, cmd) => {
+  .command('checkout <plan>')
+  .description('Start a checkout for a plan: STARTER, GROWTH or SCALE')
+  .option('--email <email>', 'billing email (default: the account\'s)')
+  .option('--name <name>', 'billing name')
+  .option('--currency <currency>', 'IDR or USD')
+  .action(async (plan: string, options: { email?: string; name?: string; currency?: string }, cmd) => {
     const g = getGlobalOpts(cmd);
     try {
+      const upper = plan.toUpperCase();
+      if (!['STARTER', 'GROWTH', 'SCALE'].includes(upper)) throw new Error('plan must be STARTER, GROWTH or SCALE');
+      const currency = options.currency?.toUpperCase();
+      if (currency && currency !== 'IDR' && currency !== 'USD') throw new Error('--currency must be IDR or USD');
       const client = getClient(g);
       const result = await client.billing.checkout({
-        planId,
-        successUrl: options.successUrl,
-        cancelUrl: options.cancelUrl,
+        plan: upper as 'STARTER' | 'GROWTH' | 'SCALE',
+        ...(options.email ? { email: options.email } : {}),
+        ...(options.name ? { name: options.name } : {}),
+        ...(currency ? { currency: currency as 'IDR' | 'USD' } : {}),
       });
       printResult(
         result,
         [
-          { header: 'Session', accessor: (r) => r.sessionId },
-          { header: 'URL', accessor: (r) => r.url },
+          { header: 'Subscription', accessor: (r) => r.subscriptionId },
+          { header: 'Invoice', accessor: (r) => r.invoiceId },
+          { header: 'Checkout', accessor: (r) => r.checkoutSessionId },
+          { header: 'URL', accessor: (r) => r.checkoutUrl },
         ],
         formatOpts(g),
       );

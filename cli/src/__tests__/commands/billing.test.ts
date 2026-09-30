@@ -50,7 +50,7 @@ describe('billing', () => {
   });
 
   it('invoices calls billing.invoices', async () => {
-    fake.on('billing.invoices', { invoices: [] });
+    fake.on('billing.invoices', { data: [], cursor: null, hasMore: false });
     const s = silenceStdio();
     try {
       await runCli(buildProgram, ['billing', 'invoices', '--limit', '10']);
@@ -61,16 +61,16 @@ describe('billing', () => {
     expect(call!.args[0]).toMatchObject({ limit: 10 });
   });
 
-  it('checkout <planId> calls billing.checkout', async () => {
-    fake.on('billing.checkout', { url: 'https://pay', sessionId: 's_1' });
+  it('checkout <plan> sends the plan the server takes', async () => {
+    fake.on('billing.checkout', { subscriptionId: 'sub_1', invoiceId: 'inv_1', checkoutSessionId: 'cs_1', checkoutUrl: 'https://pay' });
     const s = silenceStdio();
     try {
-      await runCli(buildProgram, ['billing', 'checkout', 'plan_pro']);
+      await runCli(buildProgram, ['billing', 'checkout', 'growth', '--currency', 'usd']);
     } finally {
       s.restore();
     }
     const call = fake.calls.find((c) => c.method === 'checkout');
-    expect(call!.args[0]).toMatchObject({ planId: 'plan_pro' });
+    expect(call!.args[0]).toEqual({ plan: 'GROWTH', currency: 'USD' });
   });
 
   it('cancel calls billing.cancel', async () => {

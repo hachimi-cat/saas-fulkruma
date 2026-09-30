@@ -3,7 +3,7 @@
  */
 import { Command } from 'commander';
 import { getClient } from '../lib/client.js';
-import { formatOpts, getGlobalOpts, handleError, parseIntArg } from '../lib/util.js';
+import { formatOpts, getGlobalOpts, handleError } from '../lib/util.js';
 import { printJson, printResult } from '../lib/output.js';
 
 export const webhooksCommand = new Command('webhooks').description('Webhook endpoints and event history');
@@ -113,16 +113,13 @@ const events = new Command('events').description('Webhook event history');
 
 events
   .command('list')
-  .description('List webhook events')
-  .option('--limit <n>', 'page size', parseIntArg)
-  .option('--cursor <cursor>', 'pagination cursor')
-  .option('--type <type>', 'filter by event type')
+  .description('List the 50 most recent webhook events')
   .action(
-    async (options: { limit?: number; cursor?: string; type?: string }, cmd) => {
+    async (_options: Record<string, never>, cmd) => {
       const g = getGlobalOpts(cmd);
       try {
         const client = getClient(g);
-        const result = await client.webhooks.listEvents(options);
+        const result = await client.webhooks.listEvents();
         if (g.json) {
           printJson(result);
         } else {
