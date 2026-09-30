@@ -54,3 +54,16 @@ func TestBilling_InvoicesDecodeWhatTheServerSends(t *testing.T) {
 		t.Fatalf("Invoices = %+v, %v", page, err)
 	}
 }
+
+// POST /webhooks/endpoints answers { endpoint, secret }; the secret is shown once.
+func TestWebhooks_CreateEndpointReturnsTheSecret(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write(envelopeOK(map[string]any{"endpoint": map[string]any{"id": "we_1"}, "secret": "whsec_once"}))
+	}))
+	defer ts.Close()
+	c := newTestClient(t, ts, 1_700_000_000)
+	created, err := c.Webhooks.CreateEndpoint(context.Background(), WebhookEndpointCreateInput{URL: "https://example.com/hook"})
+	if err != nil || created.Secret != "whsec_once" || created.Endpoint["id"] != "we_1" {
+		t.Fatalf("CreateEndpoint = %+v, %v", created, err)
+	}
+}

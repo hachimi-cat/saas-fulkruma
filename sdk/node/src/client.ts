@@ -293,7 +293,7 @@ export class FulkrumaClient {
       destination: Record<string, unknown>;
       items: Array<Record<string, unknown>>;
       externalSource?: string; externalRef?: string;
-    }) => this.request<{ shipment: Shipment }>({
+    }) => this.request<{ shipment: Shipment; draftCreateError?: string | null }>({
       method: 'POST', path: '/api/v1/shipments', body: input, idempotencyKey: this.genIdem(),
     }),
     // F-004 / S-045 — confirm a Biteship draft → real order (driver
@@ -492,8 +492,9 @@ export class FulkrumaClient {
       this.request<{ endpoints: Array<Record<string, unknown>> }>({
         method: 'GET', path: '/api/v1/webhooks/endpoints',
       }),
+    /** The response is the only time the endpoint's signing `secret` is returned. */
     createEndpoint: (input: { url: string; events?: string[]; description?: string }) =>
-      this.request<{ endpoint: Record<string, unknown> }>({
+      this.request<{ endpoint: Record<string, unknown>; secret: string }>({
         method: 'POST', path: '/api/v1/webhooks/endpoints', body: input, idempotencyKey: this.genIdem(),
       }),
     updateEndpoint: (id: string, patch: Partial<{ url: string; events: string[]; description: string; active: boolean }>) =>

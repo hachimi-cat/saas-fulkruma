@@ -949,6 +949,13 @@ type webhookEndpointEnvelope struct {
 	Endpoint map[string]any `json:"endpoint"`
 }
 
+// WebhookEndpointCreated is what Webhooks.CreateEndpoint returns: the endpoint,
+// and its signing secret — returned this once, never again.
+type WebhookEndpointCreated struct {
+	Endpoint map[string]any `json:"endpoint"`
+	Secret   string         `json:"secret"`
+}
+
 type webhookEndpointListEnvelope struct {
 	Endpoints []map[string]any `json:"endpoints"`
 }
@@ -984,15 +991,15 @@ func (r *WebhooksResource) ListEndpoints(ctx context.Context) ([]map[string]any,
 }
 
 // CreateEndpoint — POST /api/v1/webhooks/endpoints (idempotent).
-func (r *WebhooksResource) CreateEndpoint(ctx context.Context, in WebhookEndpointCreateInput) (map[string]any, error) {
-	var out webhookEndpointEnvelope
+func (r *WebhooksResource) CreateEndpoint(ctx context.Context, in WebhookEndpointCreateInput) (*WebhookEndpointCreated, error) {
+	var out WebhookEndpointCreated
 	err := r.c.Request(ctx, "POST", "/api/v1/webhooks/endpoints", in, &out, &RequestOptions{
 		IdempotencyKey: r.c.genIdem(),
 	})
 	if err != nil {
 		return nil, err
 	}
-	return out.Endpoint, nil
+	return &out, nil
 }
 
 // UpdateEndpoint — PATCH /api/v1/webhooks/endpoints/:id.

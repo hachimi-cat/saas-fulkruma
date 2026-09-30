@@ -6,6 +6,7 @@
 - `AuditLogListParams{Action, TargetType, Limit}`: the filters the server reads. `Cursor`, `Since` and `EventType` were ignored, and there is no `NextCursor`.
 - `BillingCheckoutInput{Plan, Email, Name}` (Plan: STARTER / GROWTH / SCALE) and `BillingCheckoutResult{SubscriptionID, InvoiceID, CheckoutSessionID, CheckoutURL}`: what the server takes and returns.
 - `BillingInvoicesResult{Data, Cursor, HasMore}`: what the server sends (it decoded `invoices` / `nextCursor`, so every page came back empty); `BillingCheckoutInput` also takes `Currency` (IDR or USD).
+- `Webhooks.CreateEndpoint` returns `*WebhookEndpointCreated{Endpoint, Secret}`: it returned only the endpoint, so the one-time signing secret was lost.
 - `Webhooks.ListEvents(ctx)` takes no parameters (the 50 most recent events); `WebhookEventsListParams` is gone.
 - Product and variant inputs no longer carry `ExternalRef` / `ExternalSource`, which the server drops.
 - A test checks every method's route against the API spec (`backend/openapi.json`).

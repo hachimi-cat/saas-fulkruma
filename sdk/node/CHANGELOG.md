@@ -6,6 +6,7 @@
 - `auditLog.list({ action?, target_type?, limit? })`: the filters the server reads (`action` is a prefix). `cursor`, `since` and `eventType` were ignored.
 - `billing.checkout({ plan: 'STARTER' | 'GROWTH' | 'SCALE', email?, name? })` returns `{ subscriptionId, invoiceId, checkoutSessionId, checkoutUrl }`; it sent `planId` / `successUrl` / `cancelUrl`, which the server rejects.
 - `billing.invoices` returns `{ data, cursor, hasMore }` (it was typed `{ invoices, nextCursor }`); `billing.checkout` also takes `currency` ('IDR' | 'USD').
+- `webhooks.createEndpoint` is typed with the one-time signing `secret` it returns; `shipments.create` with its `draftCreateError`.
 - `webhooks.listEvents()` takes no parameters: the server returns the 50 most recent events and ignored `limit` / `cursor` / `type`.
 - `ProductCreateInput` and `VariantCreateInput` no longer list `externalRef` / `externalSource`, which the server drops.
 - A test checks every hand-written method's route against the API spec (`backend/openapi.json`).
