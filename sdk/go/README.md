@@ -99,6 +99,18 @@ scoped, _ := c.Warehouses.List(ctx)  // not really shown — Warehouses.List doe
 | `c.Stats` | Dashboard overview counters |
 | `c.Webhooks` | Endpoints + event log (control plane) |
 | `c.Admin` | Platform-admin partner billing |
+| `c.API` | Every feature route, one method each — generated from the API spec (`api_generated.go`) |
+
+`c.API.<Area><Action>(ctx, pathParams…, *<Area><Action>Args)` covers every
+route of the API, signed like the namespaces above, and returns the response's
+`data` as `json.RawMessage`. Required fields are plain values, optional ones
+pointers (`fulkruma.Ptr`), slices or maps; `Body` passes the whole JSON body.
+
+```go
+data, err := c.API.ProductsCreate(ctx, &fulkruma.ProductsCreateArgs{
+    Name: "Mug", Weight: fulkruma.Ptr(300),
+})
+```
 
 | Function | Purpose |
 |---|---|

@@ -10,6 +10,8 @@
 - `Webhooks.ListEvents(ctx)` takes no parameters (the 50 most recent events); `WebhookEventsListParams` is gone.
 - Product and variant inputs no longer carry `ExternalRef` / `ExternalSource`, which the server drops.
 - A test checks every method's route against the API spec (`backend/openapi.json`).
+- `Client.API`: every feature route of the API, one method each, generated
+  from the API spec (`api_generated.go`) and signed like every other call.
 
 ## 0.1.0
 - Initial release. Module path is github.com/hachimi-cat/fulkruma-go.
