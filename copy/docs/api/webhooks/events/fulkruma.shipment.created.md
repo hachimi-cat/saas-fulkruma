@@ -35,10 +35,15 @@ The `data` field is the minimal shipment summary &mdash; just the IDs and the co
 
 ```js
 // Node
-import { verifyWebhook } from '@forjio/fulkruma/webhooks';
+import express from 'express';
+import { verifyWebhook } from '@forjio/fulkruma-node';
 
 app.post('/webhooks/fulkruma', express.raw({ type: 'application/json' }), async (req, res) => {
-  const event = verifyWebhook(req.body, req.headers['fulkruma-signature'], process.env.FULKRUMA_WEBHOOK_SECRET);
+  const event = verifyWebhook({
+    rawBody: req.body,                               // the raw Buffer
+    signature: req.header('Fulkruma-Signature'),
+    secret: process.env.FULKRUMA_WEBHOOK_SECRET,
+  });                                                // throws on a bad signature → answer 400
   if (event.type === 'fulkruma.shipment.created.v1') {
     const { shipmentId, checkoutSessionId, courierCode } = event.data;
     await orders.markShipping(checkoutSessionId, { fulkrumaShipmentId: shipmentId, courier: courierCode });
@@ -80,8 +85,9 @@ if event.Type == "fulkruma.shipment.created.v1" {
 
 - [`fulkruma.product.created.v1`](./fulkruma.product.created) &mdash; the product whose stock the shipment will consume.
 - [`fulkruma.stock.adjusted.v1`](./fulkruma.stock.adjusted) &mdash; the movement that fires when the shipment ships.
-
-`fulkruma.shipment.delivered.v1`, `fulkruma.shipment.cancelled.v1`, and `fulkruma.shipment.returned.v1` are reserved in the catalog but **not currently emitted**. Subscribe defensively if you want to handle them when they ship.
+- [`fulkruma.shipment.pickup_confirmed.v1`](./fulkruma.shipment.pickup_confirmed) &mdash; the draft was booked with the courier.
+- [`fulkruma.shipment.status_updated.v1`](./fulkruma.shipment.status_updated) &mdash; every courier status after that, including `delivered` and `returned` (there is no separate delivered event).
+- [`fulkruma.shipment.cancelled.v1`](./fulkruma.shipment.cancelled) and [`fulkruma.shipment.rebooked.v1`](./fulkruma.shipment.rebooked).
 
 ## Next
 

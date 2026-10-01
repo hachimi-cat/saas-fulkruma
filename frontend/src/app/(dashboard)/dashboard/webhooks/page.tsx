@@ -1,23 +1,30 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Check, Copy, Download, Loader2, Plus, Power, PowerOff, Trash2, Webhook } from 'lucide-react';
+import { Check, Copy, Download, Loader2, Plus, Power, PowerOff, RotateCw, Trash2, Webhook } from 'lucide-react';
 import { api, type WebhookEndpoint, type WebhookEventRow } from '@/lib/api';
 import { Modal, Field, ErrorBox, Button, StatusPill } from '@/components/dashboard/ui';
 import { DataTable, type Column, type FilterDef } from '@/components/data-table';
 import { PageHeader } from '@/components/dashboard/page-header';
 
+// What the backend emits (copy/docs/api/resources/webhooks.md → Event
+// catalog), plus the prefixes. A delivered parcel is a status_updated.
 const EVENT_TYPES = [
   '*',
-  'fulkruma.shipment.created.v1',
-  'fulkruma.shipment.updated.v1',
-  'fulkruma.shipment.delivered.v1',
   'fulkruma.shipment.*',
+  'fulkruma.shipment.created.v1',
+  'fulkruma.shipment.pickup_confirmed.v1',
+  'fulkruma.shipment.status_updated.v1',
+  'fulkruma.shipment.cancelled.v1',
+  'fulkruma.shipment.rebooked.v1',
+  'fulkruma.license.*',
   'fulkruma.license.issued.v1',
   'fulkruma.license.revoked.v1',
-  'fulkruma.license.*',
+  'fulkruma.delivery.*',
   'fulkruma.delivery.created.v1',
+  'fulkruma.delivery.updated.v1',
   'fulkruma.stock.adjusted.v1',
+  'fulkruma.product.created.v1',
 ];
 
 export default function WebhooksPage() {
@@ -42,6 +49,11 @@ export default function WebhooksPage() {
 
   async function toggleActive(ep: WebhookEndpoint) {
     try { await api(`/webhooks/endpoints/${ep.id}`, { method: 'PATCH', body: JSON.stringify({ active: !ep.active }) }); reload(); }
+    catch (e) { alert((e as Error).message); }
+  }
+
+  async function retry(ev: WebhookEventRow) {
+    try { await api(`/webhooks/events/${ev.id}/retry`, { method: 'POST' }); reload(); }
     catch (e) { alert((e as Error).message); }
   }
 
@@ -83,15 +95,25 @@ export default function WebhooksPage() {
       sortable: true,
       sortValue: (ep) => (ep.active ? '0' : '1'),
       cell: (ep) => (
-        <button
-          onClick={() => toggleActive(ep)}
-          className={`inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-xs ${
-            ep.active ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-border bg-secondary text-muted-foreground'
-          }`}
-        >
-          {ep.active ? <Power size={11} /> : <PowerOff size={11} />}
-          {ep.active ? 'on' : 'off'}
-        </button>
+        <div>
+          <button
+            onClick={() => toggleActive(ep)}
+            title={ep.disabledReason ? `Switched off by Fulkruma: ${ep.disabledReason}. Click to re-enable.` : undefined}
+            className={`inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-xs ${
+              ep.active
+                ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                : ep.disabledAt
+                  ? 'border-destructive/30 bg-destructive/10 text-destructive'
+                  : 'border-border bg-secondary text-muted-foreground'
+            }`}
+          >
+            {ep.active ? <Power size={11} /> : <PowerOff size={11} />}
+            {ep.active ? 'on' : ep.disabledAt ? 'off — kept failing' : 'off'}
+          </button>
+          {ep.active && ep.consecutiveFailures > 0 && (
+            <p className="mt-0.5 text-xs text-destructive">{ep.consecutiveFailures} failed in a row</p>
+          )}
+        </div>
       ),
     },
     {
@@ -157,6 +179,27 @@ export default function WebhooksPage() {
       sortValue: (e) => e.responseCode ?? 0,
       cell: (e) => <span className="font-mono tabular-nums">{e.responseCode ?? '—'}</span>,
     },
+    {
+      key: 'detail',
+      header: 'Detail',
+      cell: (e) => (
+        <span className="text-xs text-muted-foreground">
+          {e.status === 'pending' && e.nextRetryAt && e.attempts > 0
+            ? `retry ${new Date(e.nextRetryAt).toLocaleString()}`
+            : e.lastError ?? ''}
+        </span>
+      ),
+    },
+    {
+      key: 'actions',
+      header: '',
+      align: 'right',
+      cell: (e) => e.status === 'pending' ? null : (
+        <button onClick={() => retry(e)} className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground">
+          <RotateCw size={12} /> {e.status === 'failed' ? 'Retry' : 'Resend'}
+        </button>
+      ),
+    },
   ];
 
   const eventFilters: FilterDef<WebhookEventRow>[] = [
@@ -190,7 +233,7 @@ export default function WebhooksPage() {
               tab === t ? 'bg-secondary text-foreground' : 'text-muted-foreground hover:text-foreground'
             }`}
           >
-            {t === 'endpoints' ? `Endpoints (${endpoints?.length ?? 0})` : `Recent events (${events?.length ?? 0})`}
+            {t === 'endpoints' ? `Endpoints (${endpoints?.length ?? 0})` : `Recent deliveries (${events?.length ?? 0})`}
           </button>
         ))}
       </div>

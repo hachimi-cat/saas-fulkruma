@@ -127,6 +127,7 @@ fulkruma_curl POST '/api/v1/deliveries' \
 | Event type | Fires on | Notes |
 |---|---|---|
 | `fulkruma.delivery.created.v1` | `POST /api/v1/deliveries` succeeds. Includes auto-issue from the Plugipay-checkout webhook. | Emitted in the same transaction as the delivery insert. |
+| [`fulkruma.delivery.updated.v1`](/docs/api/webhooks/events/fulkruma.delivery.updated) | `extend`, `reset-downloads` or `revoke` succeeds. | `data.action` says which. |
 
 `delivery.downloaded` and `delivery.expired` are reserved in the catalog but **not currently emitted.**
 

@@ -189,7 +189,7 @@ Every Fulkruma object has a typed prefix on its ID. Use this to read at a glance
 
 The model isn't ornamental &mdash; it shapes how you build integrations:
 
-- **Webhook handlers** dispatch on event type, which is named after the object (`shipment.delivered`, `stock.low`, `license.activated`).
+- **Webhook handlers** dispatch on event type, which is named after the object and what happened to it (`fulkruma.shipment.status_updated.v1`, `fulkruma.stock.adjusted.v1`, `fulkruma.license.issued.v1`).
 - **Idempotency** is keyed on the operation, so you can safely retry a `stock.adjust` without double-counting.
 - **Audit log** entries record actions on objects by ID, so you can trace "who archived warehouse wh_123" precisely.
 

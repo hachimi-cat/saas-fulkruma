@@ -4,11 +4,11 @@ title: Webhooks
 
 # Webhooks
 
-Webhooks let Fulkruma push event notifications to your server in real time, so you don't have to poll. Use them to know when a shipment moves through carrier states, when a stock movement was logged, when a license was issued or revoked. The Go SDK exposes five methods behind `client.Webhooks`. For wire shapes, see [**API &rarr; Webhooks**](/docs/api/resources/webhooks); for the per-event payload schemas, see [**Webhook events**](/docs/api/webhooks/events/fulkruma.product.created).
+Webhooks let Fulkruma push event notifications to your server in real time, so you don't have to poll. Use them to know when a shipment moves through carrier states, when a stock movement was logged, when a license was issued or revoked. The Go SDK exposes seven methods behind `client.Webhooks`. For wire shapes, see [**API &rarr; Webhooks**](/docs/api/resources/webhooks); for the per-event payload schemas, see [**Webhook events**](/docs/api/webhooks/events/fulkruma.product.created).
 
 ## Field on the Client
 
-`client.Webhooks` &mdash; type `*fulkruma.WebhooksResource`. Five methods. Four manage delivery endpoints; one (`ListEvents`) reads the most recent delivery records.
+`client.Webhooks` &mdash; type `*fulkruma.WebhooksResource`. Seven methods. Four manage delivery endpoints; three read and act on the delivery log &mdash; what Fulkruma sent, what your server answered, every retry (`ListEvents`, `GetEvent`, `RetryEvent`).
 
 ## Methods
 
@@ -57,7 +57,7 @@ for _, e := range endpoints {
 
 **Signature.** `func (r *WebhooksResource) UpdateEndpoint(ctx context.Context, id string, patch WebhookEndpointUpdateInput) (map[string]any, error)`
 
-`PATCH` semantics. Pass `Active: &false` to pause delivery without deleting the endpoint &mdash; useful during maintenance windows.
+`PATCH` semantics. Pass `Active: &false` to pause delivery without deleting the endpoint: deliveries still queued for it become `failed`, and events raised while it is paused are not queued for it. `Active: &true` re-enables it &mdash; also after Fulkruma switched it off for failing &mdash; and clears its failure streak (`consecutiveFailures`, `failingSince`, `disabledAt`, `disabledReason`). A new `URL` is checked like on create (https, no private addresses); the secret stays the same.
 
 ```go
 active := false
@@ -86,7 +86,7 @@ _, err := client.Webhooks.UpdateEndpoint(ctx, "whe_01HX...", fulkruma.WebhookEnd
 
 **Signature.** `func (r *WebhooksResource) DeleteEndpoint(ctx context.Context, id string) (bool, error)`
 
-Hard-deletes the endpoint. In-flight deliveries (already accepted by our delivery worker) may still arrive briefly after; new events stop being queued immediately.
+Hard-deletes the endpoint and its delivery log. A request already in flight may still arrive; nothing new is queued for it.
 
 ```go
 ok, err := client.Webhooks.DeleteEndpoint(ctx, "whe_01HX...")
@@ -94,21 +94,38 @@ ok, err := client.Webhooks.DeleteEndpoint(ctx, "whe_01HX...")
 
 ### ListEvents
 
-**Signature.** `func (r *WebhooksResource) ListEvents(ctx context.Context) (*WebhookEventsListResult, error)`
+**Signature.** `func (r *WebhooksResource) ListEvents(ctx context.Context, p WebhookEventsListParams) (*WebhookEventsListResult, error)`
 
-The workspace's 50 most recent delivery records, newest first &mdash; one per event per endpoint, with its delivery `status` (`pending`, `sent`, `failed`), `attempts` and the receiver's `responseCode`. It takes no filters and has no pagination; filter the rows yourself.
+The delivery log, newest first &mdash; one `WebhookDelivery` per event per endpoint, with its `Status` (`pending`: queued or waiting for a retry at `NextRetryAt`; `sent`: your endpoint answered 2xx; `failed`: given up), `Attempts`, the last `ResponseCode` / `LastError`, and every attempt made (`DeliveryAttempts`). `Limit` is 1&ndash;200 (default 50); pass `NextCursor` back as `Cursor` for the next page (it is nil on the last).
 
 ```go
-result, err := client.Webhooks.ListEvents(ctx)
-if err != nil {
-    return err
-}
-for _, e := range result.Events {
-    if e["status"] == "failed" {
-        log.Println(e["type"], e["responseCode"])
+p := fulkruma.WebhookEventsListParams{Status: "failed", Limit: 100}
+for {
+    page, err := client.Webhooks.ListEvents(ctx, p)
+    if err != nil {
+        return err
     }
+    for _, d := range page.Events {
+        log.Println(d.EventID, d.Type, *d.LastError)
+    }
+    if page.NextCursor == nil {
+        break
+    }
+    p.Cursor = *page.NextCursor
 }
 ```
+
+### GetEvent
+
+**Signature.** `func (r *WebhooksResource) GetEvent(ctx context.Context, id string) (*WebhookDelivery, error)`
+
+One delivery with every attempt made at it.
+
+### RetryEvent
+
+**Signature.** `func (r *WebhooksResource) RetryEvent(ctx context.Context, id string) (*WebhookDelivery, error)`
+
+Queues one more attempt now &mdash; a `failed` delivery once your handler is fixed, or a `sent` one to send again. The server answers `202` with the delivery in `pending`; the attempt goes out within seconds, so read it back with `GetEvent`. A `409` (`ALREADY_QUEUED`, `ENDPOINT_DISABLED`) when the delivery is already queued or its endpoint is off.
 
 ## Types
 
@@ -131,11 +148,55 @@ type WebhookEndpointCreated struct {
     Secret   string         `json:"secret"`
 }
 
-// Delivery records: id, accountId, endpointId, type, payload (the event
-// envelope sent), status (pending | sent | failed), attempts, lastAttemptAt,
-// nextRetryAt, responseCode, responseBody, createdAt, updatedAt.
+// Endpoints (ListEndpoints / UpdateEndpoint) also carry their delivery health:
+// "consecutiveFailures", "failingSince", "disabledAt", "disabledReason".
+
+type WebhookEventsListParams struct {
+    Limit      int    // 1-200, default 50
+    Cursor     string // the previous page's NextCursor
+    Type       string // e.g. "fulkruma.shipment.created.v1"
+    Status     string // "pending" | "sent" | "failed"
+    EndpointID string
+}
+
 type WebhookEventsListResult struct {
-    Events []map[string]any `json:"events"`
+    Events     []WebhookDelivery `json:"events"`
+    NextCursor *string           `json:"nextCursor"`
+}
+
+type WebhookDelivery struct {
+    ID               string                   `json:"id"`
+    AccountID        string                   `json:"accountId"`
+    EndpointID       string                   `json:"endpointId"`
+    EventID          string                   `json:"eventId"` // the envelope's id, the same on every attempt
+    Type             string                   `json:"type"`
+    Payload          WebhookEventEnvelope     `json:"payload"` // the body sent
+    Status           string                   `json:"status"`  // pending | sent | failed
+    Attempts         int                      `json:"attempts"`
+    LastAttemptAt    *string                  `json:"lastAttemptAt"`
+    NextRetryAt      *string                  `json:"nextRetryAt"`
+    ResponseCode     *int                     `json:"responseCode"` // nil when no response came back
+    ResponseBody     *string                  `json:"responseBody"` // first 2 KiB of the last response
+    LastError        *string                  `json:"lastError"`    // "HTTP 503", "timed out after 10000ms", "blocked: …"
+    DurationMs       *int                     `json:"durationMs"`
+    DeliveredAt      *string                  `json:"deliveredAt"`
+    CreatedAt        string                   `json:"createdAt"`
+    UpdatedAt        string                   `json:"updatedAt"`
+    DeliveryAttempts []WebhookDeliveryAttempt `json:"deliveryAttempts"` // oldest first
+}
+
+type WebhookDeliveryAttempt struct {
+    ID             string  `json:"id"`
+    WebhookEventID string  `json:"webhookEventId"`
+    AccountID      string  `json:"accountId"`
+    EndpointID     string  `json:"endpointId"`
+    AttemptNumber  int     `json:"attemptNumber"`
+    Status         string  `json:"status"` // succeeded | failed
+    ResponseCode   *int    `json:"responseCode"`
+    DurationMs     int     `json:"durationMs"`
+    Error          *string `json:"error"`
+    NextRetryAt    *string `json:"nextRetryAt"` // the retry this failure scheduled
+    AttemptedAt    string  `json:"attemptedAt"`
 }
 ```
 
@@ -197,31 +258,33 @@ func handleWebhook(w http.ResponseWriter, r *http.Request) {
 }
 ```
 
-### Pause-replay-resume during a release
+### Riding out a deploy, and catching up afterwards
 
-For a risky deploy you want to ingest events synchronously:
+You don't need to pause an endpoint for a deploy: a failed delivery is retried 1 min, 5 min, 25 min, 2 h and 12 h later, so a receiver that is down for a while still gets everything. Pausing (`Active: &false`) stops deliveries altogether &mdash; events raised while paused are not queued for that endpoint.
+
+If deliveries did give up (or Fulkruma switched the endpoint off after it kept failing), re-enable it and retry what failed:
 
 ```go
-// 1. Pause
-paused := false
-client.Webhooks.UpdateEndpoint(ctx, "whe_01HX...",
-    fulkruma.WebhookEndpointUpdateInput{Active: &paused})
-
-// 2. Deploy your new handler.
-
-// 3. Catch up on what was queued meanwhile (the 50 most recent deliveries)
-cutoff := "2026-05-13T10:00:00Z"
-result, _ := client.Webhooks.ListEvents(ctx)
-for _, e := range result.Events {
-    if t, _ := e["createdAt"].(string); t >= cutoff {
-        handleManually(e["payload"])
-    }
+on := true
+if _, err := client.Webhooks.UpdateEndpoint(ctx, "whe_01HX...", fulkruma.WebhookEndpointUpdateInput{Active: &on}); err != nil {
+    return err
 }
-
-// 4. Resume
-resumed := true
-client.Webhooks.UpdateEndpoint(ctx, "whe_01HX...",
-    fulkruma.WebhookEndpointUpdateInput{Active: &resumed})
+p := fulkruma.WebhookEventsListParams{EndpointID: "whe_01HX...", Status: "failed"}
+for {
+    page, err := client.Webhooks.ListEvents(ctx, p)
+    if err != nil {
+        return err
+    }
+    for _, d := range page.Events {
+        if _, err := client.Webhooks.RetryEvent(ctx, d.ID); err != nil {
+            return err
+        }
+    }
+    if page.NextCursor == nil {
+        break
+    }
+    p.Cursor = *page.NextCursor
+}
 ```
 
 ### Per-environment endpoints
@@ -243,9 +306,11 @@ client.Webhooks.CreateEndpoint(ctx, fulkruma.WebhookEndpointCreateInput{
 
 | `Code` | `Status` | Cause |
 |---|---|---|
-| `VALIDATION` | 400 | `URL` isn't a URL, or `Events` is an empty list. |
+| `VALIDATION` | 400 | `URL` isn't a URL Fulkruma will call (not https, or a private / loopback / link-local address &mdash; the message says which), or `Events` is empty or holds something other than `"*"`, an event type or a `"fulkruma.….*"` prefix. |
 | `NO_ACCOUNT` | 403 | The credentials resolve to no workspace. |
-| `NOT_FOUND` | 404 | No endpoint with that ID in this workspace (update / delete). |
+| `NOT_FOUND` | 404 | No endpoint (update / delete) or delivery (GetEvent / RetryEvent) with that ID in this workspace. |
+| `ALREADY_QUEUED` | 409 | `RetryEvent` on a delivery that is already `pending`. |
+| `ENDPOINT_DISABLED` | 409 | `RetryEvent` while the delivery's endpoint is paused or switched off. |
 
 ## Next
 

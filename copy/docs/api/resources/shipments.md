@@ -248,7 +248,7 @@ A shipment walks through these statuses, driven by inbound Biteship webhook even
 | `picked_up` | Parcel collected. |
 | `dropping_off` | Driver en route to destination. |
 | `in_transit` | Standard couriers: on the truck. |
-| `delivered` | Recipient confirmed receipt. Emits `fulkruma.shipment.delivered.v1` (reserved). |
+| `delivered` | Recipient confirmed receipt. Arrives as [`fulkruma.shipment.status_updated.v1`](/docs/api/webhooks/events/fulkruma.shipment.status_updated) with `status: "delivered"`. |
 | `returned` | Failed delivery, returned to sender. |
 | `cancelled` | Cancelled before or during transit. |
 
@@ -296,9 +296,11 @@ A shipment walks through these statuses, driven by inbound Biteship webhook even
 
 | Event type | Fires on | Notes |
 |---|---|---|
-| `fulkruma.shipment.created.v1` | `POST /api/v1/shipments` succeeds. | Emitted in the same transaction as the shipment insert. |
-
-`shipment.in_transit`, `shipment.delivered`, `shipment.returned`, and `shipment.cancelled` are reserved in the catalog but **not currently emitted** &mdash; track lifecycle via polling or the `/track/:waybillId` endpoint until those land. If you need them sooner, raise it at **hello@fulkruma.com**.
+| [`fulkruma.shipment.created.v1`](/docs/api/webhooks/events/fulkruma.shipment.created) | `POST /api/v1/shipments` succeeds. | Emitted in the same transaction as the shipment insert. |
+| [`fulkruma.shipment.pickup_confirmed.v1`](/docs/api/webhooks/events/fulkruma.shipment.pickup_confirmed) | `POST /api/v1/shipments/:id/confirm-pickup` books the courier. | Carries the courier order id and waybill. |
+| [`fulkruma.shipment.status_updated.v1`](/docs/api/webhooks/events/fulkruma.shipment.status_updated) | The courier reports a new status &mdash; picked up, in transit, delivered, returned, … | One per courier report; `status` is the shipment's new status. |
+| [`fulkruma.shipment.cancelled.v1`](/docs/api/webhooks/events/fulkruma.shipment.cancelled) | `POST /api/v1/shipments/:id/cancel` succeeds. | Says how much shipping credit was refunded. |
+| [`fulkruma.shipment.rebooked.v1`](/docs/api/webhooks/events/fulkruma.shipment.rebooked) | `POST /api/v1/shipments/:id/rebook` creates the replacement. | `shipmentId` is the new shipment, `previousShipmentId` the dead one. |
 
 See [**Webhooks**](/docs/api/resources/webhooks) for the event envelope and signature recipe.
 

@@ -16,9 +16,11 @@ fulkruma.webhooks.createEndpoint(input)
 fulkruma.webhooks.updateEndpoint(id, patch)
 fulkruma.webhooks.deleteEndpoint(id)
 fulkruma.webhooks.listEvents(params?)
+fulkruma.webhooks.getEvent(id)
+fulkruma.webhooks.retryEvent(id)
 ```
 
-Five methods. Four manage delivery endpoints; one (`listEvents`) reads the most recent delivery records.
+Seven methods. Four manage delivery endpoints; three read and act on the delivery log &mdash; what Fulkruma sent, what your server answered, every retry.
 
 ## Methods
 
@@ -61,7 +63,7 @@ for (const e of endpoints as Array<{ id: string; url: string; active: boolean }>
 
 **Signature.** `fulkruma.webhooks.updateEndpoint(id, patch): Promise<{ endpoint: Record<string, unknown> }>`
 
-PATCH semantics. Pass `active: false` to pause delivery without deleting the endpoint &mdash; useful during maintenance windows.
+PATCH semantics. Pass `active: false` to pause delivery without deleting the endpoint: deliveries still queued for it become `failed`, and events raised while it is paused are not queued for it. `active: true` re-enables it &mdash; also after Fulkruma switched it off for failing &mdash; and clears its failure streak (`consecutiveFailures`, `failingSince`, `disabledAt`, `disabledReason`). A new `url` is checked like on create (https, no private addresses); the secret stays the same.
 
 ```ts
 await fulkruma.webhooks.updateEndpoint('whe_01HX...', { active: false });
@@ -82,7 +84,7 @@ await fulkruma.webhooks.updateEndpoint('whe_01HX...', {
 
 **Signature.** `fulkruma.webhooks.deleteEndpoint(id): Promise<{ deleted: boolean }>`
 
-Hard-deletes the endpoint. In-flight deliveries (already accepted by our delivery worker) may still arrive briefly after; new events stop being queued immediately.
+Hard-deletes the endpoint and its delivery log. A request already in flight may still arrive; nothing new is queued for it.
 
 ```ts
 await fulkruma.webhooks.deleteEndpoint('whe_01HX...');
@@ -90,44 +92,90 @@ await fulkruma.webhooks.deleteEndpoint('whe_01HX...');
 
 ### `webhooks.listEvents`
 
-**Signature.** `fulkruma.webhooks.listEvents(): Promise<{ events: Array<Record<string, unknown>> }>`
+**Signature.** `fulkruma.webhooks.listEvents(params?: { limit?: number; cursor?: string; type?: string; status?: 'pending' | 'sent' | 'failed'; endpointId?: string }): Promise<{ events: WebhookDelivery[]; nextCursor: string | null }>`
 
-The workspace's 50 most recent delivery records, newest first &mdash; one per event per endpoint, with its delivery `status` (`pending`, `sent`, `failed`), `attempts` and the receiver's `responseCode`. It takes no filters and has no pagination; filter the rows yourself.
+The delivery log, newest first &mdash; one row per event per endpoint, with its `status` (`pending`: queued or waiting for a retry at `nextRetryAt`; `sent`: your endpoint answered 2xx; `failed`: given up), `attempts`, the last `responseCode` / `lastError`, and every attempt made (`deliveryAttempts`). `limit` is 1&ndash;200 (default 50); pass `nextCursor` back as `cursor` for the next page.
 
 ```ts
-const { events } = await fulkruma.webhooks.listEvents();
-const failed = events.filter((e) => e.status === 'failed');
+// Everything that gave up on one endpoint, page by page.
+let cursor: string | undefined;
+do {
+  const page = await fulkruma.webhooks.listEvents({ endpointId: 'clx8n4…', status: 'failed', limit: 100, cursor });
+  for (const d of page.events) console.log(d.eventId, d.type, d.lastError);
+  cursor = page.nextCursor ?? undefined;
+} while (cursor);
+```
+
+### `webhooks.getEvent`
+
+**Signature.** `fulkruma.webhooks.getEvent(id): Promise<{ event: WebhookDelivery }>`
+
+One delivery with every attempt made at it.
+
+### `webhooks.retryEvent`
+
+**Signature.** `fulkruma.webhooks.retryEvent(id): Promise<{ event: WebhookDelivery }>`
+
+Queues one more attempt now &mdash; a `failed` delivery once your handler is fixed, or a `sent` one to send again. The server answers `202` with the row in `pending`; the attempt goes out within seconds, so read it back with `getEvent`. Fails with `409` (`ALREADY_QUEUED`, `ENDPOINT_DISABLED`) when the delivery is already queued or its endpoint is off.
+
+```ts
+const { events } = await fulkruma.webhooks.listEvents({ status: 'failed' });
+for (const d of events) await fulkruma.webhooks.retryEvent(d.id);
 ```
 
 ## Types
 
 ```ts
-interface WebhookEndpoint {
+interface WebhookEndpoint {          // listEndpoints / updateEndpoint rows (Record<string, unknown> in the SDK)
   id: string;
   accountId: string;
   url: string;
-  events: string[];        // ["*"] means every event
+  events: string[];        // ["*"] means every event; "fulkruma.shipment.*" a prefix
   description: string | null;
   active: boolean;
-  secretPreview: string | null;  // list only: 'whsec_…' + last 4
+  consecutiveFailures: number;     // failed attempts in a row since the last 2xx
+  failingSince: string | null;     // start of the current failure streak
+  disabledAt: string | null;       // set when Fulkruma switched it off for failing
+  disabledReason: string | null;
+  secretPreview: string | null;    // list only: 'whsec_…' + last 4
   createdAt: string;
   updatedAt: string;
 }
 
+// Exported by the SDK.
 interface WebhookDelivery {
   id: string;
   accountId: string;
   endpointId: string;
+  eventId: string;         // the envelope's evt_… id, the same on every attempt
   type: string;            // e.g. 'fulkruma.shipment.status_updated.v1'
-  payload: Record<string, unknown>;  // the event envelope sent
+  payload: WebhookEventEnvelope;   // the body sent
   status: 'pending' | 'sent' | 'failed';
   attempts: number;
   lastAttemptAt: string | null;
   nextRetryAt: string | null;
-  responseCode: number | null;
-  responseBody: string | null;
+  responseCode: number | null;     // null when no response came back
+  responseBody: string | null;     // first 2 KiB of the last response
+  lastError: string | null;        // 'HTTP 503', 'timed out after 10000ms', 'blocked: …'
+  durationMs: number | null;
+  deliveredAt: string | null;
   createdAt: string;
   updatedAt: string;
+  deliveryAttempts: WebhookDeliveryAttempt[];   // oldest first
+}
+
+interface WebhookDeliveryAttempt {
+  id: string;
+  webhookEventId: string;
+  accountId: string;
+  endpointId: string;
+  attemptNumber: number;
+  status: 'succeeded' | 'failed';
+  responseCode: number | null;
+  durationMs: number;
+  error: string | null;
+  nextRetryAt: string | null;      // the retry this failure scheduled
+  attemptedAt: string;
 }
 ```
 
@@ -174,24 +222,20 @@ app.post('/webhooks/fulkruma', express.raw({ type: 'application/json' }), (req, 
 });
 ```
 
-### Pause-replay-resume during a release
+### Riding out a deploy, and catching up afterwards
 
-For a risky deploy you want to ingest events synchronously:
+You don't need to pause an endpoint for a deploy: a failed delivery is retried 1 min, 5 min, 25 min, 2 h and 12 h later, so a receiver that is down for a while still gets everything. Pausing (`active: false`) is for stopping deliveries altogether &mdash; events raised while paused are not queued for that endpoint.
+
+If deliveries did give up (or Fulkruma switched the endpoint off after it kept failing), re-enable it and retry what failed:
 
 ```ts
-// 1. Pause
-await fulkruma.webhooks.updateEndpoint('whe_01HX...', { active: false });
-
-// 2. Deploy your new handler.
-
-// 3. Catch up on what was queued meanwhile (the 50 most recent deliveries)
-const cutoff = '2026-05-13T10:00:00Z';
-const { events } = await fulkruma.webhooks.listEvents();
-const since = events.filter((e) => (e.createdAt as string) >= cutoff);
-for (const e of since) await handleManually(e.payload);
-
-// 4. Resume
-await fulkruma.webhooks.updateEndpoint('whe_01HX...', { active: true });
+await fulkruma.webhooks.updateEndpoint('clx8n4…', { active: true });
+let cursor: string | undefined;
+do {
+  const page = await fulkruma.webhooks.listEvents({ endpointId: 'clx8n4…', status: 'failed', cursor });
+  for (const d of page.events) await fulkruma.webhooks.retryEvent(d.id);
+  cursor = page.nextCursor ?? undefined;
+} while (cursor);
 ```
 
 ### Per-environment endpoints
@@ -213,9 +257,11 @@ await fulkruma.webhooks.createEndpoint({
 
 | Code | Status | Cause |
 |---|---|---|
-| `VALIDATION` | 400 | `url` isn't a URL, or `events` is an empty list. |
+| `VALIDATION` | 400 | `url` isn't a URL Fulkruma will call (not https, or a private / loopback / link-local address &mdash; the message says which), or `events` is empty or holds something other than `"*"`, an event type or a `"fulkruma.….*"` prefix. |
 | `NO_ACCOUNT` | 403 | The credentials resolve to no workspace. |
-| `NOT_FOUND` | 404 | No endpoint with that ID in this workspace (update / delete). |
+| `NOT_FOUND` | 404 | No endpoint (update / delete) or delivery (getEvent / retryEvent) with that ID in this workspace. |
+| `ALREADY_QUEUED` | 409 | `retryEvent` on a delivery that is already `pending`. |
+| `ENDPOINT_DISABLED` | 409 | `retryEvent` while the delivery's endpoint is paused or switched off. |
 
 ## Next
 

@@ -172,17 +172,26 @@ export interface WebhookEndpoint {
   events: string[];
   description: string | null;
   active: boolean;
+  /** Failed attempts in a row since the last 2xx. */
+  consecutiveFailures: number;
+  /** Set when Fulkruma switched the endpoint off because it kept failing. */
+  disabledAt: string | null;
+  disabledReason: string | null;
   createdAt: string;
   secretPreview: string | null;
 }
 
+/** One event delivered to one endpoint (GET /webhooks/events). */
 export interface WebhookEventRow {
   id: string;
   endpointId: string;
+  eventId: string;
   type: string;
   status: 'pending' | 'sent' | 'failed';
   attempts: number;
   responseCode: number | null;
+  lastError: string | null;
+  nextRetryAt: string | null;
   createdAt: string;
 }
 
