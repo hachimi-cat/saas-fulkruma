@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.4.0
 - Three more event types arrive at your endpoints (and through `verify_webhook` like any other): `fulkruma.stock.low.v1` (a level falls below its variant's `lowStockThreshold`, once per crossing), `fulkruma.warehouse.created.v1` and `fulkruma.webhook_endpoint.disabled.v1` (Fulkruma switched off one of your other endpoints that kept failing).
 - `client.api`: regenerated. A GET by id next to a list of the same name is `get_…`: `webhooks_get_events(id)` and `shipping_get_shipments(id)`. The old names `webhooks_events_2` and `shipping_shipments_2` still work (deprecated). `shipping_track(waybill_id, courier=...)` requires `courier`, which the server always did.
 
