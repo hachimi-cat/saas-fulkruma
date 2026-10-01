@@ -342,6 +342,10 @@ Emitted today:
 | Event type | When | Page |
 |---|---|---|
 | `fulkruma.product.created.v1` | A product is created. | [&rarr;](/docs/api/webhooks/events/fulkruma.product.created) |
+| `fulkruma.product.updated.v1` | A product's fields change. | [&rarr;](/docs/api/webhooks/events/fulkruma.product.updated) |
+| `fulkruma.product.archived.v1` | A product is archived. | [&rarr;](/docs/api/webhooks/events/fulkruma.product.archived) |
+| `fulkruma.variant.created.v1` | A variant is added to a product. | [&rarr;](/docs/api/webhooks/events/fulkruma.variant.created) |
+| `fulkruma.variant.archived.v1` | A variant is archived. | [&rarr;](/docs/api/webhooks/events/fulkruma.variant.archived) |
 | `fulkruma.warehouse.created.v1` | A warehouse is created. | [&rarr;](/docs/api/webhooks/events/fulkruma.warehouse.created) |
 | `fulkruma.stock.adjusted.v1` | A stock level changes. | [&rarr;](/docs/api/webhooks/events/fulkruma.stock.adjusted) |
 | `fulkruma.stock.low.v1` | A stock level falls below its variant's `lowStockThreshold` (once per crossing). | [&rarr;](/docs/api/webhooks/events/fulkruma.stock.low) |
@@ -352,8 +356,12 @@ Emitted today:
 | `fulkruma.shipment.rebooked.v1` | A dead shipment is rebooked as a new one. | [&rarr;](/docs/api/webhooks/events/fulkruma.shipment.rebooked) |
 | `fulkruma.delivery.created.v1` | A digital-delivery grant is issued. | [&rarr;](/docs/api/webhooks/events/fulkruma.delivery.created) |
 | `fulkruma.delivery.updated.v1` | A delivery is extended, its downloads reset, or revoked. | [&rarr;](/docs/api/webhooks/events/fulkruma.delivery.updated) |
+| `fulkruma.delivery.downloaded.v1` | A download of a delivery is recorded. | [&rarr;](/docs/api/webhooks/events/fulkruma.delivery.downloaded) |
+| `fulkruma.delivery.expired.v1` | A delivery's download window closed (expired or revoked). | [&rarr;](/docs/api/webhooks/events/fulkruma.delivery.expired) |
 | `fulkruma.license.issued.v1` | A license key is issued. | [&rarr;](/docs/api/webhooks/events/fulkruma.license.issued) |
 | `fulkruma.license.revoked.v1` | A license key is revoked. | [&rarr;](/docs/api/webhooks/events/fulkruma.license.revoked) |
+| `fulkruma.license.activated.v1` | A license key is bound to a new instance. | [&rarr;](/docs/api/webhooks/events/fulkruma.license.activated) |
+| `fulkruma.license.deactivated.v1` | An instance is unbound from a license key. | [&rarr;](/docs/api/webhooks/events/fulkruma.license.deactivated) |
 | `fulkruma.webhook_endpoint.disabled.v1` | Fulkruma switches off one of your endpoints that kept failing (sent to your other endpoints). | [&rarr;](/docs/api/webhooks/events/fulkruma.webhook_endpoint.disabled) |
 
 A delivered, returned or failed parcel arrives as `fulkruma.shipment.status_updated.v1` with that `status` &mdash; there is no separate `delivered` event.

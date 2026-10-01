@@ -23,8 +23,10 @@ All requests on this page must be signed &mdash; see [**Authentication**](/docs/
 | `GET` | `/api/v1/deliveries` | List deliveries |
 | `GET` | `/api/v1/deliveries/:id` | Retrieve a single delivery |
 | `POST` | `/api/v1/deliveries` | Issue a delivery grant |
-
-There is no PATCH/DELETE in v1: deliveries are immutable once issued. To revoke, set `expiresAt` to a past time via a backfill (planned).
+| `POST` | `/api/v1/deliveries/:id/download` | [Record a download](#record-a-download) (counted against `maxDownloads`) |
+| `POST` | `/api/v1/deliveries/:id/extend` | Extend the download window 30 days |
+| `POST` | `/api/v1/deliveries/:id/reset-downloads` | Reset `downloadCount` to 0 |
+| `POST` | `/api/v1/deliveries/:id/revoke` | Expire the delivery now |
 
 ### List deliveries
 
@@ -116,7 +118,7 @@ fulkruma_curl POST '/api/v1/deliveries' \
 | `customerId` | string | no | The buyer's ID. |
 | `checkoutSessionId` | string | no | The Plugipay checkout that originated this. |
 | `maxDownloads` | integer | no | Hard cap on fetch count. |
-| `downloads` | integer | no | Current download count. Increments on each fulfilled fetch (planned). |
+| `downloadCount` | integer | no | Downloads recorded so far ([Record a download](#record-a-download)). |
 | `expiresAt` | string (ISO 8601 UTC) | no | Hard cutoff. |
 | `externalSource` | string | yes | Origin system name. |
 | `externalRef` | string | yes | Origin system's order ID. |
@@ -129,15 +131,32 @@ fulkruma_curl POST '/api/v1/deliveries' \
 | `fulkruma.delivery.created.v1` | `POST /api/v1/deliveries` succeeds. Includes auto-issue from the Plugipay-checkout webhook. | Emitted in the same transaction as the delivery insert. |
 | [`fulkruma.delivery.updated.v1`](/docs/api/webhooks/events/fulkruma.delivery.updated) | `extend`, `reset-downloads` or `revoke` succeeds. | `data.action` says which. |
 
-`delivery.downloaded` and `delivery.expired` are reserved in the catalog but **not currently emitted.**
+| [`fulkruma.delivery.downloaded.v1`](/docs/api/webhooks/events/fulkruma.delivery.downloaded) | A download is recorded. | In the transaction that counts it. |
+| [`fulkruma.delivery.expired.v1`](/docs/api/webhooks/events/fulkruma.delivery.expired) | The download window closed (expired or revoked). | Within about a minute; once per expiry. |
 
 See [**Webhooks**](/docs/api/resources/webhooks) for the envelope and signature recipe.
 
-## Pattern: signed download URLs (planned)
+## Record a download
 
-In Phase F, deliveries will expose a `/api/v1/deliveries/:id/download` endpoint that returns a short-lived signed URL pointing at the actual asset (hosted in your own object store; Fulkruma signs, doesn't host). The endpoint will check `expiresAt`, increment `downloads`, and reject once `downloads >= maxDownloads`.
+```
+POST /api/v1/deliveries/:id/download
+```
 
-Until then, you serve the asset yourself, looking up `(productId, customerId)` in your own database and applying the same guardrails.
+Call it from the endpoint that serves the file, **before** serving it. Fulkruma counts the download against `maxDownloads` (atomically: two calls at once can't both take the last one) and emits [`fulkruma.delivery.downloaded.v1`](/docs/api/webhooks/events/fulkruma.delivery.downloaded). No body.
+
+**Response** `200` with the updated `{ delivery }` (`downloadCount` incremented).
+
+**Errors**
+
+| Status | `error.code` | When &mdash; serve nothing |
+|---|---|---|
+| `404` | `NOT_FOUND` | Not a delivery of your account. |
+| `409` | `DOWNLOAD_LIMIT` | Every download is used (`downloadCount >= maxDownloads`). `reset-downloads` gives the buyer more. |
+| `410` | `EXPIRED` | The window closed (`expiresAt` passed, or revoked). `extend` re-opens it. |
+
+## Pattern: serving the file
+
+Fulkruma owns the grant, not the file. Your download endpoint looks up the delivery for the buyer, calls **Record a download**, and only on `200` streams the file (or redirects to a short-lived signed URL from your own object store). Don't email a permanent storage URL.
 
 ## Next
 

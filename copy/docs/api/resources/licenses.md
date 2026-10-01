@@ -141,7 +141,7 @@ For unknown keys, `valid` is `false` and the rest of the payload is `null`. For 
 POST /api/v1/licenses/activate
 ```
 
-Binds a license to an instance ID. The first call for a fresh `(key, instanceId)` pair creates a `LicenseActivation` row and increments the license's `activations` counter; subsequent calls for the same pair return `alreadyActive: true` without side-effects. The maximum number of distinct concurrent instances is capped at the license's `maxActivations` &mdash; the `(maxActivations + 1)`th distinct instance returns `MAX_ACTIVATIONS`.
+Binds a license to an instance ID. The first call for a fresh `(key, instanceId)` pair creates a `LicenseActivation` row and increments the license's `activations` counter; subsequent calls for the same pair return `alreadyActive: true` without side-effects. An instance that was deactivated can activate again (it takes an activation back). The maximum number of distinct concurrent instances is capped at the license's `maxActivations` &mdash; the `(maxActivations + 1)`th distinct instance returns `MAX_ACTIVATIONS`.
 
 **Request body**
 
@@ -251,7 +251,10 @@ Releases an `instanceId`'s slot so it can be activated elsewhere. Idempotent: de
 | `fulkruma.license.issued.v1` | `POST /api/v1/licenses` succeeds. Includes auto-issue from the Plugipay-checkout webhook. | Emitted in the same transaction as the license insert. |
 | `fulkruma.license.revoked.v1` | `POST /api/v1/licenses/:id/revoke` succeeds. | Emitted in the same transaction as the status flip. |
 
-`license.activated` and `license.deactivated` are reserved in the catalog but **not currently emitted** &mdash; the activate/deactivate endpoints fire frequently and webhook-noise tradeoffs aren't yet resolved. Poll `validate` on the buyer's side, or subscribe to issued/revoked and audit on your end.
+| [`fulkruma.license.activated.v1`](/docs/api/webhooks/events/fulkruma.license.activated) | `POST /api/v1/licenses/activate` binds a new instance. | Not for an instance already active. |
+| [`fulkruma.license.deactivated.v1`](/docs/api/webhooks/events/fulkruma.license.deactivated) | `POST /api/v1/licenses/deactivate` unbinds an active instance. | |
+
+Activation events fire only on a real change, not on every check-in: an app that calls `activate` at each launch sends one event the first time. A subscription to `fulkruma.license.*` receives them.
 
 See [**Webhooks**](/docs/api/resources/webhooks) for the envelope and signature recipe.
 

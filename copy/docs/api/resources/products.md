@@ -305,8 +305,12 @@ Soft-archives the variant. Stock movement history and any open reservations agai
 | Event type | Fires on | Notes |
 |---|---|---|
 | `fulkruma.product.created.v1` | `POST /api/v1/products` succeeds. | Emitted in the same transaction as the product insert, delivered at-least-once. |
+| [`fulkruma.product.updated.v1`](/docs/api/webhooks/events/fulkruma.product.updated) | `PATCH /api/v1/products/:id` changes a field. | `data.changed` lists the fields. |
+| [`fulkruma.product.archived.v1`](/docs/api/webhooks/events/fulkruma.product.archived) | `DELETE /api/v1/products/:id` archives it. | Once. |
+| [`fulkruma.variant.created.v1`](/docs/api/webhooks/events/fulkruma.variant.created) | `POST /api/v1/products/:id/variants` succeeds. | |
+| [`fulkruma.variant.archived.v1`](/docs/api/webhooks/events/fulkruma.variant.archived) | `DELETE /api/v1/products/:id/variants/:variantId` archives it. | Once. |
 
-`product.updated`, `product.archived`, `variant.created`, and `variant.archived` are on the roadmap but **not currently emitted.** Audit-log rows are written for every variant create/update/archive even though no webhook fires &mdash; see [**Audit log**](/docs/api/resources/audit-log).
+Updating a variant sends no webhook; the [**Audit log**](/docs/api/resources/audit-log) records it (`variant.updated`).
 
 See [**Webhooks**](/docs/api/resources/webhooks) for the event envelope and signature recipe.
 

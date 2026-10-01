@@ -72,13 +72,15 @@ if event.Type == "fulkruma.delivery.created.v1" {
 
 ## Common pitfalls
 
-- **Linking directly to the asset.** Build a wrapper endpoint on your side that looks up the delivery, checks expiry / download count, and then signs the asset URL. Don't put a permanent storage URL in the email.
+- **Linking directly to the asset.** Build a wrapper endpoint on your side that looks up the delivery, records the download with `POST /api/v1/deliveries/:id/download` (which enforces expiry and the download count), and then signs the asset URL. Don't put a permanent storage URL in the email.
 - **Issuing the email twice on retry.** Dedupe on `event.id`. At-least-once delivery means duplicates are expected on transient failures.
 - **Forgetting `expiresAt`.** The default 14-day cutoff isn't surfaced in this payload &mdash; fetch the full delivery if you want to put an expiry date in the email.
 
 ## Related events
 
-`fulkruma.delivery.downloaded.v1` and `fulkruma.delivery.expired.v1` are reserved in the catalog but **not currently emitted**. Track downloads server-side from the (planned) `/api/v1/deliveries/:id/download` endpoint instead.
+- [`fulkruma.delivery.downloaded.v1`](./fulkruma.delivery.downloaded) &mdash; a download recorded with `POST /api/v1/deliveries/:id/download`.
+- [`fulkruma.delivery.expired.v1`](./fulkruma.delivery.expired) &mdash; its download window closed.
+- [`fulkruma.delivery.updated.v1`](./fulkruma.delivery.updated) &mdash; extended, reset or revoked.
 
 ## Next
 

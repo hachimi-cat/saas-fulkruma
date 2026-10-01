@@ -68,7 +68,9 @@ if event.Type == "fulkruma.product.created.v1" {
 
 ## Related events
 
-`fulkruma.product.updated.v1` and `fulkruma.product.archived.v1` are reserved in the catalog but **not currently emitted**. Variant-level events (`variant.created`, `variant.updated`, `variant.archived`) are also reserved &mdash; audit-log rows are written for those but no webhook fires. Subscribe defensively to handle them when they ship.
+- [`fulkruma.product.updated.v1`](./fulkruma.product.updated) &mdash; its fields change.
+- [`fulkruma.product.archived.v1`](./fulkruma.product.archived) &mdash; it is archived.
+- [`fulkruma.variant.created.v1`](./fulkruma.variant.created) / [`fulkruma.variant.archived.v1`](./fulkruma.variant.archived) &mdash; its variants (updating a variant sends no webhook).
 
 ## Next
 

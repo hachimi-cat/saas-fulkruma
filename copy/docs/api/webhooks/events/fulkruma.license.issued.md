@@ -85,8 +85,7 @@ if event.Type == "fulkruma.license.issued.v1" {
 ## Related events
 
 - [`fulkruma.license.revoked.v1`](./fulkruma.license.revoked) &mdash; subsequent revocation.
-
-`license.activated` and `license.deactivated` are reserved in the catalog but **not currently emitted** &mdash; activation rates are high-volume and the cost/benefit isn't settled yet.
+- [`fulkruma.license.activated.v1`](./fulkruma.license.activated) / [`fulkruma.license.deactivated.v1`](./fulkruma.license.deactivated) &mdash; instances bound to and unbound from the key.
 
 ## Next
 

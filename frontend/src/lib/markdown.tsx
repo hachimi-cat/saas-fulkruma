@@ -67,6 +67,10 @@ export const DOC_NAV: DocMeta[] = [
 
   // Webhook events
   { slug: 'api/webhooks/events/fulkruma.product.created', title: 'product.created', group: 'Webhook events', href: '/docs/api/webhooks/events/fulkruma.product.created' },
+  { slug: 'api/webhooks/events/fulkruma.product.updated', title: 'product.updated', group: 'Webhook events', href: '/docs/api/webhooks/events/fulkruma.product.updated' },
+  { slug: 'api/webhooks/events/fulkruma.product.archived', title: 'product.archived', group: 'Webhook events', href: '/docs/api/webhooks/events/fulkruma.product.archived' },
+  { slug: 'api/webhooks/events/fulkruma.variant.created', title: 'variant.created', group: 'Webhook events', href: '/docs/api/webhooks/events/fulkruma.variant.created' },
+  { slug: 'api/webhooks/events/fulkruma.variant.archived', title: 'variant.archived', group: 'Webhook events', href: '/docs/api/webhooks/events/fulkruma.variant.archived' },
   { slug: 'api/webhooks/events/fulkruma.warehouse.created', title: 'warehouse.created', group: 'Webhook events', href: '/docs/api/webhooks/events/fulkruma.warehouse.created' },
   { slug: 'api/webhooks/events/fulkruma.stock.adjusted', title: 'stock.adjusted', group: 'Webhook events', href: '/docs/api/webhooks/events/fulkruma.stock.adjusted' },
   { slug: 'api/webhooks/events/fulkruma.stock.low', title: 'stock.low', group: 'Webhook events', href: '/docs/api/webhooks/events/fulkruma.stock.low' },
@@ -77,8 +81,12 @@ export const DOC_NAV: DocMeta[] = [
   { slug: 'api/webhooks/events/fulkruma.shipment.rebooked', title: 'shipment.rebooked', group: 'Webhook events', href: '/docs/api/webhooks/events/fulkruma.shipment.rebooked' },
   { slug: 'api/webhooks/events/fulkruma.delivery.created', title: 'delivery.created', group: 'Webhook events', href: '/docs/api/webhooks/events/fulkruma.delivery.created' },
   { slug: 'api/webhooks/events/fulkruma.delivery.updated', title: 'delivery.updated', group: 'Webhook events', href: '/docs/api/webhooks/events/fulkruma.delivery.updated' },
+  { slug: 'api/webhooks/events/fulkruma.delivery.downloaded', title: 'delivery.downloaded', group: 'Webhook events', href: '/docs/api/webhooks/events/fulkruma.delivery.downloaded' },
+  { slug: 'api/webhooks/events/fulkruma.delivery.expired', title: 'delivery.expired', group: 'Webhook events', href: '/docs/api/webhooks/events/fulkruma.delivery.expired' },
   { slug: 'api/webhooks/events/fulkruma.license.issued', title: 'license.issued', group: 'Webhook events', href: '/docs/api/webhooks/events/fulkruma.license.issued' },
   { slug: 'api/webhooks/events/fulkruma.license.revoked', title: 'license.revoked', group: 'Webhook events', href: '/docs/api/webhooks/events/fulkruma.license.revoked' },
+  { slug: 'api/webhooks/events/fulkruma.license.activated', title: 'license.activated', group: 'Webhook events', href: '/docs/api/webhooks/events/fulkruma.license.activated' },
+  { slug: 'api/webhooks/events/fulkruma.license.deactivated', title: 'license.deactivated', group: 'Webhook events', href: '/docs/api/webhooks/events/fulkruma.license.deactivated' },
   { slug: 'api/webhooks/events/fulkruma.webhook_endpoint.disabled', title: 'webhook_endpoint.disabled', group: 'Webhook events', href: '/docs/api/webhooks/events/fulkruma.webhook_endpoint.disabled' },
 
   // SDKs
