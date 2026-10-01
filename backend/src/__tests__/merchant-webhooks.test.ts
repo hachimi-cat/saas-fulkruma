@@ -42,6 +42,7 @@ const { default: webhooksRouter } = await import('../routes/webhooks.js');
 const { processOutboxBatch } = await import('../services/outbox-worker.js');
 const {
   deliverDueWebhooks, fanOutEvent, eventMatches, signWebhookBody, MAX_ATTEMPTS, RETRY_DELAYS_MS,
+  pruneOldDeliveries,
 } = await import('../services/webhook-delivery.js');
 const { __setWebhookResolver, isBlockedAddress } = await import('../lib/webhook-target.js');
 
@@ -512,5 +513,26 @@ describe.skipIf(!HAS_DB)('merchant webhooks (real database)', () => {
     expect(await prisma.webhookEvent.count({ where: { endpointId } })).toBe(1);
     await deliverDueWebhooks();
     expect(hits('/hook/merchant')).toHaveLength(1);
+  });
+
+  it('prunes finished deliveries older than 30 days, never pending ones', async () => {
+    const acc = account('prune');
+    const reg = await register(acc, { url: `${base}/hook/prune`, events: ['*'] });
+    const endpointId = reg.body.data.endpoint.id as string;
+    await emit(acc, 'fulkruma.stock.adjusted.v1', { variantId: 'var_old' });
+    await emit(acc, 'fulkruma.stock.adjusted.v1', { variantId: 'var_recent' });
+    await processOutboxBatch();
+    await deliverDueWebhooks();
+    const rows = await prisma.webhookEvent.findMany({ where: { endpointId }, orderBy: { createdAt: 'asc' } });
+    expect(rows.map((r) => r.status)).toEqual(['sent', 'sent']);
+    const old = new Date(Date.now() - 31 * 24 * 60 * 60 * 1000);
+    await prisma.webhookEvent.update({ where: { id: rows[0]!.id }, data: { createdAt: old } });
+    // a delivery still being retried is kept however old it is
+    await prisma.webhookEvent.update({ where: { id: rows[1]!.id }, data: { createdAt: old, status: 'pending', nextRetryAt: new Date(Date.now() + 3600_000) } });
+
+    expect(await pruneOldDeliveries()).toBe(1);
+    const left = await prisma.webhookEvent.findMany({ where: { endpointId } });
+    expect(left.map((r) => r.id)).toEqual([rows[1]!.id]);
+    expect(await prisma.webhookDeliveryAttempt.count({ where: { webhookEventId: rows[0]!.id } })).toBe(0);
   });
 });

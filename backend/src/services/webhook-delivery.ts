@@ -469,16 +469,37 @@ export async function retryWebhookEvent(accountId: string, id: string): Promise<
   return { ok: true, event };
 }
 
+// ── retention ───────────────────────────────────────────────────────
+
+/** How long a finished delivery (sent or failed) and its attempts are kept —
+ *  30 days, as the family's webhook docs promise. Pending ones are never pruned. */
+export const RETENTION_DAYS = Number(process.env.WEBHOOK_RETENTION_DAYS ?? 30);
+
+export async function pruneOldDeliveries(now = new Date()): Promise<number> {
+  const before = new Date(now.getTime() - RETENTION_DAYS * 24 * 60 * 60 * 1000);
+  const { count } = await prisma.webhookEvent.deleteMany({
+    where: { status: { in: ['sent', 'failed'] }, createdAt: { lt: before } },
+  });
+  return count;
+}
+
 // ── the poller ──────────────────────────────────────────────────────
 
 const POLL_MS = Number(process.env.WEBHOOK_POLL_INTERVAL_MS ?? 1000);
+const PRUNE_EVERY_MS = 60 * 60 * 1000;
 let stopped = false;
 
 export async function startWebhookDeliveryWorker(): Promise<void> {
   console.log(`[webhooks] delivery worker polling every ${POLL_MS}ms`);
+  let lastPrune = 0;
   while (!stopped) {
     try {
       await deliverDueWebhooks();
+      if (Date.now() - lastPrune >= PRUNE_EVERY_MS) {
+        lastPrune = Date.now();
+        const pruned = await pruneOldDeliveries();
+        if (pruned) console.log(`[webhooks] pruned ${pruned} deliveries older than ${RETENTION_DAYS} days`);
+      }
     } catch (e) {
       console.error('[webhooks] delivery loop error', e);
     }
