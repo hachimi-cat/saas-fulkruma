@@ -7,8 +7,9 @@
  * metadata service. Same guard as Secronna's webhooks (services/
  * webhooks.ts there), which this follows:
  *
- *  - https only in production (`WEBHOOK_ALLOW_HTTP=true` lets a staging
- *    box accept http://); http is accepted outside production;
+ *  - https only (`WEBHOOK_ALLOW_HTTP=true` lets a staging box accept
+ *    http://); http is accepted only when NODE_ENV is development or
+ *    test;
  *  - the hostname is resolved and EVERY address it resolves to is
  *    checked against a denylist (loopback, RFC1918 private, CGNAT —
  *    the tailnet —, link-local incl. 169.254.169.254, ULA, multicast,
@@ -23,8 +24,9 @@
  *    failed attempt), since a followed redirect would skip all of this.
  *
  * `WEBHOOK_ALLOW_PRIVATE_TARGETS=true` turns the address check off for
- * local development and tests (a receiver on 127.0.0.1). It is ignored
- * when NODE_ENV=production.
+ * local development and tests (a receiver on 127.0.0.1). It is honoured
+ * only when NODE_ENV is development or test: any other NODE_ENV —
+ * production, staging, unset — gets the strict rules (fail closed).
  */
 import { isIP } from 'node:net';
 import { lookup as dnsLookup } from 'node:dns/promises';
@@ -45,16 +47,17 @@ export function __setWebhookResolver(r: WebhookResolver | null): void {
   resolver = r ?? defaultResolver;
 }
 
-function isProduction(): boolean {
-  return process.env.NODE_ENV === 'production';
+/** Only a developer's machine and the test suite may relax the rules. */
+function isDevOrTest(): boolean {
+  return process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test';
 }
 
 export function httpAllowed(): boolean {
-  return !isProduction() || process.env.WEBHOOK_ALLOW_HTTP === 'true';
+  return isDevOrTest() || process.env.WEBHOOK_ALLOW_HTTP === 'true';
 }
 
 export function privateTargetsAllowed(): boolean {
-  return !isProduction() && process.env.WEBHOOK_ALLOW_PRIVATE_TARGETS === 'true';
+  return isDevOrTest() && process.env.WEBHOOK_ALLOW_PRIVATE_TARGETS === 'true';
 }
 
 // ── address classification ──────────────────────────────────────────

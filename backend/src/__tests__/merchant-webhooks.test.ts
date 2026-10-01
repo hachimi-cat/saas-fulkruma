@@ -415,14 +415,19 @@ describe.skipIf(!HAS_DB)('merchant webhooks (real database)', () => {
     expect(await prisma.webhookEndpoint.count({ where: { accountId: acc } })).toBe(1);
 
     const prevEnv = process.env.NODE_ENV;
-    process.env.NODE_ENV = 'production';
     try {
-      const plain = await register(acc, { url: 'http://hooks.example.com/hook', events: ['*'] });
-      expect(plain.status).toBe(400);
-      expect(plain.body.error.message).toMatch(/https/);
-      // The dev escape hatch does nothing in production.
-      process.env.WEBHOOK_ALLOW_PRIVATE_TARGETS = 'true';
-      expect((await register(acc, { url: 'https://rebind.example.com/hook', events: ['*'] })).status).toBe(400);
+      // Production — and any NODE_ENV that is not development/test, unset included.
+      for (const env of ['production', 'staging', undefined]) {
+        if (env === undefined) delete process.env.NODE_ENV;
+        else process.env.NODE_ENV = env;
+        const plain = await register(acc, { url: 'http://hooks.example.com/hook', events: ['*'] });
+        expect(plain.status, String(env)).toBe(400);
+        expect(plain.body.error.message).toMatch(/https/);
+        // The dev escape hatch does nothing there.
+        process.env.WEBHOOK_ALLOW_PRIVATE_TARGETS = 'true';
+        expect((await register(acc, { url: 'https://rebind.example.com/hook', events: ['*'] })).status, String(env)).toBe(400);
+        delete process.env.WEBHOOK_ALLOW_PRIVATE_TARGETS;
+      }
     } finally {
       process.env.NODE_ENV = prevEnv;
       delete process.env.WEBHOOK_ALLOW_PRIVATE_TARGETS;
