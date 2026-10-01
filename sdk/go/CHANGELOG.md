@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.5.0
 - `Client.API.DeliveriesDownload(ctx, id)` records a download of a digital delivery (POST /deliveries/{id}/download): counted against `maxDownloads`; 409 `DOWNLOAD_LIMIT` when used up, 410 `EXPIRED` after expiry.
 - More event types arrive at your endpoints: `fulkruma.product.updated.v1`, `fulkruma.product.archived.v1`, `fulkruma.variant.created.v1`, `fulkruma.variant.archived.v1`, `fulkruma.delivery.downloaded.v1`, `fulkruma.delivery.expired.v1`, `fulkruma.license.activated.v1`, `fulkruma.license.deactivated.v1`.
 

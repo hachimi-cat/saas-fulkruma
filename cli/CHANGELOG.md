@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.7.0
 - `fulkruma api deliveries download <id>` records a download of a digital delivery (409 `DOWNLOAD_LIMIT` when used up, 410 `EXPIRED` after expiry).
 
 ## 0.6.0
