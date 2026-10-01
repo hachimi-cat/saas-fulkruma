@@ -102,7 +102,7 @@ async function applyDeliveryAction(
   req: Request,
   res: Response,
   action: 'extend' | 'reset-downloads' | 'revoke',
-  patch: (d: Delivery) => { expiresAt?: Date; downloadCount?: number },
+  patch: (d: Delivery) => { expiresAt?: Date; downloadCount?: number; expiryNotifiedAt?: null },
 ) {
   const accountId = req.auth?.accountId;
   const rid = req.requestId ?? 'req_unknown';
@@ -133,10 +133,12 @@ async function applyDeliveryAction(
   }
 }
 
-// Extend the download window 30 days (from now, or the current expiry).
+// Extend the download window 30 days (from now, or the current expiry). A delivery that
+// had expired is live again, so its next expiry is announced again.
 router.post('/:id/extend', (req, res) =>
   applyDeliveryAction(req, res, 'extend', (d) => ({
     expiresAt: new Date(Math.max(Date.now(), d.expiresAt.getTime()) + EXTEND_MS),
+    expiryNotifiedAt: null,
   })),
 );
 
@@ -149,5 +151,52 @@ router.post('/:id/reset-downloads', (req, res) =>
 router.post('/:id/revoke', (req, res) =>
   applyDeliveryAction(req, res, 'revoke', () => ({ expiresAt: new Date() })),
 );
+
+/**
+ * Record a download. Call it from the endpoint that serves the file, before serving it:
+ * it counts the download against `maxDownloads` (atomically: two at once can't both take
+ * the last one) and emits fulkruma.delivery.downloaded.v1. 410 EXPIRED when the delivery
+ * has expired (or was revoked), 409 DOWNLOAD_LIMIT when every download is used — serve
+ * nothing then.
+ */
+router.post('/:id/download', async (req, res) => {
+  const accountId = req.auth?.accountId;
+  const rid = req.requestId ?? 'req_unknown';
+  if (!accountId) return res.status(403).json(err('NO_ACCOUNT', 'token missing accountId', rid));
+  const row = await prisma.delivery.findFirst({ where: { id: String(req.params.id), accountId } });
+  if (!row) return res.status(404).json(err('NOT_FOUND', 'delivery not found', rid));
+  const now = new Date();
+  if (row.expiresAt <= now) return res.status(410).json(err('EXPIRED', 'this delivery has expired', rid));
+  const delivery = await prisma.$transaction(async (tx) => {
+    const taken = await tx.delivery.updateMany({
+      where: { id: row.id, expiresAt: { gt: now }, downloadCount: { lt: row.maxDownloads } },
+      data: { downloadCount: { increment: 1 } },
+    });
+    if (taken.count !== 1) return null;
+    const d = await tx.delivery.findUniqueOrThrow({ where: { id: row.id } });
+    await tx.outboxEvent.create({
+      data: buildEvent({
+        type: 'fulkruma.delivery.downloaded.v1',
+        accountId,
+        data: {
+          deliveryId: d.id,
+          productId: d.productId,
+          customerId: d.customerId,
+          downloadCount: d.downloadCount,
+          maxDownloads: d.maxDownloads,
+          remaining: Math.max(0, d.maxDownloads - d.downloadCount),
+          downloadedAt: now.toISOString(),
+        },
+      }),
+    });
+    return d;
+  });
+  if (!delivery) {
+    const fresh = await prisma.delivery.findUnique({ where: { id: row.id } });
+    if (fresh && fresh.expiresAt <= new Date()) return res.status(410).json(err('EXPIRED', 'this delivery has expired', rid));
+    return res.status(409).json(err('DOWNLOAD_LIMIT', `all ${row.maxDownloads} downloads are used`, rid));
+  }
+  return res.json(ok({ delivery }, rid));
+});
 
 export default router;

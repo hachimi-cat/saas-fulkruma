@@ -407,6 +407,10 @@ model Delivery {
   downloadCount     Int      @default(0)
   maxDownloads      Int      @default(5)
   expiresAt         DateTime
+  /// When fulkruma.delivery.expired.v1 went out for the current expiresAt (the
+  /// expiry sweep in services/delivery-expiry.ts); cleared when the delivery is
+  /// extended, so a later expiry is told again.
+  expiryNotifiedAt  DateTime?
   // Source-system back-reference (see License).
   externalSource   String?
   externalRef      String?
@@ -417,6 +421,7 @@ model Delivery {
   @@index([productId])
   @@index([customerId])
   @@index([expiresAt])
+  @@index([expiryNotifiedAt, expiresAt])
   @@index([accountId, externalSource, externalRef])
 }
 

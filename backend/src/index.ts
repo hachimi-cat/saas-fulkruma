@@ -7,6 +7,7 @@ import biteshipWebhook from './routes/biteship-webhook.js';
 import { requestId } from './middleware/auth.js';
 import { startOutboxWorker } from './services/outbox-worker.js';
 import { startWebhookDeliveryWorker } from './services/webhook-delivery.js';
+import { startDeliveryExpiryWorker } from './services/delivery-expiry.js';
 import { registerFeatureFlags } from './lib/feature-flag-registry.js';
 
 const app = express();
@@ -50,6 +51,11 @@ if (process.env.OUTBOX_WORKER_ENABLED !== 'false') {
   });
   startWebhookDeliveryWorker().catch((e) => {
     console.error('[webhooks] fatal', e);
+    process.exit(1);
+  });
+  // fulkruma.delivery.expired.v1: announces each delivery whose download window closed.
+  startDeliveryExpiryWorker().catch((e) => {
+    console.error('[deliveries] fatal', e);
     process.exit(1);
   });
 }

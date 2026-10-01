@@ -105,7 +105,22 @@ router.patch('/:id', async (req, res) => {
   if (!product) return res.status(404).json(err('NOT_FOUND', 'product not found', req.requestId ?? 'req_unknown'));
   const parsed = productSchema.partial().safeParse(req.body);
   if (!parsed.success) return res.status(400).json(err('VALIDATION', parsed.error.message, req.requestId ?? 'req_unknown'));
-  const updated = await prisma.product.update({ where: { id: product.id }, data: parsed.data, include: { variants: true } });
+  const updated = await prisma.$transaction(async (tx) => {
+    const row = await tx.product.update({ where: { id: product.id }, data: parsed.data, include: { variants: true } });
+    // fulkruma.product.updated.v1 — when a field actually changed.
+    const changed = (Object.keys(parsed.data) as (keyof typeof parsed.data)[])
+      .filter((k) => parsed.data[k] !== undefined && parsed.data[k] !== product[k]);
+    if (changed.length > 0) {
+      await tx.outboxEvent.create({
+        data: buildEvent({
+          type: 'fulkruma.product.updated.v1',
+          accountId,
+          data: { productId: row.id, name: row.name, sku: row.sku, type: row.type, changed, updatedAt: row.updatedAt.toISOString() },
+        }),
+      });
+    }
+    return row;
+  });
   await writeAuditLog(prisma, {
     accountId, actorType: 'user', actorId: userId ?? null,
     action: 'product.updated',
@@ -121,7 +136,19 @@ router.delete('/:id', async (req, res) => {
   if (!accountId) return res.status(403).json(err('NO_ACCOUNT', 'token missing accountId', req.requestId ?? 'req_unknown'));
   const product = await prisma.product.findFirst({ where: { id: req.params.id, accountId } });
   if (!product) return res.status(404).json(err('NOT_FOUND', 'product not found', req.requestId ?? 'req_unknown'));
-  await prisma.product.update({ where: { id: product.id }, data: { archived: true } });
+  await prisma.$transaction(async (tx) => {
+    const row = await tx.product.update({ where: { id: product.id }, data: { archived: true } });
+    // fulkruma.product.archived.v1 — once: archiving an archived product changes nothing.
+    if (!product.archived) {
+      await tx.outboxEvent.create({
+        data: buildEvent({
+          type: 'fulkruma.product.archived.v1',
+          accountId,
+          data: { productId: row.id, name: row.name, sku: row.sku, type: row.type, archivedAt: row.updatedAt.toISOString() },
+        }),
+      });
+    }
+  });
   await writeAuditLog(prisma, {
     accountId, actorType: 'user', actorId: userId ?? null,
     action: 'product.archived',
@@ -147,7 +174,18 @@ router.post('/:id/variants', async (req, res) => {
         data: { isDefault: false },
       });
     }
-    return tx.productVariant.create({ data: { ...parsed.data, productId: product.id } });
+    const variant = await tx.productVariant.create({ data: { ...parsed.data, productId: product.id } });
+    await tx.outboxEvent.create({
+      data: buildEvent({
+        type: 'fulkruma.variant.created.v1',
+        accountId,
+        data: {
+          variantId: variant.id, productId: product.id, name: variant.name, sku: variant.sku,
+          priceCents: variant.priceCents, lowStockThreshold: variant.lowStockThreshold, isDefault: variant.isDefault,
+        },
+      }),
+    });
+    return variant;
   });
   await writeAuditLog(prisma, {
     accountId, actorType: 'user', actorId: userId ?? null,
@@ -194,7 +232,18 @@ router.delete('/:id/variants/:variantId', async (req, res) => {
   if (!product) return res.status(404).json(err('NOT_FOUND', 'product not found', req.requestId ?? 'req_unknown'));
   const variant = await prisma.productVariant.findFirst({ where: { id: req.params.variantId, productId: product.id } });
   if (!variant) return res.status(404).json(err('NOT_FOUND', 'variant not found', req.requestId ?? 'req_unknown'));
-  await prisma.productVariant.update({ where: { id: variant.id }, data: { archived: true } });
+  await prisma.$transaction(async (tx) => {
+    const row = await tx.productVariant.update({ where: { id: variant.id }, data: { archived: true } });
+    if (!variant.archived) {
+      await tx.outboxEvent.create({
+        data: buildEvent({
+          type: 'fulkruma.variant.archived.v1',
+          accountId,
+          data: { variantId: row.id, productId: product.id, name: row.name, sku: row.sku, archivedAt: row.updatedAt.toISOString() },
+        }),
+      });
+    }
+  });
   await writeAuditLog(prisma, {
     accountId, actorType: 'user', actorId: userId ?? null,
     action: 'variant.archived',
