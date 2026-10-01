@@ -155,7 +155,7 @@ These don't need an HMAC signature. The key itself is the credential.
 
 ## Webhooks
 
-Fulkruma sends webhook events for state changes: `warehouse.created`, `stock.low`, `shipment.delivered`, `license.activated`, and so on.
+Fulkruma sends webhook events for state changes: `fulkruma.warehouse.created.v1`, `fulkruma.stock.low.v1`, `fulkruma.shipment.status_updated.v1`, `fulkruma.license.issued.v1`, and so on &mdash; the full list is the [event catalog](/docs/api/resources/webhooks#event-catalog).
 
 Events are signed; you verify the signature before trusting the payload. Configure endpoints under **Dashboard &rarr; Webhooks** or via `POST /api/v1/webhooks/endpoints`.
 

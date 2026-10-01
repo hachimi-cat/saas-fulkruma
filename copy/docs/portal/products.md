@@ -111,12 +111,9 @@ The dashboard's **Stock &rarr; Reservations** tab shows currently-held reservati
 
 ## Low-stock alerts
 
-Set a `lowStockThreshold` per variant. When the available count drops below the threshold, Fulkruma:
+Set a `lowStockThreshold` per variant. When a stock adjustment takes a warehouse's level from at or above the threshold to below it, Fulkruma fires a [`fulkruma.stock.low.v1`](/docs/api/webhooks/events/fulkruma.stock.low) webhook event you can wire to email, Slack, etc. It fires once per crossing &mdash; not again while the level stays low.
 
-- Marks the variant as **Low** in the dashboard list.
-- Fires a `stock.low` webhook event you can wire to email, Slack, etc.
-
-A threshold of `0` disables the alert for that variant.
+Leave the threshold empty (or `0`) for no alert.
 
 ## Archiving
 

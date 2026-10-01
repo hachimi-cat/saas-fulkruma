@@ -251,7 +251,11 @@ There is **no hard delete**. Archived warehouses can be unarchived by PATCHing `
 
 ## Events
 
-State changes on warehouses do **not** currently emit outbox events. If you need to mirror warehouse mutations into another system, poll `GET /api/v1/warehouses` periodically and reconcile by `updatedAt`. The roadmap includes `warehouse.created.v1` and `warehouse.archived.v1` &mdash; if your workflow needs them sooner, raise it at **hello@fulkruma.com**.
+| Event type | Fires on |
+|---|---|
+| [`fulkruma.warehouse.created.v1`](/docs/api/webhooks/events/fulkruma.warehouse.created) | `POST /api/v1/warehouses` creates a warehouse. The payload is the new warehouse. |
+
+Changing or archiving a warehouse emits no event: to mirror those into another system, poll `GET /api/v1/warehouses` and reconcile by `updatedAt`.
 
 See the [**Webhooks resource**](/docs/api/resources/webhooks) for the event envelope, retry policy, and signature recipe.
 

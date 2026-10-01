@@ -266,9 +266,8 @@ fulkruma_curl POST '/api/v1/stock/adjust' \
 
 | Event type | Fires on | Notes |
 |---|---|---|
-| `fulkruma.stock.adjusted.v1` | `POST /api/v1/stock/adjust` succeeds. Also fires for shipment-fulfilment and refund-restock paths. | Payload includes `quantityAfter` so consumers can sync state without a separate read. |
-
-A `stock.low` event &mdash; for when a level falls to or below a variant's `lowStockThreshold` &mdash; is reserved in the catalog but **not currently emitted.** The dashboard surfaces low-stock status by polling.
+| `fulkruma.stock.adjusted.v1` | `POST /api/v1/stock/adjust` succeeds (every `reason`, `refund_restock` included). | Payload includes `quantityAfter` so consumers can sync state without a separate read. |
+| `fulkruma.stock.low.v1` | An adjustment takes a level from at or above the variant's `lowStockThreshold` to below it. | Once per crossing, per warehouse; never for a variant without a threshold. See [the event](/docs/api/webhooks/events/fulkruma.stock.low). |
 
 See [**Webhooks**](/docs/api/resources/webhooks) for the event envelope and signature recipe.
 

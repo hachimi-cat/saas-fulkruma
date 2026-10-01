@@ -319,7 +319,7 @@ After the sixth failure (about 14&frac12; hours in) the delivery is `failed` and
 
 - **At-least-once.** A timeout can fail an attempt your server actually processed, so the same event can arrive more than once. Dedupe on the body's `id` (or `Fulkruma-Event-Id`) &mdash; a `processed_events` table with a unique constraint is the canonical guard.
 - **Acknowledge fast.** If your handler needs longer than a few seconds, queue the work and return `200` immediately.
-- **Endpoints that keep failing are switched off.** When an endpoint has failed **20 attempts in a row** and has been failing for **at least 24 hours**, Fulkruma sets `active: false` with `disabledAt` and `disabledReason`, marks its queued deliveries `failed`, and records a `webhook.auto_disabled` entry in the [audit log](/docs/api/resources/audit-log). Both conditions must hold, so a short outage &mdash; a deploy, a few minutes of errors while events are busy &mdash; never switches anyone off; the retries ride it out. Fix the receiver, re-enable the endpoint (`PATCH … {"active": true}`), then retry what you missed (`GET /webhooks/events?endpointId=…&status=failed`). There is no notification event for this yet (`webhook_endpoint.disabled` is reserved): watch `active` on [List endpoints](#list-endpoints) or the audit log.
+- **Endpoints that keep failing are switched off.** When an endpoint has failed **20 attempts in a row** and has been failing for **at least 24 hours**, Fulkruma sets `active: false` with `disabledAt` and `disabledReason`, marks its queued deliveries `failed`, and records a `webhook.auto_disabled` entry in the [audit log](/docs/api/resources/audit-log). Both conditions must hold, so a short outage &mdash; a deploy, a few minutes of errors while events are busy &mdash; never switches anyone off; the retries ride it out. Fix the receiver, re-enable the endpoint (`PATCH … {"active": true}`), then retry what you missed (`GET /webhooks/events?endpointId=…&status=failed`). The switch-off also raises [`fulkruma.webhook_endpoint.disabled.v1`](/docs/api/webhooks/events/fulkruma.webhook_endpoint.disabled), delivered to your *other* endpoints that subscribe to it &mdash; so point a second endpoint (or an alerting service) at it &mdash; or watch `active` on [List endpoints](#list-endpoints) or the audit log.
 
 ## Allowed URLs
 
@@ -342,7 +342,9 @@ Emitted today:
 | Event type | When | Page |
 |---|---|---|
 | `fulkruma.product.created.v1` | A product is created. | [&rarr;](/docs/api/webhooks/events/fulkruma.product.created) |
+| `fulkruma.warehouse.created.v1` | A warehouse is created. | [&rarr;](/docs/api/webhooks/events/fulkruma.warehouse.created) |
 | `fulkruma.stock.adjusted.v1` | A stock level changes. | [&rarr;](/docs/api/webhooks/events/fulkruma.stock.adjusted) |
+| `fulkruma.stock.low.v1` | A stock level falls below its variant's `lowStockThreshold` (once per crossing). | [&rarr;](/docs/api/webhooks/events/fulkruma.stock.low) |
 | `fulkruma.shipment.created.v1` | A shipment (draft) is created. | [&rarr;](/docs/api/webhooks/events/fulkruma.shipment.created) |
 | `fulkruma.shipment.pickup_confirmed.v1` | A draft is confirmed and booked with the courier. | [&rarr;](/docs/api/webhooks/events/fulkruma.shipment.pickup_confirmed) |
 | `fulkruma.shipment.status_updated.v1` | The courier reports a new status (picked up, in transit, delivered, returned, …). | [&rarr;](/docs/api/webhooks/events/fulkruma.shipment.status_updated) |
@@ -352,14 +354,9 @@ Emitted today:
 | `fulkruma.delivery.updated.v1` | A delivery is extended, its downloads reset, or revoked. | [&rarr;](/docs/api/webhooks/events/fulkruma.delivery.updated) |
 | `fulkruma.license.issued.v1` | A license key is issued. | [&rarr;](/docs/api/webhooks/events/fulkruma.license.issued) |
 | `fulkruma.license.revoked.v1` | A license key is revoked. | [&rarr;](/docs/api/webhooks/events/fulkruma.license.revoked) |
+| `fulkruma.webhook_endpoint.disabled.v1` | Fulkruma switches off one of your endpoints that kept failing (sent to your other endpoints). | [&rarr;](/docs/api/webhooks/events/fulkruma.webhook_endpoint.disabled) |
 
 A delivered, returned or failed parcel arrives as `fulkruma.shipment.status_updated.v1` with that `status` &mdash; there is no separate `delivered` event.
-
-Reserved (not emitted; subscribe with a prefix like `fulkruma.stock.*` to pick them up when they ship):
-
-- `fulkruma.stock.low.v1`
-- `fulkruma.warehouse.created.v1`
-- `webhook_endpoint.disabled`
 
 ## Next
 

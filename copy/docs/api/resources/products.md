@@ -233,7 +233,7 @@ POST /api/v1/products/:id/variants
 | `sku` | string | no | Variant SKU. Unique within a product (workspace-scoped uniqueness is not enforced). |
 | `priceCents` | integer (&ge;0) | no | Price in the smallest currency unit (IDR cents, USD cents). Storlaunch uses this for product mirroring. |
 | `costCents` | integer (&ge;0) | no | Wholesale cost; used for margin reports. |
-| `lowStockThreshold` | integer (&ge;0) | no | Triggers a `stock.low` notification when on-hand falls to or below this. |
+| `lowStockThreshold` | integer (&ge;0) | no | A warehouse's level falling below this raises [`fulkruma.stock.low.v1`](/docs/api/webhooks/events/fulkruma.stock.low). |
 | `weight` | integer (&ge;0) | no | Grams. Overrides the product-level weight at shipping time. |
 | `isDefault` | boolean | no | Promote this variant to the product's default. Demotes any existing default in the same transaction. |
 

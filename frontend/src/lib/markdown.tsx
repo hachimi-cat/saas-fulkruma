@@ -67,7 +67,9 @@ export const DOC_NAV: DocMeta[] = [
 
   // Webhook events
   { slug: 'api/webhooks/events/fulkruma.product.created', title: 'product.created', group: 'Webhook events', href: '/docs/api/webhooks/events/fulkruma.product.created' },
+  { slug: 'api/webhooks/events/fulkruma.warehouse.created', title: 'warehouse.created', group: 'Webhook events', href: '/docs/api/webhooks/events/fulkruma.warehouse.created' },
   { slug: 'api/webhooks/events/fulkruma.stock.adjusted', title: 'stock.adjusted', group: 'Webhook events', href: '/docs/api/webhooks/events/fulkruma.stock.adjusted' },
+  { slug: 'api/webhooks/events/fulkruma.stock.low', title: 'stock.low', group: 'Webhook events', href: '/docs/api/webhooks/events/fulkruma.stock.low' },
   { slug: 'api/webhooks/events/fulkruma.shipment.created', title: 'shipment.created', group: 'Webhook events', href: '/docs/api/webhooks/events/fulkruma.shipment.created' },
   { slug: 'api/webhooks/events/fulkruma.shipment.pickup_confirmed', title: 'shipment.pickup_confirmed', group: 'Webhook events', href: '/docs/api/webhooks/events/fulkruma.shipment.pickup_confirmed' },
   { slug: 'api/webhooks/events/fulkruma.shipment.status_updated', title: 'shipment.status_updated', group: 'Webhook events', href: '/docs/api/webhooks/events/fulkruma.shipment.status_updated' },
@@ -77,6 +79,7 @@ export const DOC_NAV: DocMeta[] = [
   { slug: 'api/webhooks/events/fulkruma.delivery.updated', title: 'delivery.updated', group: 'Webhook events', href: '/docs/api/webhooks/events/fulkruma.delivery.updated' },
   { slug: 'api/webhooks/events/fulkruma.license.issued', title: 'license.issued', group: 'Webhook events', href: '/docs/api/webhooks/events/fulkruma.license.issued' },
   { slug: 'api/webhooks/events/fulkruma.license.revoked', title: 'license.revoked', group: 'Webhook events', href: '/docs/api/webhooks/events/fulkruma.license.revoked' },
+  { slug: 'api/webhooks/events/fulkruma.webhook_endpoint.disabled', title: 'webhook_endpoint.disabled', group: 'Webhook events', href: '/docs/api/webhooks/events/fulkruma.webhook_endpoint.disabled' },
 
   // SDKs
   { slug: 'sdk', title: 'Overview', group: 'SDKs', href: '/docs/sdk' },

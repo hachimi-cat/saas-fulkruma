@@ -23,8 +23,12 @@ const EVENT_TYPES = [
   'fulkruma.delivery.*',
   'fulkruma.delivery.created.v1',
   'fulkruma.delivery.updated.v1',
+  'fulkruma.stock.*',
   'fulkruma.stock.adjusted.v1',
+  'fulkruma.stock.low.v1',
   'fulkruma.product.created.v1',
+  'fulkruma.warehouse.created.v1',
+  'fulkruma.webhook_endpoint.disabled.v1',
 ];
 
 export default function WebhooksPage() {

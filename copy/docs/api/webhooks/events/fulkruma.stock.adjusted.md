@@ -4,7 +4,7 @@ title: fulkruma.stock.adjusted
 
 # `fulkruma.stock.adjusted.v1`
 
-Fires every time a stock level changes &mdash; via direct `POST /api/v1/stock/adjust`, as a side-effect of shipment fulfilment, or during refund-restock processing. This is the highest-volume event Fulkruma emits; back-pressure your handler accordingly.
+Fires every time a stock level changes &mdash; every `POST /api/v1/stock/adjust`, whatever its `reason` (a refund restock or an import included: they go through the same call). This is the highest-volume event Fulkruma emits; back-pressure your handler accordingly.
 
 The payload carries the signed `delta`, the `reason` code, and the post-mutation `quantityAfter` so consumers can sync state without a separate read.
 
@@ -20,8 +20,6 @@ Reasons that fire this event:
 - `damaged` / `returned_to_supplier` &mdash; write-offs.
 - `refund_restock` &mdash; refund through Plugipay restored quantity.
 - `import` &mdash; bulk import.
-
-Shipment fulfilment fires an `adjusted` event with a synthetic reason internal to that flow.
 
 ## Payload
 
@@ -81,7 +79,7 @@ if event.Type == "fulkruma.stock.adjusted.v1" {
 ## What to do
 
 - Mirror the level into your own inventory store, keyed by `(variantId, warehouseId)`.
-- Surface low-stock alerts when `quantityAfter` falls below your threshold.
+- For low-stock alerts, subscribe to [`fulkruma.stock.low.v1`](/docs/api/webhooks/events/fulkruma.stock.low) instead of comparing `quantityAfter` yourself.
 - Reconcile against Fulkruma's [movements log](/docs/api/resources/stock#list-stock-movements) at end-of-day &mdash; the `movementId` in the payload joins straight to that table.
 
 ## Common pitfalls
@@ -93,7 +91,7 @@ if event.Type == "fulkruma.stock.adjusted.v1" {
 
 ## Related events
 
-`fulkruma.stock.low.v1` (when a level falls below a variant's `lowStockThreshold`) is reserved in the catalog but **not currently emitted**. Low-stock detection today happens client-side from this event's `quantityAfter`.
+[`fulkruma.stock.low.v1`](/docs/api/webhooks/events/fulkruma.stock.low) fires right after this event when the adjustment takes the level below the variant's `lowStockThreshold`.
 
 ## Next
 
