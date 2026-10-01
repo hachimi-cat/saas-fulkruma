@@ -515,6 +515,10 @@ class GeneratedApi:
         """In Fulkruma we still gate this behind requireAuth: the dashboard always has a session, and we want per-merchant API key resolution. (GET /api/v1/shipping/couriers)."""
         return self._call("GET", f"/api/v1/shipping/couriers", {}, None)
 
+    def shipping_get_shipments(self, id_: str) -> Any:
+        """Get a shipment (GET /api/v1/shipping/shipments/{id})."""
+        return self._call("GET", f"/api/v1/shipping/shipments/{_q(id_)}", {}, None)
+
     def shipping_origin(self) -> Any:
         """List origin (GET /api/v1/shipping/origin)."""
         return self._call("GET", f"/api/v1/shipping/origin", {}, None)
@@ -557,10 +561,6 @@ class GeneratedApi:
         """List shipments (GET /api/v1/shipping/shipments)."""
         return self._call("GET", f"/api/v1/shipping/shipments", {"cursor": cursor, "limit": limit, "status": status}, None)
 
-    def shipping_shipments_2(self, id_: str) -> Any:
-        """Get a shipment (GET /api/v1/shipping/shipments/{id})."""
-        return self._call("GET", f"/api/v1/shipping/shipments/{_q(id_)}", {}, None)
-
     def shipping_shipments_cancel(self, id_: str, *, reason: Optional[Any] = None, json_body: Optional[Dict[str, Any]] = None) -> Any:
         """Legacy namespace. (POST /api/v1/shipping/shipments/{id}/cancel).
         
@@ -593,7 +593,7 @@ class GeneratedApi:
             payload["insurance"] = insurance
         return self._call("POST", f"/api/v1/shipping/shipments/{_q(id_)}/rebook", {}, payload)
 
-    def shipping_track(self, waybill_id: str, *, courier: Optional[Any] = None) -> Any:
+    def shipping_track(self, waybill_id: str, *, courier: Any) -> Any:
         """Get a track (GET /api/v1/shipping/track/{waybillId})."""
         return self._call("GET", f"/api/v1/shipping/track/{_q(waybill_id)}", {"courier": courier}, None)
 
@@ -821,13 +821,13 @@ class GeneratedApi:
         """List webhook deliveries. (GET /api/v1/webhooks/events)."""
         return self._call("GET", f"/api/v1/webhooks/events", {"limit": limit, "cursor": cursor, "type": type_, "status": status, "endpointId": endpoint_id}, None)
 
-    def webhooks_events_2(self, id_: str) -> Any:
-        """Get a webhook delivery. (GET /api/v1/webhooks/events/{id})."""
-        return self._call("GET", f"/api/v1/webhooks/events/{_q(id_)}", {}, None)
-
     def webhooks_events_retry(self, id_: str) -> Any:
         """Retry a webhook delivery. (POST /api/v1/webhooks/events/{id}/retry)."""
         return self._call("POST", f"/api/v1/webhooks/events/{_q(id_)}/retry", {}, None)
+
+    def webhooks_get_events(self, id_: str) -> Any:
+        """Get a webhook delivery. (GET /api/v1/webhooks/events/{id})."""
+        return self._call("GET", f"/api/v1/webhooks/events/{_q(id_)}", {}, None)
 
     def webhooks_update_endpoints(self, id_: str, *, url: Optional[str] = None, events: Optional[List[Any]] = None, description: Optional[str] = None, active: Optional[bool] = None, json_body: Optional[Dict[str, Any]] = None) -> Any:
         """Update an endpoint. (PATCH /api/v1/webhooks/endpoints/{id}).
@@ -843,6 +843,14 @@ class GeneratedApi:
         if active is not None:
             payload["active"] = active
         return self._call("PATCH", f"/api/v1/webhooks/endpoints/{_q(id_)}", {}, payload)
+
+    def shipping_shipments_2(self, *args: Any, **kwargs: Any) -> Any:
+        """Deprecated: the old name of ``shipping_get_shipments`` (GET /api/v1/shipping/shipments/{id})."""
+        return self.shipping_get_shipments(*args, **kwargs)
+
+    def webhooks_events_2(self, *args: Any, **kwargs: Any) -> Any:
+        """Deprecated: the old name of ``webhooks_get_events`` (GET /api/v1/webhooks/events/{id})."""
+        return self.webhooks_get_events(*args, **kwargs)
 
 
 def _q(value: Any) -> str:

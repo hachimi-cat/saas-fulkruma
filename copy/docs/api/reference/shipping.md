@@ -310,7 +310,7 @@ GET /api/v1/shipping/track/{waybillId}
 
 | Name | Type | Required | Notes |
 |---|---|---|---|
-| `courier` | any | no |  |
+| `courier` | any | yes |  |
 
 ### Example
 

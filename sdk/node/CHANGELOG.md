@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+- Three more event types arrive at your endpoints (and through `verifyWebhook` like any other): `fulkruma.stock.low.v1` (a level falls below its variant's `lowStockThreshold`, once per crossing), `fulkruma.warehouse.created.v1` and `fulkruma.webhook_endpoint.disabled.v1` (Fulkruma switched off one of your other endpoints that kept failing).
+- `client.api`: regenerated. A GET by id next to a list of the same name is `get…`: `webhooksGetEvents(id)` and `shippingGetShipments(id)`. The old names `webhooksEvents2` and `shippingShipments2` still work, marked `@deprecated`. `shippingTrack(waybillId, { courier })` requires `courier`, which the server always did.
+
 ## 0.6.0
 - Fulkruma now delivers webhooks to the endpoints you register (it never did before — the delivery log was always empty). `webhooks.listEvents` reads that log: one row per event per endpoint with its `status` (`pending` / `sent` / `failed`), `attempts`, `nextRetryAt`, `lastError` and every attempt made (`deliveryAttempts`), typed as `WebhookDelivery`.
 - `webhooks.listEvents({ limit?, cursor?, type?, status?, endpointId? })` filters and pages (it returns `nextCursor`); `webhooks.getEvent(id)` reads one delivery; `webhooks.retryEvent(id)` queues another attempt now.

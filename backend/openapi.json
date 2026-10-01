@@ -347,7 +347,7 @@
      "guards": [
       "adminGuard"
      ],
-     "body": "read-unknown"
+     "body": "read-unvalidated"
     },
     "requestBody": {
      "required": false,
@@ -355,7 +355,13 @@
       "application/json": {
        "schema": {
         "type": "object",
-        "properties": {}
+        "properties": {
+         "allowlist": {},
+         "description": {},
+         "enabled": {},
+         "label": {},
+         "rollout": {}
+        }
        }
       }
      }
@@ -396,19 +402,19 @@
      {
       "name": "from",
       "in": "query",
-      "required": false,
+      "required": true,
       "schema": {}
      },
      {
       "name": "partner",
       "in": "query",
-      "required": false,
+      "required": true,
       "schema": {}
      },
      {
       "name": "to",
       "in": "query",
-      "required": false,
+      "required": true,
       "schema": {}
      }
     ],
@@ -3393,7 +3399,7 @@
      {
       "name": "courier",
       "in": "query",
-      "required": false,
+      "required": true,
       "schema": {}
      }
     ],
@@ -3431,7 +3437,7 @@
     ],
     "parameters": [],
     "x-forjio": {
-     "source": "src/routes/stock.ts:70",
+     "source": "src/routes/stock.ts:114",
      "guards": [
       "requireAuth"
      ],
@@ -3502,7 +3508,7 @@
      }
     ],
     "x-forjio": {
-     "source": "src/routes/stock.ts:28",
+     "source": "src/routes/stock.ts:29",
      "guards": [
       "requireAuth"
      ]
@@ -3525,7 +3531,7 @@
      }
     ],
     "x-forjio": {
-     "source": "src/routes/stock.ts:55",
+     "source": "src/routes/stock.ts:56",
      "guards": [
       "requireAuth"
      ]
@@ -3541,7 +3547,7 @@
     ],
     "parameters": [],
     "x-forjio": {
-     "source": "src/routes/stock.ts:44",
+     "source": "src/routes/stock.ts:45",
      "guards": [
       "requireAuth"
      ]
@@ -3557,7 +3563,7 @@
     ],
     "parameters": [],
     "x-forjio": {
-     "source": "src/routes/warehouses.ts:24",
+     "source": "src/routes/warehouses.ts:25",
      "guards": [
       "requireAuth"
      ]
@@ -3571,7 +3577,7 @@
     ],
     "parameters": [],
     "x-forjio": {
-     "source": "src/routes/warehouses.ts:34",
+     "source": "src/routes/warehouses.ts:35",
      "guards": [
       "requireAuth"
      ],
@@ -3646,7 +3652,7 @@
      }
     ],
     "x-forjio": {
-     "source": "src/routes/warehouses.ts:49",
+     "source": "src/routes/warehouses.ts:72",
      "guards": [
       "requireAuth"
      ],
@@ -3716,7 +3722,7 @@
      }
     ],
     "x-forjio": {
-     "source": "src/routes/warehouses.ts:62",
+     "source": "src/routes/warehouses.ts:85",
      "guards": [
       "requireAuth"
      ]
@@ -4036,7 +4042,7 @@
   "matched": 94,
   "bodies": {
    "validated": 27,
-   "fieldsOnly": 2,
+   "fieldsOnly": 3,
    "takesBody": 32
   }
  }

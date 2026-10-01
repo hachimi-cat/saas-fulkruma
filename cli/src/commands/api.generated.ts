@@ -7,7 +7,7 @@ import { callRoute, failRoute } from '../lib/apigen-call.js';
 
 type Kind = 'string' | 'number' | 'boolean' | 'array' | 'json';
 interface Field { name: string; kind: Kind; required: boolean; choices?: string[] }
-interface Route { name: string; method: string; path: string; summary: string; pathParams: string[]; query: Field[]; body: Field[] | null }
+interface Route { name: string; aliases?: string[]; method: string; path: string; summary: string; pathParams: string[]; query: Field[]; body: Field[] | null }
 
 export const API_ROUTES: Array<{ area: string; routes: Route[] }> = [
  {
@@ -1233,6 +1233,20 @@ export const API_ROUTES: Array<{ area: string; routes: Route[] }> = [
     "body": null
    },
    {
+    "name": "get-shipments",
+    "method": "GET",
+    "path": "/api/v1/shipping/shipments/{id}",
+    "summary": "Get a shipment",
+    "pathParams": [
+     "id"
+    ],
+    "query": [],
+    "body": null,
+    "aliases": [
+     "shipments-2"
+    ]
+   },
+   {
     "name": "origin",
     "method": "GET",
     "path": "/api/v1/shipping/origin",
@@ -1327,17 +1341,6 @@ export const API_ROUTES: Array<{ area: string; routes: Route[] }> = [
     "body": null
    },
    {
-    "name": "shipments-2",
-    "method": "GET",
-    "path": "/api/v1/shipping/shipments/{id}",
-    "summary": "Get a shipment",
-    "pathParams": [
-     "id"
-    ],
-    "query": [],
-    "body": null
-   },
-   {
     "name": "shipments-cancel",
     "method": "POST",
     "path": "/api/v1/shipping/shipments/{id}/cancel",
@@ -1425,7 +1428,7 @@ export const API_ROUTES: Array<{ area: string; routes: Route[] }> = [
      {
       "name": "courier",
       "kind": "string",
-      "required": false
+      "required": true
      }
     ],
     "body": null
@@ -1949,17 +1952,6 @@ export const API_ROUTES: Array<{ area: string; routes: Route[] }> = [
     "body": null
    },
    {
-    "name": "events-2",
-    "method": "GET",
-    "path": "/api/v1/webhooks/events/{id}",
-    "summary": "Get a webhook delivery.",
-    "pathParams": [
-     "id"
-    ],
-    "query": [],
-    "body": null
-   },
-   {
     "name": "events-retry",
     "method": "POST",
     "path": "/api/v1/webhooks/events/{id}/retry",
@@ -1969,6 +1961,20 @@ export const API_ROUTES: Array<{ area: string; routes: Route[] }> = [
     ],
     "query": [],
     "body": null
+   },
+   {
+    "name": "get-events",
+    "method": "GET",
+    "path": "/api/v1/webhooks/events/{id}",
+    "summary": "Get a webhook delivery.",
+    "pathParams": [
+     "id"
+    ],
+    "query": [],
+    "body": null,
+    "aliases": [
+     "events-2"
+    ]
    },
    {
     "name": "update-endpoints",
@@ -2031,7 +2037,8 @@ export function buildApiCommand(): Command {
   for (const { area, routes } of API_ROUTES) {
     const group = new Command(area).description(`${area} routes`);
     for (const route of routes) {
-      const cmd = new Command(route.name).description(`${route.summary} (${route.method} ${route.path})`);
+      for (const name of [route.name, ...(route.aliases ?? [])]) {
+      const cmd = new Command(name).description(`${route.summary} (${route.method} ${route.path})`);
       for (const p of route.pathParams) cmd.argument(`<${p}>`);
       const fields = [...route.query, ...(route.body ?? [])];
       for (const f of fields) {
@@ -2065,7 +2072,8 @@ export function buildApiCommand(): Command {
           await failRoute(command, err);
         }
       });
-      group.addCommand(cmd);
+      group.addCommand(cmd, { hidden: name !== route.name });
+      }
     }
     api.addCommand(group);
   }

@@ -1339,6 +1339,12 @@ func (a *GeneratedAPI) ShippingCouriers(ctx context.Context) (json.RawMessage, e
 	return a.c.apigenRequest(ctx, "GET", "/api/v1/shipping/couriers", nil, nil)
 }
 
+// ShippingGetShipments calls GET /api/v1/shipping/shipments/{id}: Get a shipment.
+func (a *GeneratedAPI) ShippingGetShipments(ctx context.Context, id string) (json.RawMessage, error) {
+	path := "/api/v1/shipping/shipments/" + url.PathEscape(id)
+	return a.c.apigenRequest(ctx, "GET", path, nil, nil)
+}
+
 // ShippingOrigin calls GET /api/v1/shipping/origin: List origin.
 func (a *GeneratedAPI) ShippingOrigin(ctx context.Context) (json.RawMessage, error) {
 	return a.c.apigenRequest(ctx, "GET", "/api/v1/shipping/origin", nil, nil)
@@ -1460,12 +1466,6 @@ func (a *GeneratedAPI) ShippingShipments(ctx context.Context, p *ShippingShipmen
 	return a.c.apigenRequest(ctx, "GET", "/api/v1/shipping/shipments", q, nil)
 }
 
-// ShippingShipments2 calls GET /api/v1/shipping/shipments/{id}: Get a shipment.
-func (a *GeneratedAPI) ShippingShipments2(ctx context.Context, id string) (json.RawMessage, error) {
-	path := "/api/v1/shipping/shipments/" + url.PathEscape(id)
-	return a.c.apigenRequest(ctx, "GET", path, nil, nil)
-}
-
 // ShippingShipmentsCancelArgs are the inputs of GeneratedAPI.ShippingShipmentsCancel.
 type ShippingShipmentsCancelArgs struct {
 	// Reason is "reason" in the body.
@@ -1563,7 +1563,7 @@ func (a *GeneratedAPI) ShippingShipmentsRebook(ctx context.Context, id string, p
 
 // ShippingTrackArgs are the inputs of GeneratedAPI.ShippingTrack.
 type ShippingTrackArgs struct {
-	// Courier is "courier" in the query.
+	// Courier is "courier" in the query, required.
 	Courier any `query:"courier"`
 }
 
@@ -2163,16 +2163,16 @@ func (a *GeneratedAPI) WebhooksEvents(ctx context.Context, p *WebhooksEventsArgs
 	return a.c.apigenRequest(ctx, "GET", "/api/v1/webhooks/events", q, nil)
 }
 
-// WebhooksEvents2 calls GET /api/v1/webhooks/events/{id}: Get a webhook delivery.
-func (a *GeneratedAPI) WebhooksEvents2(ctx context.Context, id string) (json.RawMessage, error) {
-	path := "/api/v1/webhooks/events/" + url.PathEscape(id)
-	return a.c.apigenRequest(ctx, "GET", path, nil, nil)
-}
-
 // WebhooksEventsRetry calls POST /api/v1/webhooks/events/{id}/retry: Retry a webhook delivery.
 func (a *GeneratedAPI) WebhooksEventsRetry(ctx context.Context, id string) (json.RawMessage, error) {
 	path := "/api/v1/webhooks/events/" + url.PathEscape(id) + "/retry"
 	return a.c.apigenRequest(ctx, "POST", path, nil, nil)
+}
+
+// WebhooksGetEvents calls GET /api/v1/webhooks/events/{id}: Get a webhook delivery.
+func (a *GeneratedAPI) WebhooksGetEvents(ctx context.Context, id string) (json.RawMessage, error) {
+	path := "/api/v1/webhooks/events/" + url.PathEscape(id)
+	return a.c.apigenRequest(ctx, "GET", path, nil, nil)
 }
 
 // WebhooksUpdateEndpointsArgs are the inputs of GeneratedAPI.WebhooksUpdateEndpoints.
@@ -2214,6 +2214,20 @@ func (a *GeneratedAPI) WebhooksUpdateEndpoints(ctx context.Context, id string, p
 	}
 	path := "/api/v1/webhooks/endpoints/" + url.PathEscape(id)
 	return a.c.apigenRequest(ctx, "PATCH", path, nil, payload)
+}
+
+// ShippingShipments2 is the old name of ShippingGetShipments (GET /api/v1/shipping/shipments/{id}).
+//
+// Deprecated: use ShippingGetShipments.
+func (a *GeneratedAPI) ShippingShipments2(ctx context.Context, id string) (json.RawMessage, error) {
+	return a.ShippingGetShipments(ctx, id)
+}
+
+// WebhooksEvents2 is the old name of WebhooksGetEvents (GET /api/v1/webhooks/events/{id}).
+//
+// Deprecated: use WebhooksGetEvents.
+func (a *GeneratedAPI) WebhooksEvents2(ctx context.Context, id string) (json.RawMessage, error) {
+	return a.WebhooksGetEvents(ctx, id)
 }
 
 // apigenBody copies Body, so the fields set over it never change the caller's map.

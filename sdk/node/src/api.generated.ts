@@ -328,6 +328,11 @@ export class GeneratedApi {
     return this.call("GET", `/api/v1/shipping/couriers`, {}, undefined);
   }
 
+  /** Get a shipment (GET /api/v1/shipping/shipments/{id}) */
+  shippingGetShipments(id: string): Promise<unknown> {
+    return this.call("GET", `/api/v1/shipping/shipments/${encodeURIComponent(id)}`, {}, undefined);
+  }
+
   /** List origin (GET /api/v1/shipping/origin) */
   shippingOrigin(): Promise<unknown> {
     return this.call("GET", `/api/v1/shipping/origin`, {}, undefined);
@@ -357,11 +362,6 @@ export class GeneratedApi {
     return this.call("GET", `/api/v1/shipping/shipments`, query, undefined);
   }
 
-  /** Get a shipment (GET /api/v1/shipping/shipments/{id}) */
-  shippingShipments2(id: string): Promise<unknown> {
-    return this.call("GET", `/api/v1/shipping/shipments/${encodeURIComponent(id)}`, {}, undefined);
-  }
-
   /** Legacy namespace. (POST /api/v1/shipping/shipments/{id}/cancel) */
   shippingShipmentsCancel(id: string, input?: { "reason"?: unknown; [field: string]: unknown }): Promise<unknown> {
     const all: Record<string, unknown> = { ...(input ?? {}) };
@@ -385,7 +385,7 @@ export class GeneratedApi {
   }
 
   /** Get a track (GET /api/v1/shipping/track/{waybillId}) */
-  shippingTrack(waybillId: string, input?: { "courier"?: unknown }): Promise<unknown> {
+  shippingTrack(waybillId: string, input: { "courier": unknown }): Promise<unknown> {
     const all: Record<string, unknown> = { ...(input ?? {}) };
     const query: Record<string, unknown> = {};
     query["courier"] = all["courier"]; delete all["courier"];
@@ -520,14 +520,14 @@ export class GeneratedApi {
     return this.call("GET", `/api/v1/webhooks/events`, query, undefined);
   }
 
-  /** Get a webhook delivery. (GET /api/v1/webhooks/events/{id}) */
-  webhooksEvents2(id: string): Promise<unknown> {
-    return this.call("GET", `/api/v1/webhooks/events/${encodeURIComponent(id)}`, {}, undefined);
-  }
-
   /** Retry a webhook delivery. (POST /api/v1/webhooks/events/{id}/retry) */
   webhooksEventsRetry(id: string): Promise<unknown> {
     return this.call("POST", `/api/v1/webhooks/events/${encodeURIComponent(id)}/retry`, {}, undefined);
+  }
+
+  /** Get a webhook delivery. (GET /api/v1/webhooks/events/{id}) */
+  webhooksGetEvents(id: string): Promise<unknown> {
+    return this.call("GET", `/api/v1/webhooks/events/${encodeURIComponent(id)}`, {}, undefined);
   }
 
   /** Update an endpoint. (PATCH /api/v1/webhooks/endpoints/{id}) */
@@ -535,5 +535,15 @@ export class GeneratedApi {
     const all: Record<string, unknown> = { ...(input ?? {}) };
     const query: Record<string, unknown> = {};
     return this.call("PATCH", `/api/v1/webhooks/endpoints/${encodeURIComponent(id)}`, query, all);
+  }
+
+  /** @deprecated The old name of `shippingGetShipments` (GET /api/v1/shipping/shipments/{id}). */
+  shippingShipments2(...args: Parameters<GeneratedApi["shippingGetShipments"]>): Promise<unknown> {
+    return this.shippingGetShipments(...args);
+  }
+
+  /** @deprecated The old name of `webhooksGetEvents` (GET /api/v1/webhooks/events/{id}). */
+  webhooksEvents2(...args: Parameters<GeneratedApi["webhooksGetEvents"]>): Promise<unknown> {
+    return this.webhooksGetEvents(...args);
   }
 }
