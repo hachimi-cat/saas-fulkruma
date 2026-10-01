@@ -13,7 +13,8 @@ import crypto from 'node:crypto';
  *  - fulkruma.delivery.downloaded.v1 — POST /deliveries/:id/download, counted against
  *    maxDownloads (409 at the limit, 410 once expired);
  *  - fulkruma.delivery.expired.v1 — the expiry sweep, once per expiry; extending a
- *    delivery makes its next expiry announced again.
+ *    delivery makes its next expiry announced again;
+ *  - fulkruma.license.activated.v1 / .deactivated.v1 — on a real change only.
  *
  * Only `requireAuth` is replaced (the account comes from a test header).
  */
@@ -31,6 +32,7 @@ const { prisma } = await import('../lib/db.js');
 const { default: productsRouter } = await import('../routes/products.js');
 const { default: deliveriesRouter } = await import('../routes/deliveries.js');
 const { notifyExpiredDeliveries } = await import('../services/delivery-expiry.js');
+const { default: licensesRouter } = await import('../routes/licenses.js');
 
 function app() {
   const a = express();
@@ -145,5 +147,43 @@ describe.skipIf(!HAS_DB)('catalog events (real database)', () => {
     await notifyExpiredDeliveries(new Date(Date.now() + 31 * 24 * 3600 * 1000), { accountId: acc });
     expired = await events(acc, 'fulkruma.delivery.expired.v1');
     expect(expired).toHaveLength(2);
+  });
+});
+
+describe.skipIf(!HAS_DB)('license activation events (real database)', () => {
+  function lapp() {
+    const a = express();
+    a.use(express.json());
+    a.use('/api/v1/licenses', licensesRouter);
+    return a;
+  }
+
+  it('activated / deactivated fire on real changes only; a deactivated instance can activate again; the cap is a 409', async () => {
+    const acc = account('lic');
+    const lic = await prisma.license.create({
+      data: { accountId: acc, productId: 'prod_x', customerId: 'cus_x', key: `LIC-${run}-${crypto.randomBytes(3).toString('hex')}`, maxActivations: 1 },
+    });
+    const act = (instanceId: string) => request(lapp()).post('/api/v1/licenses/activate').send({ key: lic.key, instanceId });
+    const deact = (instanceId: string) => request(lapp()).post('/api/v1/licenses/deactivate').send({ key: lic.key, instanceId });
+
+    expect((await act('laptop')).status).toBe(200);
+    expect((await act('laptop')).body.data.alreadyActive).toBe(true); // no event
+    const capped = await act('desktop');
+    expect(capped.status).toBe(409);
+    expect(capped.body.error.code).toBe('MAX_ACTIVATIONS');
+    expect((await deact('laptop')).status).toBe(200);
+    expect((await deact('laptop')).body.data.alreadyDeactivated).toBe(true); // no event
+    const again = await act('laptop');
+    expect(again.status).toBe(200);
+    expect(again.body.data.alreadyActive).toBe(false);
+
+    const activated = await events(acc, 'fulkruma.license.activated.v1');
+    expect(activated.map((e) => (e.data as any).instanceId)).toEqual(['laptop', 'laptop']);
+    expect(activated[1]!.data).toMatchObject({ licenseId: lic.id, activations: 1, maxActivations: 1 });
+    const deactivated = await events(acc, 'fulkruma.license.deactivated.v1');
+    expect(deactivated).toHaveLength(1);
+    expect(deactivated[0]!.data).toMatchObject({ licenseId: lic.id, instanceId: 'laptop', activations: 0 });
+    expect((await prisma.license.findUniqueOrThrow({ where: { id: lic.id } })).activations).toBe(1);
+    await prisma.license.delete({ where: { id: lic.id } });
   });
 });

@@ -103,13 +103,25 @@ router.post('/deactivate', async (req, res) => {
     if (!activation || activation.deactivatedAt) {
       return { deactivated: true, alreadyDeactivated: true, activations: license.activations };
     }
+    const deactivatedAt = new Date();
     await tx.licenseActivation.update({
       where: { licenseId_instanceId: { licenseId: license.id, instanceId: parsed.data.instanceId } },
-      data: { deactivatedAt: new Date() },
+      data: { deactivatedAt },
     });
     const updated = await tx.license.update({
       where: { id: license.id },
       data: { activations: { decrement: 1 } },
+    });
+    await tx.outboxEvent.create({
+      data: buildEvent({
+        type: 'fulkruma.license.deactivated.v1',
+        accountId: license.accountId,
+        data: {
+          licenseId: license.id, productId: license.productId, customerId: license.customerId,
+          instanceId: parsed.data.instanceId, activations: Math.max(0, updated.activations),
+          maxActivations: license.maxActivations, deactivatedAt: deactivatedAt.toISOString(),
+        },
+      }),
     });
     return { deactivated: true, alreadyDeactivated: false, activations: Math.max(0, updated.activations) };
   });
@@ -134,7 +146,7 @@ router.post('/activate', async (req, res) => {
     const existing = await tx.licenseActivation.findUnique({
       where: { licenseId_instanceId: { licenseId: license.id, instanceId: parsed.data.instanceId } },
     });
-    if (existing) {
+    if (existing && !existing.deactivatedAt) {
       return { license, activation: existing, alreadyActive: true };
     }
     const active = await tx.licenseActivation.count({
@@ -143,20 +155,35 @@ router.post('/activate', async (req, res) => {
     if (active >= license.maxActivations) {
       throw new Error('MAX_ACTIVATIONS');
     }
-    const activation = await tx.licenseActivation.create({
-      data: { licenseId: license.id, instanceId: parsed.data.instanceId },
-    });
-    await tx.license.update({
+    // A deactivated instance activating again takes its row back (it used to be
+    // answered "already active" while staying deactivated and uncounted).
+    const activation = existing
+      ? await tx.licenseActivation.update({ where: { id: existing.id }, data: { deactivatedAt: null, activatedAt: new Date() } })
+      : await tx.licenseActivation.create({ data: { licenseId: license.id, instanceId: parsed.data.instanceId } });
+    const updated = await tx.license.update({
       where: { id: license.id },
       data: { activations: { increment: 1 } },
     });
-    return { license, activation, alreadyActive: false };
+    await tx.outboxEvent.create({
+      data: buildEvent({
+        type: 'fulkruma.license.activated.v1',
+        accountId: license.accountId,
+        data: {
+          licenseId: license.id, productId: license.productId, customerId: license.customerId,
+          instanceId: activation.instanceId, activations: updated.activations,
+          maxActivations: license.maxActivations, activatedAt: activation.activatedAt.toISOString(),
+        },
+      }),
+    });
+    return { license: updated, activation, alreadyActive: false };
   }).catch((e) => {
-    if (e instanceof Error && e.message === 'MAX_ACTIVATIONS') {
-      throw e;
-    }
+    if (e instanceof Error && e.message === 'MAX_ACTIVATIONS') return null;
     throw e;
   });
+  // The documented 409 (it was rethrown, which Express 4 never answers).
+  if (!result) {
+    return res.status(409).json(err('MAX_ACTIVATIONS', `license is already active on its ${license.maxActivations} instance(s)`, req.requestId ?? 'req_unknown'));
+  }
   res.json(ok(result, req.requestId ?? 'req_unknown'));
 });
 
