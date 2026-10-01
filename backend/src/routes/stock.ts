@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { ok, err } from '@forjio/sdk/http';
 import { z } from 'zod';
+import type { Prisma } from '@prisma/client';
 import { prisma } from '../lib/db.js';
 import { requireAuth } from '../middleware/auth.js';
 import { buildEvent } from '../lib/events.js';
@@ -67,6 +68,49 @@ router.get('/movements', async (req, res) => {
   res.json(ok({ movements: rows }, req.requestId ?? 'req_unknown'));
 });
 
+/**
+ * fulkruma.stock.low.v1 — when this change takes a level from at or above the variant's
+ * `lowStockThreshold` to below it. Only on that crossing: a level that is already low and
+ * drops further emits nothing, and a level that recovers and falls again emits again. A
+ * variant with no threshold (null) never emits. `variantId` is Fulkruma's own variant id or
+ * a synced Storlaunch variant's id (its externalRef); either finds the threshold.
+ */
+async function emitLowStockIfCrossed(
+  tx: Prisma.TransactionClient,
+  s: { accountId: string; variantId: string; warehouseId: string; quantityBefore: number; quantityAfter: number; movementId: string },
+): Promise<boolean> {
+  if (s.quantityAfter >= s.quantityBefore) return false;
+  const variants = await tx.productVariant.findMany({
+    where: {
+      product: { accountId: s.accountId },
+      OR: [{ id: s.variantId }, { externalSource: 'storlaunch', externalRef: s.variantId }],
+    },
+    select: { id: true, productId: true, sku: true, name: true, lowStockThreshold: true },
+  });
+  const variant = variants.find((v) => v.id === s.variantId) ?? variants[0];
+  const threshold = variant?.lowStockThreshold;
+  if (variant == null || threshold == null) return false;
+  if (!(s.quantityBefore >= threshold && s.quantityAfter < threshold)) return false;
+  await tx.outboxEvent.create({
+    data: buildEvent({
+      type: 'fulkruma.stock.low.v1',
+      accountId: s.accountId,
+      data: {
+        variantId: s.variantId,
+        productVariantId: variant.id,
+        productId: variant.productId,
+        warehouseId: s.warehouseId,
+        sku: variant.sku,
+        name: variant.name,
+        quantity: s.quantityAfter,
+        threshold,
+        movementId: s.movementId,
+      },
+    }),
+  });
+  return true;
+}
+
 router.post('/adjust', async (req, res) => {
   const accountId = req.auth?.accountId;
   const userId = req.auth?.sub;
@@ -81,6 +125,10 @@ router.post('/adjust', async (req, res) => {
   if (!wh) return res.status(404).json(err('NOT_FOUND', 'warehouse not found', req.requestId ?? 'req_unknown'));
 
   const result = await prisma.$transaction(async (tx) => {
+    const had = await tx.variantStock.findUnique({
+      where: { variantId_warehouseId: { variantId, warehouseId } },
+      select: { id: true },
+    });
     const stock = await tx.variantStock.upsert({
       where: { variantId_warehouseId: { variantId, warehouseId } },
       update: { quantity: { increment: delta } },
@@ -89,6 +137,9 @@ router.post('/adjust', async (req, res) => {
     if (stock.quantity < 0) {
       throw new Error('NEGATIVE_STOCK');
     }
+    // The level before this adjustment: the increment is atomic, so for a row that was
+    // already there it is exactly the level minus delta; a new row started at 0.
+    const quantityBefore = had || delta >= 0 ? stock.quantity - delta : 0;
     const movement = await tx.stockMovement.create({
       data: { variantId, warehouseId, delta, reason, note, createdBy: userId ?? null },
     });
@@ -105,6 +156,9 @@ router.post('/adjust', async (req, res) => {
           movementId: movement.id,
         },
       }),
+    });
+    await emitLowStockIfCrossed(tx, {
+      accountId, variantId, warehouseId, quantityBefore, quantityAfter: stock.quantity, movementId: movement.id,
     });
     return { stock, movement };
   });

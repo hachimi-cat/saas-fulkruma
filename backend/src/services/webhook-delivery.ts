@@ -47,8 +47,10 @@
  * failed attempts in a row AND a failure streak at least 24 h old, so
  * a short outage during a merchant's deploy, which can fail 20 attempts
  * in minutes when events are busy, never switches anyone off; the
- * retries ride that out. Its queued deliveries become `failed`;
- * re-enabling it (PATCH active: true) resets the streak.
+ * retries ride that out. Its queued deliveries become `failed`, and a
+ * `fulkruma.webhook_endpoint.disabled.v1` event goes out (to the
+ * account's other endpoints); re-enabling it (PATCH active: true)
+ * resets the streak.
  */
 import http from 'node:http';
 import https from 'node:https';
@@ -56,6 +58,7 @@ import crypto from 'node:crypto';
 import type { Prisma } from '@prisma/client';
 import { prisma } from '../lib/db.js';
 import { writeAuditLog } from '../lib/audit.js';
+import { buildEvent } from '../lib/events.js';
 import { assertSafeWebhookUrl, guardedLookup } from '../lib/webhook-target.js';
 
 export const SIGNATURE_HEADER = 'Fulkruma-Signature';
@@ -390,7 +393,26 @@ async function deliverOne(id: string, clock: () => Date): Promise<boolean> {
         responseCode: result.status, responseBody: result.body, lastError: result.error, durationMs: result.durationMs,
       },
     });
-    if (disabledReason) await failPendingDeliveries(tx, endpoint.id, `endpoint disabled: ${disabledReason}`);
+    if (disabledReason) {
+      await failPendingDeliveries(tx, endpoint.id, `endpoint disabled: ${disabledReason}`);
+      // Tell the account: its other endpoints subscribed to this type get it (this one is
+      // off by the time the outbox worker fans the event out).
+      await tx.outboxEvent.create({
+        data: buildEvent({
+          type: 'fulkruma.webhook_endpoint.disabled.v1',
+          accountId: endpoint.accountId,
+          data: {
+            id: endpoint.id,
+            url: endpoint.url,
+            description: endpoint.description,
+            disabledAt: at.toISOString(),
+            disabledReason,
+            consecutiveFailures: ep.consecutiveFailures,
+            failingSince: failingSince.toISOString(),
+          },
+        }),
+      });
+    }
     return { disabledReason, consecutiveFailures: ep.consecutiveFailures };
   });
 

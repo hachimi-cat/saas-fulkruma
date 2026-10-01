@@ -127,12 +127,16 @@ describe.skipIf(!HAS_DB)('merchant webhooks (real database)', () => {
     delete process.env.FULKRUMA_OUTBOX_SECRET;
     // Endpoints cascade to their deliveries and attempts.
     await prisma.webhookEndpoint.deleteMany({ where: { accountId: { in: accounts } } });
-    await prisma.outboxEvent.updateMany({ where: { id: { in: outboxIds } }, data: { publishedAt: new Date() } });
+    // (events the code raised itself — fulkruma.webhook_endpoint.disabled.v1 — included)
+    await prisma.outboxEvent.updateMany({
+      where: { OR: [{ id: { in: outboxIds } }, { accountId: { in: accounts } }] },
+      data: { publishedAt: new Date() },
+    });
   });
 
   afterAll(async () => {
     await prisma.webhookEndpoint.deleteMany({ where: { accountId: { in: accounts } } });
-    await prisma.outboxEvent.deleteMany({ where: { id: { in: outboxIds } } });
+    await prisma.outboxEvent.deleteMany({ where: { OR: [{ id: { in: outboxIds } }, { accountId: { in: accounts } }] } });
     await prisma.auditLog.deleteMany({ where: { accountId: { in: accounts } } });
     delete process.env.WEBHOOK_ALLOW_PRIVATE_TARGETS;
     await new Promise((r) => receiver.close(r));
@@ -340,6 +344,8 @@ describe.skipIf(!HAS_DB)('merchant webhooks (real database)', () => {
     process.env.WEBHOOK_DISABLE_AFTER_HOURS = '1';
     const acc = account('breaker');
     const endpointId = (await register(acc, { url: `${base}/hook/down`, events: ['*'] })).body.data.endpoint.id;
+    // A second endpoint that only listens for endpoints being switched off.
+    const watcherId = (await register(acc, { url: `${base}/hook/watch`, events: ['fulkruma.webhook_endpoint.*'] })).body.data.endpoint.id;
     answers.set('/hook/down', 500);
     for (let i = 0; i < 3; i++) await fanOutEvent(await emit(acc, 'fulkruma.stock.adjusted.v1', { i }));
 
@@ -361,14 +367,33 @@ describe.skipIf(!HAS_DB)('merchant webhooks (real database)', () => {
     expect(rows.filter((r) => r.lastError?.startsWith('endpoint disabled: '))).toHaveLength(2);
     expect(await prisma.auditLog.count({ where: { accountId: acc, action: 'webhook.auto_disabled', targetId: endpointId } })).toBe(1);
 
+    // …and the account hears about it: one fulkruma.webhook_endpoint.disabled.v1, which
+    // reaches the watcher (the switched-off endpoint gets nothing more).
+    const disabled = await prisma.outboxEvent.findMany({ where: { accountId: acc, type: 'fulkruma.webhook_endpoint.disabled.v1' } });
+    expect(disabled).toHaveLength(1);
+    expect(disabled[0]!.data).toMatchObject({
+      id: endpointId, url: `${base}/hook/down`, consecutiveFailures: 4,
+      disabledReason: ep.disabledReason, disabledAt: ep.disabledAt!.toISOString(), failingSince: ep.failingSince!.toISOString(),
+    });
+    expect(await fanOutEvent(disabled[0]!)).toBe(1);
+    expect(await prisma.webhookEvent.count({ where: { eventId: disabled[0]!.id, endpointId: watcherId } })).toBe(1);
+    expect(await prisma.webhookEvent.count({ where: { eventId: disabled[0]!.id, endpointId } })).toBe(0);
+    expect(await deliverDueWebhooks({ now: new Date(t0.getTime() + 2 * 3600_000 + 1000) })).toBe(1);
+    expect(JSON.parse(hits('/hook/watch')[0]!.body)).toMatchObject({ type: 'fulkruma.webhook_endpoint.disabled.v1', data: { id: endpointId } });
+
+    // Pausing an endpoint by hand is not a switch-off: no event.
+    await request(app()).patch(`/api/v1/webhooks/endpoints/${watcherId}`).set('x-test-account', acc).send({ active: false }).expect(200);
+    expect(await prisma.outboxEvent.count({ where: { accountId: acc, type: 'fulkruma.webhook_endpoint.disabled.v1' } })).toBe(1);
+
     // Nothing more is queued for it while it is off; a retry is refused.
     await fanOutEvent(await emit(acc, 'fulkruma.stock.adjusted.v1'));
     expect(await prisma.webhookEvent.count({ where: { endpointId } })).toBe(3);
     await request(app()).post(`/api/v1/webhooks/events/${rows[0]!.id}/retry`).set('x-test-account', acc).expect(409);
 
     const listed = await request(app()).get('/api/v1/webhooks/endpoints').set('x-test-account', acc);
-    expect(listed.body.data.endpoints[0]).toMatchObject({ active: false, consecutiveFailures: 4 });
-    expect(listed.body.data.endpoints[0].secret).toBeUndefined();
+    const down = listed.body.data.endpoints.find((e: { id: string }) => e.id === endpointId);
+    expect(down).toMatchObject({ active: false, consecutiveFailures: 4 });
+    expect(down.secret).toBeUndefined();
 
     const on = await request(app()).patch(`/api/v1/webhooks/endpoints/${endpointId}`).set('x-test-account', acc).send({ active: true });
     expect(on.body.data.endpoint).toMatchObject({ active: true, consecutiveFailures: 0, failingSince: null, disabledAt: null, disabledReason: null });
