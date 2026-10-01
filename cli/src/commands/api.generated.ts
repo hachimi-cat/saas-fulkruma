@@ -402,6 +402,17 @@ export const API_ROUTES: Array<{ area: string; routes: Route[] }> = [
     ]
    },
    {
+    "name": "download",
+    "method": "POST",
+    "path": "/api/v1/deliveries/{id}/download",
+    "summary": "Record a download.",
+    "pathParams": [
+     "id"
+    ],
+    "query": [],
+    "body": null
+   },
+   {
     "name": "extend",
     "method": "POST",
     "path": "/api/v1/deliveries/{id}/extend",

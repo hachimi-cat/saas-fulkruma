@@ -7,7 +7,7 @@ export interface ApigenTransport {
   apigenRequest(method: string, path: string, query: Record<string, unknown> | undefined, body: unknown): Promise<unknown>;
 }
 
-/** All 79 feature routes of the Fulkruma API. */
+/** All 80 feature routes of the Fulkruma API. */
 export class GeneratedApi {
   constructor(private readonly client: ApigenTransport) {}
 
@@ -118,6 +118,11 @@ export class GeneratedApi {
     const all: Record<string, unknown> = { ...(input ?? {}) };
     const query: Record<string, unknown> = {};
     return this.call("POST", `/api/v1/deliveries`, query, all);
+  }
+
+  /** Record a download. (POST /api/v1/deliveries/{id}/download) */
+  deliveriesDownload(id: string): Promise<unknown> {
+    return this.call("POST", `/api/v1/deliveries/${encodeURIComponent(id)}/download`, {}, undefined);
   }
 
   /** Extend the download window 30 days (from now, or the current expiry). (POST /api/v1/deliveries/{id}/extend) */

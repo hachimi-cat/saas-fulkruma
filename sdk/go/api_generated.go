@@ -18,7 +18,7 @@ type apigenTransport interface {
 	apigenRequest(ctx context.Context, method, path string, query url.Values, body map[string]any) (json.RawMessage, error)
 }
 
-// GeneratedAPI has all 79 feature routes of the Fulkruma API, one method each
+// GeneratedAPI has all 80 feature routes of the Fulkruma API, one method each
 // (generated from the API spec). A method takes the path parameters, then an *<Method>Args
 // with the query fields (tagged query) and the JSON body fields (tagged json): required
 // fields are plain values, optional ones pointers, slices or maps that nil leaves out,
@@ -472,6 +472,12 @@ func (a *GeneratedAPI) DeliveriesCreate(ctx context.Context, p *DeliveriesCreate
 		return nil, apigenMissing("DeliveriesCreate", "CheckoutSessionID")
 	}
 	return a.c.apigenRequest(ctx, "POST", "/api/v1/deliveries", nil, payload)
+}
+
+// DeliveriesDownload calls POST /api/v1/deliveries/{id}/download: Record a download.
+func (a *GeneratedAPI) DeliveriesDownload(ctx context.Context, id string) (json.RawMessage, error) {
+	path := "/api/v1/deliveries/" + url.PathEscape(id) + "/download"
+	return a.c.apigenRequest(ctx, "POST", path, nil, nil)
 }
 
 // DeliveriesExtend calls POST /api/v1/deliveries/{id}/extend: Extend the download window 30 days (from now, or the current expiry).

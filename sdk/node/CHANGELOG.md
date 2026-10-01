@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+- `client.api.deliveriesDownload(id)` records a download of a digital delivery (POST /deliveries/{id}/download): counted against `maxDownloads`; 409 `DOWNLOAD_LIMIT` when used up, 410 `EXPIRED` after expiry.
+- More event types arrive at your endpoints: `fulkruma.product.updated.v1`, `fulkruma.product.archived.v1`, `fulkruma.variant.created.v1`, `fulkruma.variant.archived.v1`, `fulkruma.delivery.downloaded.v1`, `fulkruma.delivery.expired.v1`, `fulkruma.license.activated.v1`, `fulkruma.license.deactivated.v1`.
+
 ## 0.7.0
 - Three more event types arrive at your endpoints (and through `verifyWebhook` like any other): `fulkruma.stock.low.v1` (a level falls below its variant's `lowStockThreshold`, once per crossing), `fulkruma.warehouse.created.v1` and `fulkruma.webhook_endpoint.disabled.v1` (Fulkruma switched off one of your other endpoints that kept failing).
 - `client.api`: regenerated. A GET by id next to a list of the same name is `get…`: `webhooksGetEvents(id)` and `shippingGetShipments(id)`. The old names `webhooksEvents2` and `shippingShipments2` still work, marked `@deprecated`. `shippingTrack(waybillId, { courier })` requires `courier`, which the server always did.

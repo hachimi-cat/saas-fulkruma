@@ -1339,11 +1339,11 @@
     }
    }
   },
-  "/api/v1/deliveries/{id}/extend": {
+  "/api/v1/deliveries/{id}/download": {
    "post": {
-    "operationId": "postDeliveriesIdExtend",
-    "summary": "Extend the download window 30 days (from now, or the current expiry).",
-    "description": "Extend the download window 30 days (from now, or the current expiry).",
+    "operationId": "postDeliveriesIdDownload",
+    "summary": "Record a download.",
+    "description": "Record a download. Call it from the endpoint that serves the file, before serving it:\nit counts the download against `maxDownloads` (atomically: two at once can't both take\nthe last one) and emits fulkruma.delivery.downloaded.v1. 410 EXPIRED when the delivery\nhas expired (or was revoked), 409 DOWNLOAD_LIMIT when every download is used — serve\nnothing then.",
     "tags": [
      "deliveries"
     ],
@@ -1358,7 +1358,34 @@
      }
     ],
     "x-forjio": {
-     "source": "src/routes/deliveries.ts:137",
+     "source": "src/routes/deliveries.ts:162",
+     "guards": [
+      "requireAuth"
+     ],
+     "body": "none"
+    }
+   }
+  },
+  "/api/v1/deliveries/{id}/extend": {
+   "post": {
+    "operationId": "postDeliveriesIdExtend",
+    "summary": "Extend the download window 30 days (from now, or the current expiry).",
+    "description": "Extend the download window 30 days (from now, or the current expiry). A delivery that\nhad expired is live again, so its next expiry is announced again.",
+    "tags": [
+     "deliveries"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "x-forjio": {
+     "source": "src/routes/deliveries.ts:138",
      "guards": [
       "requireAuth"
      ],
@@ -1385,7 +1412,7 @@
      }
     ],
     "x-forjio": {
-     "source": "src/routes/deliveries.ts:144",
+     "source": "src/routes/deliveries.ts:146",
      "guards": [
       "requireAuth"
      ],
@@ -1412,7 +1439,7 @@
      }
     ],
     "x-forjio": {
-     "source": "src/routes/deliveries.ts:149",
+     "source": "src/routes/deliveries.ts:151",
      "guards": [
       "requireAuth"
      ],
@@ -1511,7 +1538,7 @@
     ],
     "parameters": [],
     "x-forjio": {
-     "source": "src/routes/licenses.ts:166",
+     "source": "src/routes/licenses.ts:193",
      "guards": [
       "requireAuth"
      ]
@@ -1525,7 +1552,7 @@
     ],
     "parameters": [],
     "x-forjio": {
-     "source": "src/routes/licenses.ts:199",
+     "source": "src/routes/licenses.ts:226",
      "guards": [
       "requireAuth"
      ],
@@ -1601,7 +1628,7 @@
      }
     ],
     "x-forjio": {
-     "source": "src/routes/licenses.ts:247",
+     "source": "src/routes/licenses.ts:274",
      "guards": [
       "requireAuth"
      ],
@@ -1619,7 +1646,7 @@
     ],
     "parameters": [],
     "x-forjio": {
-     "source": "src/routes/licenses.ts:121",
+     "source": "src/routes/licenses.ts:133",
      "guards": [],
      "body": "validated",
      "bodySchema": "activateSchema"
@@ -1713,7 +1740,7 @@
      }
     ],
     "x-forjio": {
-     "source": "src/routes/licenses.ts:182",
+     "source": "src/routes/licenses.ts:209",
      "guards": [
       "requireAuth"
      ]
@@ -1975,7 +2002,7 @@
      }
     ],
     "x-forjio": {
-     "source": "src/routes/products.ts:118",
+     "source": "src/routes/products.ts:133",
      "guards": [
       "requireAuth"
      ]
@@ -2000,7 +2027,7 @@
      }
     ],
     "x-forjio": {
-     "source": "src/routes/products.ts:135",
+     "source": "src/routes/products.ts:162",
      "guards": [
       "requireAuth"
      ],
@@ -2078,7 +2105,7 @@
      }
     ],
     "x-forjio": {
-     "source": "src/routes/products.ts:161",
+     "source": "src/routes/products.ts:199",
      "guards": [
       "requireAuth"
      ],
@@ -2151,7 +2178,7 @@
      }
     ],
     "x-forjio": {
-     "source": "src/routes/products.ts:189",
+     "source": "src/routes/products.ts:227",
      "guards": [
       "requireAuth"
      ]
@@ -4038,8 +4065,8 @@
   }
  },
  "x-apigen": {
-  "routes": 120,
-  "matched": 94,
+  "routes": 121,
+  "matched": 95,
   "bodies": {
    "validated": 27,
    "fieldsOnly": 3,

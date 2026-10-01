@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+- `Client.API.DeliveriesDownload(ctx, id)` records a download of a digital delivery (POST /deliveries/{id}/download): counted against `maxDownloads`; 409 `DOWNLOAD_LIMIT` when used up, 410 `EXPIRED` after expiry.
+- More event types arrive at your endpoints: `fulkruma.product.updated.v1`, `fulkruma.product.archived.v1`, `fulkruma.variant.created.v1`, `fulkruma.variant.archived.v1`, `fulkruma.delivery.downloaded.v1`, `fulkruma.delivery.expired.v1`, `fulkruma.license.activated.v1`, `fulkruma.license.deactivated.v1`.
+
 ## 0.4.0
 - Three more event types arrive at your endpoints (and through `VerifyWebhook` like any other): `fulkruma.stock.low.v1` (a level falls below its variant's `lowStockThreshold`, once per crossing), `fulkruma.warehouse.created.v1` and `fulkruma.webhook_endpoint.disabled.v1` (Fulkruma switched off one of your other endpoints that kept failing).
 - `Client.API`: regenerated. A GET by id next to a list of the same name is `Get…`: `WebhooksGetEvents` and `ShippingGetShipments`. The old names `WebhooksEvents2` and `ShippingShipments2` still work (marked `Deprecated:`). `ShippingTrackArgs.Courier` is documented as required, as the server always required it.

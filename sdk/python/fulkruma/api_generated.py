@@ -11,7 +11,7 @@ from typing import Any, Dict, List, Optional
 
 
 class GeneratedApi:
-    """All 79 feature routes of the Fulkruma API."""
+    """All 80 feature routes of the Fulkruma API."""
 
     def __init__(self, client: Any) -> None:
         self._client = client
@@ -190,6 +190,10 @@ class GeneratedApi:
         if "checkoutSessionId" not in payload:
             raise ValueError("deliveries_create needs checkout_session_id")
         return self._call("POST", f"/api/v1/deliveries", {}, payload)
+
+    def deliveries_download(self, id_: str) -> Any:
+        """Record a download. (POST /api/v1/deliveries/{id}/download)."""
+        return self._call("POST", f"/api/v1/deliveries/{_q(id_)}/download", {}, None)
 
     def deliveries_extend(self, id_: str) -> Any:
         """Extend the download window 30 days (from now, or the current expiry). (POST /api/v1/deliveries/{id}/extend)."""
