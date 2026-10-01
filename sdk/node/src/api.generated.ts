@@ -7,7 +7,7 @@ export interface ApigenTransport {
   apigenRequest(method: string, path: string, query: Record<string, unknown> | undefined, body: unknown): Promise<unknown>;
 }
 
-/** All 77 feature routes of the Fulkruma API. */
+/** All 79 feature routes of the Fulkruma API. */
 export class GeneratedApi {
   constructor(private readonly client: ApigenTransport) {}
 
@@ -491,7 +491,7 @@ export class GeneratedApi {
     return this.call("PATCH", `/api/v1/warehouses/${encodeURIComponent(id)}`, query, all);
   }
 
-  /** Create an endpoint (POST /api/v1/webhooks/endpoints) */
+  /** Register an endpoint. (POST /api/v1/webhooks/endpoints) */
   webhooksCreateEndpoints(input: { "url": string; "events"?: unknown[]; "description"?: string; [field: string]: unknown }): Promise<unknown> {
     const all: Record<string, unknown> = { ...(input ?? {}) };
     const query: Record<string, unknown> = {};
@@ -508,13 +508,30 @@ export class GeneratedApi {
     return this.call("GET", `/api/v1/webhooks/endpoints`, {}, undefined);
   }
 
-  /** List events (GET /api/v1/webhooks/events) */
-  webhooksEvents(): Promise<unknown> {
-    return this.call("GET", `/api/v1/webhooks/events`, {}, undefined);
+  /** List webhook deliveries. (GET /api/v1/webhooks/events) */
+  webhooksEvents(input?: { "limit"?: number; "cursor"?: string; "type"?: string; "status"?: "pending" | "sent" | "failed"; "endpointId"?: string }): Promise<unknown> {
+    const all: Record<string, unknown> = { ...(input ?? {}) };
+    const query: Record<string, unknown> = {};
+    query["limit"] = all["limit"]; delete all["limit"];
+    query["cursor"] = all["cursor"]; delete all["cursor"];
+    query["type"] = all["type"]; delete all["type"];
+    query["status"] = all["status"]; delete all["status"];
+    query["endpointId"] = all["endpointId"]; delete all["endpointId"];
+    return this.call("GET", `/api/v1/webhooks/events`, query, undefined);
   }
 
-  /** Update an endpoint (PATCH /api/v1/webhooks/endpoints/{id}) */
-  webhooksUpdateEndpoints(id: string, input?: { [field: string]: unknown }): Promise<unknown> {
+  /** Get a webhook delivery. (GET /api/v1/webhooks/events/{id}) */
+  webhooksEvents2(id: string): Promise<unknown> {
+    return this.call("GET", `/api/v1/webhooks/events/${encodeURIComponent(id)}`, {}, undefined);
+  }
+
+  /** Retry a webhook delivery. (POST /api/v1/webhooks/events/{id}/retry) */
+  webhooksEventsRetry(id: string): Promise<unknown> {
+    return this.call("POST", `/api/v1/webhooks/events/${encodeURIComponent(id)}/retry`, {}, undefined);
+  }
+
+  /** Update an endpoint. (PATCH /api/v1/webhooks/endpoints/{id}) */
+  webhooksUpdateEndpoints(id: string, input?: { "url"?: string; "events"?: unknown[]; "description"?: string; "active"?: boolean; [field: string]: unknown }): Promise<unknown> {
     const all: Record<string, unknown> = { ...(input ?? {}) };
     const query: Record<string, unknown> = {};
     return this.call("PATCH", `/api/v1/webhooks/endpoints/${encodeURIComponent(id)}`, query, all);

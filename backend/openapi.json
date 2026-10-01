@@ -3732,7 +3732,7 @@
     ],
     "parameters": [],
     "x-forjio": {
-     "source": "src/routes/webhooks.ts:18",
+     "source": "src/routes/webhooks.ts:64",
      "guards": [
       "requireAuth"
      ]
@@ -3740,13 +3740,14 @@
    },
    "post": {
     "operationId": "postWebhooksEndpoints",
-    "summary": "Create an endpoint",
+    "summary": "Register an endpoint.",
+    "description": "Register an endpoint. The response is the only time its signing secret\nis returned. The URL must be https (in production) and must not point\nat a private, loopback or link-local address. `events` takes \"*\",\nevent types (\"fulkruma.shipment.created.v1\") and prefixes\n(\"fulkruma.shipment.*\").",
     "tags": [
      "webhooks"
     ],
     "parameters": [],
     "x-forjio": {
-     "source": "src/routes/webhooks.ts:34",
+     "source": "src/routes/webhooks.ts:82",
      "guards": [
       "requireAuth"
      ],
@@ -3762,21 +3763,25 @@
         "properties": {
          "url": {
           "type": "string",
-          "format": "uri"
+          "format": "uri",
+          "maxLength": 2000
          },
          "events": {
           "type": "array",
           "items": {
            "type": "string",
-           "minLength": 1
+           "minLength": 1,
+           "maxLength": 200
           },
           "minItems": 1,
+          "maxItems": 50,
           "default": [
            "*"
           ]
          },
          "description": {
-          "type": "string"
+          "type": "string",
+          "maxLength": 500
          }
         },
         "required": [
@@ -3792,7 +3797,8 @@
   "/api/v1/webhooks/endpoints/{id}": {
    "patch": {
     "operationId": "patchWebhooksEndpointsId",
-    "summary": "Update an endpoint",
+    "summary": "Update an endpoint.",
+    "description": "Update an endpoint. Setting `active: false` pauses it (its queued\ndeliveries become failed); `active: true` re-enables it — also after\nFulkruma switched it off for failing — and clears its failure streak.\nA new `url` goes through the same checks as on register; the signing\nsecret stays the same.",
     "tags": [
      "webhooks"
     ],
@@ -3807,19 +3813,44 @@
      }
     ],
     "x-forjio": {
-     "source": "src/routes/webhooks.ts:55",
+     "source": "src/routes/webhooks.ts:113",
      "guards": [
       "requireAuth"
      ],
-     "body": "read-unknown"
+     "body": "validated",
+     "bodySchema": "updateSchema"
     },
     "requestBody": {
-     "required": false,
+     "required": true,
      "content": {
       "application/json": {
        "schema": {
         "type": "object",
-        "properties": {}
+        "properties": {
+         "url": {
+          "type": "string",
+          "format": "uri",
+          "maxLength": 2000
+         },
+         "events": {
+          "type": "array",
+          "items": {
+           "type": "string",
+           "minLength": 1,
+           "maxLength": 200
+          },
+          "minItems": 1,
+          "maxItems": 50
+         },
+         "description": {
+          "type": "string",
+          "maxLength": 500
+         },
+         "active": {
+          "type": "boolean"
+         }
+        },
+        "additionalProperties": false
        }
       }
      }
@@ -3842,7 +3873,7 @@
      }
     ],
     "x-forjio": {
-     "source": "src/routes/webhooks.ts:74",
+     "source": "src/routes/webhooks.ts:144",
      "guards": [
       "requireAuth"
      ]
@@ -3852,16 +3883,122 @@
   "/api/v1/webhooks/events": {
    "get": {
     "operationId": "getWebhooksEvents",
-    "summary": "List events",
+    "summary": "List webhook deliveries.",
+    "description": "List webhook deliveries. Newest first: one row per event per endpoint,\nwith its status (pending, sent, failed), attempt count, next retry and\nevery attempt made (`deliveryAttempts`). Filter by `type`, `status` or\n`endpointId`; page with `limit` (1-200, default 50) and the returned\n`nextCursor`.",
     "tags": [
      "webhooks"
     ],
-    "parameters": [],
+    "parameters": [
+     {
+      "name": "limit",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "integer",
+       "minimum": 1,
+       "maximum": 200,
+       "default": 50
+      }
+     },
+     {
+      "name": "cursor",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "string",
+       "minLength": 1
+      }
+     },
+     {
+      "name": "type",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "string",
+       "minLength": 1
+      }
+     },
+     {
+      "name": "status",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "string",
+       "enum": [
+        "pending",
+        "sent",
+        "failed"
+       ]
+      }
+     },
+     {
+      "name": "endpointId",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "string",
+       "minLength": 1
+      }
+     }
+    ],
     "x-forjio": {
-     "source": "src/routes/webhooks.ts:90",
+     "source": "src/routes/webhooks.ts:167",
      "guards": [
       "requireAuth"
      ]
+    }
+   }
+  },
+  "/api/v1/webhooks/events/{id}": {
+   "get": {
+    "operationId": "getWebhooksEventsId",
+    "summary": "Get a webhook delivery.",
+    "description": "Get a webhook delivery. Includes every attempt made at it.",
+    "tags": [
+     "webhooks"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "x-forjio": {
+     "source": "src/routes/webhooks.ts:197",
+     "guards": [
+      "requireAuth"
+     ]
+    }
+   }
+  },
+  "/api/v1/webhooks/events/{id}/retry": {
+   "post": {
+    "operationId": "postWebhooksEventsIdRetry",
+    "summary": "Retry a webhook delivery.",
+    "description": "Retry a webhook delivery. Queues one more attempt now at a failed\ndelivery (or sends a sent one again). It goes out within a few\nseconds; read it back with GET /webhooks/events/:id. 409 when it is\nalready queued or its endpoint is disabled.",
+    "tags": [
+     "webhooks"
+    ],
+    "parameters": [
+     {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "x-forjio": {
+     "source": "src/routes/webhooks.ts:212",
+     "guards": [
+      "requireAuth"
+     ],
+     "body": "none"
     }
    }
   },
@@ -3895,10 +4032,10 @@
   }
  },
  "x-apigen": {
-  "routes": 118,
-  "matched": 92,
+  "routes": 120,
+  "matched": 94,
   "bodies": {
-   "validated": 26,
+   "validated": 27,
    "fieldsOnly": 2,
    "takesBody": 32
   }

@@ -18,7 +18,7 @@ type apigenTransport interface {
 	apigenRequest(ctx context.Context, method, path string, query url.Values, body map[string]any) (json.RawMessage, error)
 }
 
-// GeneratedAPI has all 77 feature routes of the Fulkruma API, one method each
+// GeneratedAPI has all 79 feature routes of the Fulkruma API, one method each
 // (generated from the API spec). A method takes the path parameters, then an *<Method>Args
 // with the query fields (tagged query) and the JSON body fields (tagged json): required
 // fields are plain values, optional ones pointers, slices or maps that nil leaves out,
@@ -2089,7 +2089,7 @@ type WebhooksCreateEndpointsArgs struct {
 	Body map[string]any `json:"-"`
 }
 
-// WebhooksCreateEndpoints calls POST /api/v1/webhooks/endpoints: Create an endpoint.
+// WebhooksCreateEndpoints calls POST /api/v1/webhooks/endpoints: Register an endpoint.
 func (a *GeneratedAPI) WebhooksCreateEndpoints(ctx context.Context, p *WebhooksCreateEndpointsArgs) (json.RawMessage, error) {
 	if p == nil {
 		p = &WebhooksCreateEndpointsArgs{}
@@ -2121,13 +2121,74 @@ func (a *GeneratedAPI) WebhooksEndpoints(ctx context.Context) (json.RawMessage, 
 	return a.c.apigenRequest(ctx, "GET", "/api/v1/webhooks/endpoints", nil, nil)
 }
 
-// WebhooksEvents calls GET /api/v1/webhooks/events: List events.
-func (a *GeneratedAPI) WebhooksEvents(ctx context.Context) (json.RawMessage, error) {
-	return a.c.apigenRequest(ctx, "GET", "/api/v1/webhooks/events", nil, nil)
+// WebhooksEventsArgs are the inputs of GeneratedAPI.WebhooksEvents.
+type WebhooksEventsArgs struct {
+	// Limit is "limit" in the query.
+	Limit *int `query:"limit"`
+
+	// Cursor is "cursor" in the query.
+	Cursor *string `query:"cursor"`
+
+	// Type is "type" in the query.
+	Type *string `query:"type"`
+
+	// Status is "status" in the query. One of: pending, sent, failed.
+	Status *string `query:"status"`
+
+	// EndpointID is "endpointId" in the query.
+	EndpointID *string `query:"endpointId"`
+}
+
+// WebhooksEvents calls GET /api/v1/webhooks/events: List webhook deliveries.
+func (a *GeneratedAPI) WebhooksEvents(ctx context.Context, p *WebhooksEventsArgs) (json.RawMessage, error) {
+	if p == nil {
+		p = &WebhooksEventsArgs{}
+	}
+	q := url.Values{}
+	if p.Limit != nil {
+		q.Set("limit", apigenQueryValue(*p.Limit))
+	}
+	if p.Cursor != nil {
+		q.Set("cursor", apigenQueryValue(*p.Cursor))
+	}
+	if p.Type != nil {
+		q.Set("type", apigenQueryValue(*p.Type))
+	}
+	if p.Status != nil {
+		q.Set("status", apigenQueryValue(*p.Status))
+	}
+	if p.EndpointID != nil {
+		q.Set("endpointId", apigenQueryValue(*p.EndpointID))
+	}
+	return a.c.apigenRequest(ctx, "GET", "/api/v1/webhooks/events", q, nil)
+}
+
+// WebhooksEvents2 calls GET /api/v1/webhooks/events/{id}: Get a webhook delivery.
+func (a *GeneratedAPI) WebhooksEvents2(ctx context.Context, id string) (json.RawMessage, error) {
+	path := "/api/v1/webhooks/events/" + url.PathEscape(id)
+	return a.c.apigenRequest(ctx, "GET", path, nil, nil)
+}
+
+// WebhooksEventsRetry calls POST /api/v1/webhooks/events/{id}/retry: Retry a webhook delivery.
+func (a *GeneratedAPI) WebhooksEventsRetry(ctx context.Context, id string) (json.RawMessage, error) {
+	path := "/api/v1/webhooks/events/" + url.PathEscape(id) + "/retry"
+	return a.c.apigenRequest(ctx, "POST", path, nil, nil)
 }
 
 // WebhooksUpdateEndpointsArgs are the inputs of GeneratedAPI.WebhooksUpdateEndpoints.
 type WebhooksUpdateEndpointsArgs struct {
+	// URL is "url" in the body.
+	URL *string `json:"url,omitempty"`
+
+	// Events is "events" in the body.
+	Events []string `json:"events,omitempty"`
+
+	// Description is "description" in the body.
+	Description *string `json:"description,omitempty"`
+
+	// Active is "active" in the body.
+	Active *bool `json:"active,omitempty"`
+
 	// Body is the whole JSON body, for what the fields above do not cover; the fields
 	// that are set replace its keys.
 	Body map[string]any `json:"-"`
@@ -2139,6 +2200,18 @@ func (a *GeneratedAPI) WebhooksUpdateEndpoints(ctx context.Context, id string, p
 		p = &WebhooksUpdateEndpointsArgs{}
 	}
 	payload := apigenBody(p.Body)
+	if p.URL != nil {
+		payload["url"] = *p.URL
+	}
+	if p.Events != nil {
+		payload["events"] = p.Events
+	}
+	if p.Description != nil {
+		payload["description"] = *p.Description
+	}
+	if p.Active != nil {
+		payload["active"] = *p.Active
+	}
 	path := "/api/v1/webhooks/endpoints/" + url.PathEscape(id)
 	return a.c.apigenRequest(ctx, "PATCH", path, nil, payload)
 }

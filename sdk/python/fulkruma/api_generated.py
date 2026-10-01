@@ -11,7 +11,7 @@ from typing import Any, Dict, List, Optional
 
 
 class GeneratedApi:
-    """All 77 feature routes of the Fulkruma API."""
+    """All 79 feature routes of the Fulkruma API."""
 
     def __init__(self, client: Any) -> None:
         self._client = client
@@ -795,7 +795,7 @@ class GeneratedApi:
         return self._call("PATCH", f"/api/v1/warehouses/{_q(id_)}", {}, payload)
 
     def webhooks_create_endpoints(self, *, url: Optional[str] = None, events: Optional[List[Any]] = None, description: Optional[str] = None, json_body: Optional[Dict[str, Any]] = None) -> Any:
-        """Create an endpoint (POST /api/v1/webhooks/endpoints).
+        """Register an endpoint. (POST /api/v1/webhooks/endpoints).
         
         Body fields are keyword arguments; `json_body=` passes the whole body (fields override it)."""
         payload: Dict[str, Any] = dict(json_body or {})
@@ -817,13 +817,31 @@ class GeneratedApi:
         """List endpoints (GET /api/v1/webhooks/endpoints)."""
         return self._call("GET", f"/api/v1/webhooks/endpoints", {}, None)
 
-    def webhooks_events(self) -> Any:
-        """List events (GET /api/v1/webhooks/events)."""
-        return self._call("GET", f"/api/v1/webhooks/events", {}, None)
+    def webhooks_events(self, *, limit: Optional[int] = None, cursor: Optional[str] = None, type_: Optional[str] = None, status: Optional[str] = None, endpoint_id: Optional[str] = None) -> Any:
+        """List webhook deliveries. (GET /api/v1/webhooks/events)."""
+        return self._call("GET", f"/api/v1/webhooks/events", {"limit": limit, "cursor": cursor, "type": type_, "status": status, "endpointId": endpoint_id}, None)
 
-    def webhooks_update_endpoints(self, id_: str, *, json_body: Optional[Dict[str, Any]] = None) -> Any:
-        """Update an endpoint (PATCH /api/v1/webhooks/endpoints/{id})."""
+    def webhooks_events_2(self, id_: str) -> Any:
+        """Get a webhook delivery. (GET /api/v1/webhooks/events/{id})."""
+        return self._call("GET", f"/api/v1/webhooks/events/{_q(id_)}", {}, None)
+
+    def webhooks_events_retry(self, id_: str) -> Any:
+        """Retry a webhook delivery. (POST /api/v1/webhooks/events/{id}/retry)."""
+        return self._call("POST", f"/api/v1/webhooks/events/{_q(id_)}/retry", {}, None)
+
+    def webhooks_update_endpoints(self, id_: str, *, url: Optional[str] = None, events: Optional[List[Any]] = None, description: Optional[str] = None, active: Optional[bool] = None, json_body: Optional[Dict[str, Any]] = None) -> Any:
+        """Update an endpoint. (PATCH /api/v1/webhooks/endpoints/{id}).
+        
+        Body fields are keyword arguments; `json_body=` passes the whole body (fields override it)."""
         payload: Dict[str, Any] = dict(json_body or {})
+        if url is not None:
+            payload["url"] = url
+        if events is not None:
+            payload["events"] = events
+        if description is not None:
+            payload["description"] = description
+        if active is not None:
+            payload["active"] = active
         return self._call("PATCH", f"/api/v1/webhooks/endpoints/{_q(id_)}", {}, payload)
 
 

@@ -1,21 +1,30 @@
-import crypto from 'node:crypto';
 import { prisma } from '../lib/db.js';
+import { fanOutEvent, signWebhookBody, SIGNATURE_HEADER } from './webhook-delivery.js';
 
 /**
  * Outbox polling worker — ADR-0006.
  *
- * Reads unpublished `outbox_events` and fans them out to subscribed
- * services. F-008 wires the first real delivery target: storlaunch
- * receives `fulkruma.shipment.status_updated.v1` so its ManualOrder
- * rows mirror Biteship-driven status changes (driver picked, in
- * transit, delivered) without polling.
+ * Reads unpublished `outbox_events` and hands each one to its two kinds
+ * of consumer:
+ *
+ *  - merchants' own webhook endpoints: `fanOutEvent` queues one
+ *    delivery per matching endpoint of the event's account; the
+ *    deliveries themselves (signing, retries, the delivery log) run in
+ *    services/webhook-delivery.ts, so a slow merchant endpoint never
+ *    holds this loop up;
+ *  - partner products, set in env. F-008 wires the first one:
+ *    storlaunch receives `fulkruma.shipment.status_updated.v1` so its
+ *    ManualOrder rows mirror Biteship-driven status changes (driver
+ *    picked, in transit, delivered) without polling.
  *
  * Configuration:
  *   STORLAUNCH_WEBHOOK_URL   — POST target (e.g. https://storlaunch.com/api/v1/webhooks/fulkruma)
  *   FULKRUMA_OUTBOX_SECRET   — HMAC shared secret; must match storlaunch's verify side
  *
- * If either env is missing, events still get marked as published (no-op
- * mode for dev) so the queue doesn't accumulate.
+ * If either env is missing, the partner step is a no-op (dev) and
+ * events still get marked as published so the queue doesn't
+ * accumulate. A failing partner leaves the event unpublished: it is
+ * handled again on the next poll.
  */
 
 const POLL_MS = Number(process.env.OUTBOX_POLL_INTERVAL_MS ?? 1000);
@@ -27,19 +36,25 @@ export async function startOutboxWorker() {
   console.log(`[outbox] polling every ${POLL_MS}ms, batch=${BATCH}`);
   while (!stopped) {
     try {
-      const batch = await prisma.outboxEvent.findMany({
-        where: { publishedAt: null },
-        orderBy: { createdAt: 'asc' },
-        take: BATCH,
-      });
-      for (const ev of batch) {
-        await deliver(ev);
-      }
+      await processOutboxBatch();
     } catch (e) {
       console.error('[outbox] loop error', e);
     }
     await sleep(POLL_MS);
   }
+}
+
+/** One pass of the loop: every unpublished event, oldest first. */
+export async function processOutboxBatch(): Promise<number> {
+  const batch = await prisma.outboxEvent.findMany({
+    where: { publishedAt: null },
+    orderBy: { createdAt: 'asc' },
+    take: BATCH,
+  });
+  for (const ev of batch) {
+    await deliver(ev);
+  }
+  return batch.length;
 }
 
 export function stopOutboxWorker() {
@@ -56,6 +71,17 @@ type OutboxRow = {
 };
 
 async function deliver(ev: OutboxRow) {
+  // Merchant endpoints first. Queuing is idempotent per (endpoint,
+  // event), so when a partner delivery below fails and this event is
+  // handled again on the next poll, nothing is queued twice. If the
+  // queuing itself fails, the event stays unpublished and is retried.
+  try {
+    await fanOutEvent(ev);
+  } catch (e) {
+    console.error(`[outbox] webhook fan-out failed for ${ev.id}:`, (e as Error).message);
+    return;
+  }
+
   const targets = subscribersFor(ev.type);
   for (const target of targets) {
     try {
@@ -79,10 +105,11 @@ async function deliver(ev: OutboxRow) {
   });
 }
 
-// Consumers of fulkruma's shipment lifecycle. Adding an event type to
-// buildEvent() is NOT enough — an event with no subscriber here is
-// marked published with zero deliveries and vanishes silently, so every
-// new type has to be listed.
+// The PARTNER consumers of fulkruma's shipment lifecycle. (Merchant
+// endpoints get every type they subscribe to — fanOutEvent above.)
+// Adding an event type to buildEvent() is NOT enough for a partner — a
+// type missing here never reaches storlaunch / malapos, so every new
+// type they consume has to be listed.
 const SHIPMENT_EVENT_TYPES = new Set([
   'fulkruma.shipment.status_updated.v1',
   'fulkruma.shipment.pickup_confirmed.v1',
@@ -108,15 +135,15 @@ function subscribersFor(type: string): Array<{ url: string; secret: string }> {
   return out;
 }
 
+// Partner URLs come from our own env (often on the private network),
+// so they skip the merchant-URL SSRF guard — but sign the same way.
 async function postSigned(url: string, secret: string, envelope: unknown) {
   const body = JSON.stringify(envelope);
-  const ts = Math.floor(Date.now() / 1000).toString();
-  const sig = crypto.createHmac('sha256', secret).update(`${ts}.${body}`).digest('hex');
   const res = await fetch(url, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Fulkruma-Signature': `t=${ts},v1=${sig}`,
+      [SIGNATURE_HEADER]: signWebhookBody(secret, body),
     },
     body,
   });

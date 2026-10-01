@@ -22,4 +22,4 @@ Every Fulkruma feature, route by route, generated from the product's own code (t
 | [Stats](/docs/api/reference/stats) | 1 |
 | [Stock](/docs/api/reference/stock) | 4 |
 | [Warehouses](/docs/api/reference/warehouses) | 4 |
-| [Webhooks](/docs/api/reference/webhooks) | 5 |
+| [Webhooks](/docs/api/reference/webhooks) | 7 |

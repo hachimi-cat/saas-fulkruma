@@ -536,22 +536,46 @@ model ApiKey {
   @@index([partner])
 }
 
+// Merchant webhooks. Every outbox event (ADR-0006) is fanned out by
+// services/webhook-delivery.ts to the account's active endpoints whose
+// `events` match its type: one WebhookEvent row per (endpoint, event),
+// one WebhookDeliveryAttempt row per HTTP attempt. Docs:
+// copy/docs/api/resources/webhooks.md.
+
+/// pending — queued: not attempted yet, or a retry is scheduled
+///           (`nextRetryAt`). sent — the endpoint answered 2xx.
+/// failed  — given up: every attempt failed, or the endpoint was
+///           disabled. Terminal until someone retries it by hand.
 enum WebhookEventStatus {
   pending
   sent
   failed
 }
 
+enum WebhookAttemptStatus {
+  succeeded
+  failed
+}
+
 model WebhookEndpoint {
-  id          String   @id @default(cuid())
-  accountId   String
-  url         String
-  secret      String   // shared HMAC secret used to sign outbound requests
-  events      Json     @default("[\"*\"]") // e.g. ["fulkruma.shipment.*", "fulkruma.license.issued.v1"]
-  description String?
-  active      Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id                  String    @id @default(cuid())
+  accountId           String
+  url                 String
+  secret              String // shared HMAC secret used to sign outbound requests
+  events              Json      @default("[\"*\"]") // e.g. ["fulkruma.shipment.*", "fulkruma.license.issued.v1"]
+  description         String?
+  active              Boolean   @default(true)
+  /// Failed attempts in a row since the last 2xx. Reset by a success
+  /// and by re-enabling the endpoint.
+  consecutiveFailures Int       @default(0)
+  /// When the current run of failures started; null while healthy.
+  failingSince        DateTime?
+  /// Set when Fulkruma switched the endpoint off itself because it
+  /// kept failing (null for a manual pause). Cleared on re-enable.
+  disabledAt          DateTime?
+  disabledReason      String?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
 
   webhookEvents WebhookEvent[]
 
@@ -559,25 +583,56 @@ model WebhookEndpoint {
   @@index([accountId, active])
 }
 
+/// One event delivered to one endpoint (what GET /webhooks/events lists).
 model WebhookEvent {
   id            String             @id @default(cuid())
   accountId     String
   endpointId    String
+  /// The outbox event (evt_…) this delivers: the envelope's `id`, the
+  /// same on every attempt.
+  eventId       String
   type          String
+  /// The envelope sent: { id, type, occurredAt, accountId, data, metadata }.
   payload       Json
   status        WebhookEventStatus @default(pending)
   attempts      Int                @default(0)
   lastAttemptAt DateTime?
   nextRetryAt   DateTime?
   responseCode  Int?
-  responseBody  String?            @db.Text
+  responseBody  String?            @db.Text // first 2 KiB of the last response
+  lastError     String?
+  durationMs    Int?
+  deliveredAt   DateTime?
   createdAt     DateTime           @default(now())
   updatedAt     DateTime           @updatedAt
 
-  endpoint WebhookEndpoint @relation(fields: [endpointId], references: [id], onDelete: Cascade)
+  endpoint         WebhookEndpoint          @relation(fields: [endpointId], references: [id], onDelete: Cascade)
+  deliveryAttempts WebhookDeliveryAttempt[]
 
+  @@unique([endpointId, eventId])
   @@index([endpointId, status])
   @@index([accountId, createdAt])
+  @@index([status, nextRetryAt])
+}
+
+/// One HTTP attempt at a WebhookEvent. Append-only.
+model WebhookDeliveryAttempt {
+  id             String               @id @default(cuid())
+  webhookEventId String
+  accountId      String
+  endpointId     String
+  attemptNumber  Int // 1-based
+  status         WebhookAttemptStatus
+  responseCode   Int? // null when no response came back
+  durationMs     Int
+  error          String? // why it failed: "HTTP 503", "timed out after 10000ms", "blocked: …"
+  nextRetryAt    DateTime? // the retry this failure scheduled; null on success or give-up
+  attemptedAt    DateTime             @default(now())
+
+  webhookEvent WebhookEvent @relation(fields: [webhookEventId], references: [id], onDelete: Cascade)
+
+  @@unique([webhookEventId, attemptNumber])
+  @@index([accountId, attemptedAt])
 }
 
 /// Pattern-2 partner-billing record. When a merchant comes through a

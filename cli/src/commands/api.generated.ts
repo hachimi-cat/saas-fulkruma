@@ -1867,7 +1867,7 @@ export const API_ROUTES: Array<{ area: string; routes: Route[] }> = [
     "name": "create-endpoints",
     "method": "POST",
     "path": "/api/v1/webhooks/endpoints",
-    "summary": "Create an endpoint",
+    "summary": "Register an endpoint.",
     "pathParams": [],
     "query": [],
     "body": [
@@ -1912,8 +1912,61 @@ export const API_ROUTES: Array<{ area: string; routes: Route[] }> = [
     "name": "events",
     "method": "GET",
     "path": "/api/v1/webhooks/events",
-    "summary": "List events",
+    "summary": "List webhook deliveries.",
     "pathParams": [],
+    "query": [
+     {
+      "name": "limit",
+      "kind": "number",
+      "required": false
+     },
+     {
+      "name": "cursor",
+      "kind": "string",
+      "required": false
+     },
+     {
+      "name": "type",
+      "kind": "string",
+      "required": false
+     },
+     {
+      "name": "status",
+      "kind": "string",
+      "required": false,
+      "choices": [
+       "pending",
+       "sent",
+       "failed"
+      ]
+     },
+     {
+      "name": "endpointId",
+      "kind": "string",
+      "required": false
+     }
+    ],
+    "body": null
+   },
+   {
+    "name": "events-2",
+    "method": "GET",
+    "path": "/api/v1/webhooks/events/{id}",
+    "summary": "Get a webhook delivery.",
+    "pathParams": [
+     "id"
+    ],
+    "query": [],
+    "body": null
+   },
+   {
+    "name": "events-retry",
+    "method": "POST",
+    "path": "/api/v1/webhooks/events/{id}/retry",
+    "summary": "Retry a webhook delivery.",
+    "pathParams": [
+     "id"
+    ],
     "query": [],
     "body": null
    },
@@ -1921,12 +1974,33 @@ export const API_ROUTES: Array<{ area: string; routes: Route[] }> = [
     "name": "update-endpoints",
     "method": "PATCH",
     "path": "/api/v1/webhooks/endpoints/{id}",
-    "summary": "Update an endpoint",
+    "summary": "Update an endpoint.",
     "pathParams": [
      "id"
     ],
     "query": [],
-    "body": []
+    "body": [
+     {
+      "name": "url",
+      "kind": "string",
+      "required": false
+     },
+     {
+      "name": "events",
+      "kind": "array",
+      "required": false
+     },
+     {
+      "name": "description",
+      "kind": "string",
+      "required": false
+     },
+     {
+      "name": "active",
+      "kind": "boolean",
+      "required": false
+     }
+    ]
    }
   ]
  }

@@ -6,6 +6,7 @@ import storlaunchWebhooks from './routes/storlaunch-webhooks.js';
 import biteshipWebhook from './routes/biteship-webhook.js';
 import { requestId } from './middleware/auth.js';
 import { startOutboxWorker } from './services/outbox-worker.js';
+import { startWebhookDeliveryWorker } from './services/webhook-delivery.js';
 import { registerFeatureFlags } from './lib/feature-flag-registry.js';
 
 const app = express();
@@ -38,9 +39,17 @@ app.listen(port, () => {
 
 // Outbox worker runs alongside the API process. For production, prefer a
 // separate pm2 entry: `node dist/services/outbox-worker.js`.
+// The merchant-webhook delivery worker runs with it: the outbox worker
+// queues deliveries, this one sends them and works the retry schedule
+// (it claims each row before sending, so two processes never send one
+// twice).
 if (process.env.OUTBOX_WORKER_ENABLED !== 'false') {
   startOutboxWorker().catch((e) => {
     console.error('[outbox] fatal', e);
+    process.exit(1);
+  });
+  startWebhookDeliveryWorker().catch((e) => {
+    console.error('[webhooks] fatal', e);
     process.exit(1);
   });
 }
