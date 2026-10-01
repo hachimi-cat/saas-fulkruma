@@ -80,9 +80,9 @@ Both are useful: `occurredAt` for accurate timelines; `recordedAt` for debugging
 
 ## Webhooks for shipment status
 
-Wire `shipment.created`, `shipment.status_changed`, `shipment.delivered`, and `shipment.failed` webhooks to your application so you can notify customers, update your CRM, or trigger downstream flows.
+Subscribe a webhook endpoint to `fulkruma.shipment.created.v1` and `fulkruma.shipment.status_updated.v1` (plus `fulkruma.shipment.pickup_confirmed.v1`, `fulkruma.shipment.cancelled.v1` and `fulkruma.shipment.rebooked.v1` if you need them) so you can notify customers, update your CRM, or trigger downstream flows. A delivered, returned or failed parcel arrives as `fulkruma.shipment.status_updated.v1` with that `status` &mdash; there is no separate delivered or failed event. Subscribe to `fulkruma.shipment.*` to get them all.
 
-The full event catalog is on the **Webhooks** page in the dashboard.
+The full event catalog is in [**Webhooks**](/docs/api/resources/webhooks#event-catalog); the dashboard's **Webhooks** page offers the same list.
 
 ## Deliveries (digital fulfilment)
 
@@ -121,14 +121,14 @@ The three public license endpoints (`activate`, `deactivate`, `validate`) authen
 1. Customer pays via Storlaunch (or your storefront).
 2. Storlaunch (or your code) calls `POST /api/v1/shipments` with the order details.
 3. Fulkruma books Biteship and returns the shipment.
-4. You get `shipment.created`, then `shipment.status_changed`, then `shipment.delivered` webhooks.
+4. You get `fulkruma.shipment.created.v1`, then `fulkruma.shipment.status_updated.v1` as the parcel moves, the last one with `status: "delivered"`.
 5. Show the tracking link to the customer.
 
 ### Return
 
 1. Customer requests a return.
 2. You create a new shipment with origin = customer address, destination = your warehouse.
-3. When `shipment.delivered` fires, run a `stock.adjust` of reason `return` to add the unit back to inventory.
+3. When `fulkruma.shipment.status_updated.v1` arrives with `status: "delivered"`, run a `stock.adjust` of reason `return` to add the unit back to inventory.
 
 ### License sale
 
