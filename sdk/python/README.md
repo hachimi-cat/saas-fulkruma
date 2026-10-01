@@ -86,7 +86,7 @@ def hook():
 | `billing` | `plans`, `current_plan`, `subscription`, `usage`, `invoices`, `checkout`, `cancel` |
 | `integrations` | `status` |
 | `stats` | `overview` |
-| `webhooks` | `list_endpoints`, `create_endpoint`, `update_endpoint`, `delete_endpoint`, `list_events` |
+| `webhooks` | `list_endpoints`, `create_endpoint`, `update_endpoint`, `delete_endpoint`, `list_events`, `get_event`, `retry_event` |
 | `admin` | `provision_workspace`, `get_workspace`, `partner_usage` |
 
 ## License

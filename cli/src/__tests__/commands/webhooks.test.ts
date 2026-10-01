@@ -75,16 +75,46 @@ describe('webhooks', () => {
     expect(fake.calls.find((c) => c.method === 'deleteEndpoint')!.args).toEqual(['we_1']);
   });
 
-  it('events list calls webhooks.listEvents', async () => {
-    fake.on('webhooks.listEvents', { events: [] });
+  // Before the run with flags: commander keeps parsed option values on the
+  // module-level command between runs in one process.
+  it('events list with no flags asks for the default page', async () => {
+    fake.on('client.request', { events: [], nextCursor: null });
     const s = silenceStdio();
     try {
       await runCli(buildProgram, ['webhooks', 'events', 'list']);
     } finally {
       s.restore();
     }
-    const call = fake.calls.find((c) => c.method === 'listEvents');
-    // the server returns the 50 most recent events and takes no filters
-    expect(call!.args).toEqual([]);
+    expect(fake.calls.find((c) => c.method === 'request')!.args[0]).toEqual({ method: 'GET', path: '/api/v1/webhooks/events' });
+  });
+
+  it('events list reads the delivery log with its filters', async () => {
+    fake.on('client.request', { events: [], nextCursor: null });
+    const s = silenceStdio();
+    try {
+      await runCli(buildProgram, [
+        'webhooks', 'events', 'list', '--limit', '20', '--status', 'failed', '--endpoint', 'ep_1',
+      ]);
+    } finally {
+      s.restore();
+    }
+    const call = fake.calls.find((c) => c.method === 'request');
+    expect(call!.args[0]).toEqual({ method: 'GET', path: '/api/v1/webhooks/events?limit=20&status=failed&endpointId=ep_1' });
+  });
+
+  it('events get and retry address one delivery', async () => {
+    fake.on('client.request', { event: { id: 'whe_1' } });
+    const s = silenceStdio();
+    try {
+      await runCli(buildProgram, ['webhooks', 'events', 'get', 'whe_1']);
+      await runCli(buildProgram, ['webhooks', 'events', 'retry', 'whe_1']);
+    } finally {
+      s.restore();
+    }
+    const [get, retry] = fake.calls.filter((c) => c.method === 'request').map((c) => c.args[0] as Record<string, unknown>);
+    expect(get).toEqual({ method: 'GET', path: '/api/v1/webhooks/events/whe_1' });
+    expect(retry).toMatchObject({ method: 'POST', path: '/api/v1/webhooks/events/whe_1/retry' });
+    expect(retry!['idempotencyKey']).toMatch(/^idem_/);
+    expect(retry!['body']).toBeUndefined();
   });
 });

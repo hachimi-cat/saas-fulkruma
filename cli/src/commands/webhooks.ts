@@ -1,6 +1,8 @@
 /**
- * `fulkruma webhooks …` — endpoints (list/create/update/delete) + events list.
+ * `fulkruma webhooks …` — endpoints (list/create/update/delete) and the
+ * delivery log (events list/get/retry).
  */
+import { randomUUID } from 'node:crypto';
 import { Command } from 'commander';
 import { getClient } from '../lib/client.js';
 import { formatOpts, getGlobalOpts, handleError } from '../lib/util.js';
@@ -109,30 +111,57 @@ endpoints
 
 webhooksCommand.addCommand(endpoints);
 
-const events = new Command('events').description('Webhook event history');
+const events = new Command('events').description('Webhook delivery log: what was sent, every attempt, retries');
+
+// The delivery-log calls go through the SDK's signed `client.request`
+// (the passthrough shipping.ts uses): `webhooks.listEvents(params)`,
+// `getEvent` and `retryEvent` arrive in @forjio/fulkruma-node 0.6.0, and
+// this CLI still resolves 0.5.x until that is published.
+type DeliveryRow = Record<string, unknown> & { deliveryAttempts?: Array<Record<string, unknown>> };
+
+function query(params: Record<string, unknown>): string {
+  const q = new URLSearchParams();
+  for (const [k, v] of Object.entries(params)) if (v !== undefined && v !== '') q.set(k, String(v));
+  const s = q.toString();
+  return s ? `?${s}` : '';
+}
 
 events
   .command('list')
-  .description('List the 50 most recent webhook events')
+  .description('List webhook deliveries, newest first (50 by default)')
+  .option('--limit <n>', 'rows per page, 1-200', (v) => Number.parseInt(v, 10))
+  .option('--cursor <id>', 'nextCursor from the previous page')
+  .option('--type <eventType>', 'only this event type, e.g. fulkruma.shipment.created.v1')
+  .option('--status <status>', 'pending | sent | failed')
+  .option('--endpoint <id>', 'only deliveries to this endpoint')
   .action(
-    async (_options: Record<string, never>, cmd) => {
+    async (options: { limit?: number; cursor?: string; type?: string; status?: string; endpoint?: string }, cmd) => {
       const g = getGlobalOpts(cmd);
       try {
         const client = getClient(g);
-        const result = await client.webhooks.listEvents();
+        const result = await client.request<{ events: DeliveryRow[]; nextCursor: string | null }>({
+          method: 'GET',
+          path: `/api/v1/webhooks/events${query({
+            limit: options.limit, cursor: options.cursor, type: options.type, status: options.status, endpointId: options.endpoint,
+          })}`,
+        });
         if (g.json) {
           printJson(result);
         } else {
           printResult(
-            result.events,
+            result.events ?? [],
             [
               { header: 'ID', accessor: (e) => e['id'] as string },
               { header: 'Type', accessor: (e) => e['type'] as string },
               { header: 'Status', accessor: (e) => e['status'] as string | undefined },
+              { header: 'Attempts', accessor: (e) => e['attempts'] as number | undefined },
+              { header: 'Code', accessor: (e) => (e['responseCode'] as number | null | undefined) ?? '' },
+              { header: 'Next retry', accessor: (e) => (e['nextRetryAt'] as string | null | undefined) ?? '' },
               { header: 'Created', accessor: (e) => e['createdAt'] as string | undefined },
             ],
             formatOpts(g),
           );
+          if (result.nextCursor) process.stdout.write(`\nMore: --cursor ${result.nextCursor}\n`);
         }
         process.exit(0);
       } catch (err) {
@@ -140,5 +169,42 @@ events
       }
     },
   );
+
+events
+  .command('get <id>')
+  .description('One delivery with every attempt made at it')
+  .action(async (id: string, _options, cmd) => {
+    const g = getGlobalOpts(cmd);
+    try {
+      const client = getClient(g);
+      const result = await client.request<{ event: DeliveryRow }>({
+        method: 'GET',
+        path: `/api/v1/webhooks/events/${encodeURIComponent(id)}`,
+      });
+      printJson(result.event);
+      process.exit(0);
+    } catch (err) {
+      handleError(err, g);
+    }
+  });
+
+events
+  .command('retry <id>')
+  .description('Queue one more attempt now (a failed delivery, or a sent one again)')
+  .action(async (id: string, _options, cmd) => {
+    const g = getGlobalOpts(cmd);
+    try {
+      const client = getClient(g);
+      const result = await client.request<{ event: DeliveryRow }>({
+        method: 'POST',
+        path: `/api/v1/webhooks/events/${encodeURIComponent(id)}/retry`,
+        idempotencyKey: `idem_${randomUUID()}`,
+      });
+      printJson(result.event);
+      process.exit(0);
+    } catch (err) {
+      handleError(err, g);
+    }
+  });
 
 webhooksCommand.addCommand(events);

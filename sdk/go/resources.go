@@ -976,9 +976,69 @@ type WebhookEndpointUpdateInput struct {
 	Active      *bool     `json:"active,omitempty"`
 }
 
-// WebhookEventsListResult — the 50 most recent events.
+// WebhookDeliveryAttempt — one HTTP attempt at a delivery.
+type WebhookDeliveryAttempt struct {
+	ID             string `json:"id"`
+	WebhookEventID string `json:"webhookEventId"`
+	AccountID      string `json:"accountId"`
+	EndpointID     string `json:"endpointId"`
+	AttemptNumber  int    `json:"attemptNumber"`
+	// Status is "succeeded" or "failed".
+	Status string `json:"status"`
+	// ResponseCode is nil when no response came back (timeout, refused
+	// connection, a target the SSRF guard blocked).
+	ResponseCode *int    `json:"responseCode"`
+	DurationMs   int     `json:"durationMs"`
+	Error        *string `json:"error"`
+	// NextRetryAt is the retry this failure scheduled; nil on success or give-up.
+	NextRetryAt *string `json:"nextRetryAt"`
+	AttemptedAt string  `json:"attemptedAt"`
+}
+
+// WebhookDelivery — one event delivered to one endpoint: a row of the
+// delivery log. Status is "pending" (queued: the first attempt, or a retry
+// at NextRetryAt), "sent" (the endpoint answered 2xx) or "failed" (given
+// up: every attempt failed, or the endpoint was disabled).
+type WebhookDelivery struct {
+	ID         string `json:"id"`
+	AccountID  string `json:"accountId"`
+	EndpointID string `json:"endpointId"`
+	// EventID is the envelope's id (evt_…), the same on every attempt.
+	EventID          string                   `json:"eventId"`
+	Type             string                   `json:"type"`
+	Payload          WebhookEventEnvelope     `json:"payload"`
+	Status           string                   `json:"status"`
+	Attempts         int                      `json:"attempts"`
+	LastAttemptAt    *string                  `json:"lastAttemptAt"`
+	NextRetryAt      *string                  `json:"nextRetryAt"`
+	ResponseCode     *int                     `json:"responseCode"`
+	ResponseBody     *string                  `json:"responseBody"`
+	LastError        *string                  `json:"lastError"`
+	DurationMs       *int                     `json:"durationMs"`
+	DeliveredAt      *string                  `json:"deliveredAt"`
+	CreatedAt        string                   `json:"createdAt"`
+	UpdatedAt        string                   `json:"updatedAt"`
+	DeliveryAttempts []WebhookDeliveryAttempt `json:"deliveryAttempts"`
+}
+
+// WebhookEventsListParams — GET /webhooks/events query. Limit is 1-200
+// (default 50); Cursor is the previous page's NextCursor.
+type WebhookEventsListParams struct {
+	Limit      int
+	Cursor     string
+	Type       string
+	Status     string
+	EndpointID string
+}
+
+// WebhookEventsListResult — newest first. NextCursor is nil on the last page.
 type WebhookEventsListResult struct {
-	Events []map[string]any `json:"events"`
+	Events     []WebhookDelivery `json:"events"`
+	NextCursor *string           `json:"nextCursor"`
+}
+
+type webhookDeliveryEnvelope struct {
+	Event WebhookDelivery `json:"event"`
 }
 
 // ListEndpoints — GET /api/v1/webhooks/endpoints.
@@ -1020,13 +1080,54 @@ func (r *WebhooksResource) DeleteEndpoint(ctx context.Context, id string) (bool,
 	return out.Deleted, nil
 }
 
-// ListEvents — GET /api/v1/webhooks/events: the 50 most recent events.
-func (r *WebhooksResource) ListEvents(ctx context.Context) (*WebhookEventsListResult, error) {
+// ListEvents — GET /api/v1/webhooks/events: the delivery log, newest first,
+// one row per event per endpoint with every attempt made at it.
+func (r *WebhooksResource) ListEvents(ctx context.Context, p WebhookEventsListParams) (*WebhookEventsListResult, error) {
+	q := map[string]any{}
+	if p.Limit > 0 {
+		q["limit"] = p.Limit
+	}
+	if p.Cursor != "" {
+		q["cursor"] = p.Cursor
+	}
+	if p.Type != "" {
+		q["type"] = p.Type
+	}
+	if p.Status != "" {
+		q["status"] = p.Status
+	}
+	if p.EndpointID != "" {
+		q["endpointId"] = p.EndpointID
+	}
 	var out WebhookEventsListResult
-	if err := r.c.Request(ctx, "GET", "/api/v1/webhooks/events", nil, &out, nil); err != nil {
+	if err := r.c.Request(ctx, "GET", "/api/v1/webhooks/events"+qs(q), nil, &out, nil); err != nil {
 		return nil, err
 	}
 	return &out, nil
+}
+
+// GetEvent — GET /api/v1/webhooks/events/:id: one delivery with every attempt.
+func (r *WebhooksResource) GetEvent(ctx context.Context, id string) (*WebhookDelivery, error) {
+	var out webhookDeliveryEnvelope
+	if err := r.c.Request(ctx, "GET", "/api/v1/webhooks/events/"+id, nil, &out, nil); err != nil {
+		return nil, err
+	}
+	return &out.Event, nil
+}
+
+// RetryEvent — POST /api/v1/webhooks/events/:id/retry: queue one more attempt
+// now (a failed delivery, or a sent one to send again). It goes out within
+// seconds; read it back with GetEvent. A 409 when it is already queued or the
+// endpoint is disabled.
+func (r *WebhooksResource) RetryEvent(ctx context.Context, id string) (*WebhookDelivery, error) {
+	var out webhookDeliveryEnvelope
+	err := r.c.Request(ctx, "POST", "/api/v1/webhooks/events/"+id+"/retry", nil, &out, &RequestOptions{
+		IdempotencyKey: r.c.genIdem(),
+	})
+	if err != nil {
+		return nil, err
+	}
+	return &out.Event, nil
 }
 
 // ─── Admin (Pattern 2 partner billing) ──────────────────────

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.6.0
+- Fulkruma now delivers webhooks to the endpoints you register (it never did before — the delivery log was always empty). `webhooks.listEvents` reads that log: one row per event per endpoint with its `status` (`pending` / `sent` / `failed`), `attempts`, `nextRetryAt`, `lastError` and every attempt made (`deliveryAttempts`), typed as `WebhookDelivery`.
+- `webhooks.listEvents({ limit?, cursor?, type?, status?, endpointId? })` filters and pages (it returns `nextCursor`); `webhooks.getEvent(id)` reads one delivery; `webhooks.retryEvent(id)` queues another attempt now.
+- `verifyWebhook` is tested against a signature the server made (a vector shared with the backend and the Python and Go SDKs).
+- `client.api`: regenerated — `webhooksEvents` takes the filters, `webhooksEvents2(id)` and `webhooksEventsRetry(id)` are new.
+
 ## 0.5.0
 - Requests sign exactly the bytes they send. A call that carries nothing — `licenses.revoke`, `apiKeys.revoke`, `billing.cancel`, or any body that serialises to `{}` / `[]` — now sends no body and signs none; it used to send and sign `{}`, which the server hashed as the empty string, so those calls failed with BAD_SIGNATURE.
 - `apiKeys.create({ name, scopes? })`: the server requires `name` (and takes `scopes`: read / write / admin); `description` and `scope` were never read. `apiKeys.list` returns `{ apiKeys }` and `apiKeys.create` `{ apiKey, secret }`, and `apiKeys.revoke` `{ apiKey: { id, revokedAt } }` — what the server sends (they were typed as `keys` / `key` / `revoked`).

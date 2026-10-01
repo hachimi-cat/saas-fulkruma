@@ -311,6 +311,30 @@ def test_webhooks_delete_endpoint_deletes():
     assert captured[0].method == "DELETE"
 
 
+def test_webhooks_list_events_sends_filters_and_cursor():
+    client, captured = _make_client()
+    client.webhooks.list_events(limit=20, status="failed", endpoint_id="ep_1", cursor="cur_1", type="fulkruma.license.issued.v1")
+    req = captured[0]
+    assert req.method == "GET"
+    assert req.url.path == "/api/v1/webhooks/events"
+    assert dict(req.url.params) == {
+        "limit": "20", "status": "failed", "endpointId": "ep_1", "cursor": "cur_1",
+        "type": "fulkruma.license.issued.v1",
+    }
+    client.webhooks.list_events()
+    assert captured[1].url.query == b""
+
+
+def test_webhooks_get_and_retry_event():
+    client, captured = _make_client()
+    client.webhooks.get_event("whe_1")
+    assert (captured[0].method, captured[0].url.path) == ("GET", "/api/v1/webhooks/events/whe_1")
+    client.webhooks.retry_event("whe_1")
+    assert (captured[1].method, captured[1].url.path) == ("POST", "/api/v1/webhooks/events/whe_1/retry")
+    assert captured[1].content == b""
+    assert "idempotency-key" in captured[1].headers
+
+
 def test_admin_provision_workspace_keyed_idempotency():
     """The Node SDK uses `ws_<acc>_<partner>` — verify Python matches."""
     client, captured = _make_client()
@@ -421,6 +445,38 @@ def test_verify_webhook_now_injection():
         raw_body=body, signature=sig, secret="whsec_test", now=ts + 10,
     )
     assert event["id"] == "evt_1"
+
+
+# The vector the backend's signer is tested against
+# (backend/src/__tests__/merchant-webhooks.test.ts), and the Node and Go
+# helpers too: the server and all three SDKs agree on the signature.
+_VECTOR_SECRET = "whsec_fulkruma_test_vector_0001"
+_VECTOR_T = 1767225600
+_VECTOR_BODY = (
+    '{"id":"evt_01JTESTVECTOR0000000000000","type":"fulkruma.shipment.created.v1",'
+    '"occurredAt":"2026-01-01T00:00:00.000Z","accountId":"acc_test",'
+    '"data":{"shipmentId":"shp_1","note":"café — 日本"},"metadata":{}}'
+).encode("utf-8")
+_VECTOR_HEADER = "t=1767225600,v1=812b74713b8424ca6d154b60ee47541f37a0635d82f5ed55e83d949576e73fa1"
+
+
+def test_verify_webhook_accepts_what_the_server_signs():
+    event = verify_webhook(
+        raw_body=_VECTOR_BODY, signature=_VECTOR_HEADER, secret=_VECTOR_SECRET, now=_VECTOR_T + 30,
+    )
+    assert event["id"] == "evt_01JTESTVECTOR0000000000000"
+    assert event["data"]["note"] == "café — 日本"
+    # str bodies are hashed as UTF-8, like the bytes on the wire.
+    assert verify_webhook(
+        raw_body=_VECTOR_BODY.decode("utf-8"), signature=_VECTOR_HEADER.replace(",", ", "),
+        secret=_VECTOR_SECRET, now=_VECTOR_T,
+    )["type"] == "fulkruma.shipment.created.v1"
+    with pytest.raises(FulkrumaError) as exc_info:
+        verify_webhook(
+            raw_body=_VECTOR_BODY.replace(b"shp_1", b"shp_2"), signature=_VECTOR_HEADER,
+            secret=_VECTOR_SECRET, now=_VECTOR_T,
+        )
+    assert exc_info.value.code == "bad_signature"
 
 
 # ─── Context manager + lifecycle ─────────────────────────────────────────

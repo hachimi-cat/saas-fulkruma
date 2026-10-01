@@ -322,9 +322,50 @@ class WebhooksResources(_Namespace):
             on_behalf_of=on_behalf_of,
         )
 
-    def list_events(self, *, on_behalf_of: Optional[str] = None):
-        """The 50 most recent events."""
-        return self._c.request("GET", "/api/v1/webhooks/events", on_behalf_of=on_behalf_of)
+    def list_events(
+        self,
+        *,
+        limit: Optional[int] = None,
+        cursor: Optional[str] = None,
+        type: Optional[str] = None,
+        status: Optional[str] = None,
+        endpoint_id: Optional[str] = None,
+        on_behalf_of: Optional[str] = None,
+    ):
+        """The delivery log, newest first: ``{"events": [...], "nextCursor": str | None}``.
+
+        One row per event per endpoint with its ``status`` (``pending``,
+        ``sent``, ``failed``), ``attempts``, ``nextRetryAt``, ``lastError``
+        and every attempt made (``deliveryAttempts``). ``limit`` is 1-200
+        (default 50); pass the returned ``nextCursor`` as ``cursor`` for
+        the next page.
+        """
+        return self._c.request(
+            "GET",
+            "/api/v1/webhooks/events" + self._c._qs({
+                "limit": limit,
+                "cursor": cursor,
+                "type": type,
+                "status": status,
+                "endpointId": endpoint_id,
+            }),
+            on_behalf_of=on_behalf_of,
+        )
+
+    def get_event(self, delivery_id: str, *, on_behalf_of: Optional[str] = None):
+        """One delivery with every attempt made at it: ``{"event": {...}}``."""
+        return self._c.request(
+            "GET", f"/api/v1/webhooks/events/{delivery_id}", on_behalf_of=on_behalf_of,
+        )
+
+    def retry_event(self, delivery_id: str, *, on_behalf_of: Optional[str] = None):
+        """Queue one more attempt now (a failed delivery, or a sent one to send
+        again). It goes out within seconds; read it back with ``get_event``.
+        409 when it is already queued or the endpoint is disabled."""
+        return self._c.request(
+            "POST", f"/api/v1/webhooks/events/{delivery_id}/retry",
+            idempotency_key=self._c._gen_idem(), on_behalf_of=on_behalf_of,
+        )
 
 
 class AdminResources(_Namespace):

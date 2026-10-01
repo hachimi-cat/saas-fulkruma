@@ -315,6 +315,7 @@ export interface BiteshipTrackingDetail {
 
 // ─── Webhook events ─────────────────────────────────────────
 
+/** The body of every webhook Fulkruma sends (see verifyWebhook). */
 export interface WebhookEventEnvelope<T = unknown> {
   id: string;
   type: string;
@@ -322,4 +323,61 @@ export interface WebhookEventEnvelope<T = unknown> {
   accountId: string | null;
   data: T;
   metadata: Record<string, unknown>;
+}
+
+/** `pending` — queued (first attempt or a scheduled retry, see
+ *  `nextRetryAt`); `sent` — the endpoint answered 2xx; `failed` — given
+ *  up (every attempt failed, or the endpoint was disabled). */
+export type WebhookDeliveryStatus = 'pending' | 'sent' | 'failed';
+
+/** One HTTP attempt at a delivery. */
+export interface WebhookDeliveryAttempt {
+  id: string;
+  webhookEventId: string;
+  accountId: string;
+  endpointId: string;
+  attemptNumber: number;
+  status: 'succeeded' | 'failed';
+  /** null when no response came back (timeout, refused, blocked target). */
+  responseCode: number | null;
+  durationMs: number;
+  error: string | null;
+  /** The retry this failure scheduled; null on success or give-up. */
+  nextRetryAt: string | null;
+  attemptedAt: string;
+}
+
+/** One event delivered to one endpoint — a row of `webhooks.listEvents`. */
+export interface WebhookDelivery {
+  id: string;
+  accountId: string;
+  endpointId: string;
+  /** The event's `evt_…` id — the envelope's `id`, the same on every attempt. */
+  eventId: string;
+  type: string;
+  payload: WebhookEventEnvelope;
+  status: WebhookDeliveryStatus;
+  attempts: number;
+  lastAttemptAt: string | null;
+  nextRetryAt: string | null;
+  responseCode: number | null;
+  /** The first 2 KiB of the last response. */
+  responseBody: string | null;
+  lastError: string | null;
+  durationMs: number | null;
+  deliveredAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  /** Every attempt, oldest first. */
+  deliveryAttempts: WebhookDeliveryAttempt[];
+}
+
+export interface ListWebhookEventsParams {
+  /** 1-200, default 50. */
+  limit?: number;
+  /** `nextCursor` from the previous page. */
+  cursor?: string;
+  type?: string;
+  status?: WebhookDeliveryStatus;
+  endpointId?: string;
 }

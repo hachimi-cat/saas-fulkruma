@@ -19,6 +19,8 @@ import {
   StockMovementReason,
   ProductType,
   BiteshipTrackingDetail,
+  WebhookDelivery,
+  ListWebhookEventsParams,
 } from './types.js';
 
 export interface FulkrumaClientOptions {
@@ -503,10 +505,20 @@ export class FulkrumaClient {
       }),
     deleteEndpoint: (id: string) =>
       this.request<{ deleted: boolean }>({ method: 'DELETE', path: `/api/v1/webhooks/endpoints/${id}` }),
-    /** The 50 most recent events. */
-    listEvents: () =>
-      this.request<{ events: Array<Record<string, unknown>> }>({
-        method: 'GET', path: '/api/v1/webhooks/events',
+    /** The delivery log, newest first: one row per event per endpoint, with every
+     *  attempt made. Filter by type / status / endpointId; page with `nextCursor`. */
+    listEvents: (params: ListWebhookEventsParams = {}) =>
+      this.request<{ events: WebhookDelivery[]; nextCursor: string | null }>({
+        method: 'GET', path: `/api/v1/webhooks/events${qs({ ...params })}`,
+      }),
+    /** One delivery with every attempt made at it. */
+    getEvent: (id: string) =>
+      this.request<{ event: WebhookDelivery }>({ method: 'GET', path: `/api/v1/webhooks/events/${id}` }),
+    /** Queue one more attempt now (a failed delivery, or a sent one to send again). It goes out
+     *  within seconds — read it back with `getEvent`. 409 when already queued or the endpoint is off. */
+    retryEvent: (id: string) =>
+      this.request<{ event: WebhookDelivery }>({
+        method: 'POST', path: `/api/v1/webhooks/events/${id}/retry`, idempotencyKey: this.genIdem(),
       }),
   };
 

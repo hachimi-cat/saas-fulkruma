@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.0
+- Fulkruma now delivers webhooks to the endpoints you register (it never did before — the delivery log was always empty). `Webhooks.ListEvents` reads that log as typed `WebhookDelivery` rows: one per event per endpoint with its `Status` (`pending` / `sent` / `failed`), `Attempts`, `NextRetryAt`, `LastError` and every attempt made (`DeliveryAttempts`).
+- **Breaking:** `Webhooks.ListEvents(ctx, WebhookEventsListParams{Limit, Cursor, Type, Status, EndpointID})` filters and pages (`NextCursor`); `WebhookEventsListResult.Events` is `[]WebhookDelivery` (it was `[]map[string]any`). `Webhooks.GetEvent(ctx, id)` and `Webhooks.RetryEvent(ctx, id)` are new.
+- `VerifyWebhook` is tested against a signature the server made (a vector shared with the backend and the Node and Python SDKs).
+- `Client.API`: regenerated — `WebhooksEvents` takes the filters; `WebhooksEvents2` and `WebhooksEventsRetry` are new.
+
 ## 0.2.0
 - A call that carries nothing — `Licenses.Revoke`, `APIKeys.Revoke`, `Billing.Cancel`, or any body that marshals to `{}` / `[]` / `null` — now sends no body and signs none; it used to send and sign `{}`, which the server hashed as the empty string (BAD_SIGNATURE). Requests sign exactly the bytes they send.
 - `APIKeyCreateInput{Name, Scopes}`: the server requires `name` (and takes `scopes`: read / write / admin); `Description` and `Scope` were never read. `APIKeys.List` decodes the server's `apiKeys` (it read `keys`, so it always came back empty); `APIKeys.Create` returns an `*APIKeyCreated{APIKey, Secret}` (it read `key`, so the one-time secret was lost); `APIKeys.Revoke` reports whether the key is now revoked (it read a `revoked` field the server never sends, so it always returned false).
